@@ -3,16 +3,16 @@
 Project: the Path - Boss
 
 Current phase:
-Shared design workflow setup.
+Core game design
 
 Active topic:
-None.
+IDEA-001 Patron Yetkinlikleri
 
 Latest freeze:
 None.
 
 Pending review:
-None.
+Claude
 
 Next step:
-Connect Claude Desktop to this same project folder and verify shared file access.
+Claude review of IDEA-001

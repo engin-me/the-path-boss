@@ -12,6 +12,14 @@ Priority:
 
 IDEA and REVIEW files are not implementation specifications.
 
+`docs/03_GAME_OVERVIEW.md` is the living vision document.
+It protects the identity and intended experience of the game, but it is not a frozen specification.
+
+FREEZE files define exact approved decisions.
+GAME_OVERVIEW defines the broader design intent those decisions should normally serve.
+
+If a new approved FREEZE materially changes the game's vision, GAME_OVERVIEW should later be updated to reflect the new approved direction.
+
 ## Design Workflow
 
 1. An idea is developed.
