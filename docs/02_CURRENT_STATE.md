@@ -12,7 +12,7 @@ Latest freeze:
 None.
 
 Pending review:
-None. IDEA-001 Tur 2 Claude review is complete.
+Claude review of IDEA-001 Tur 3.
 
 Next step:
-User resolves IDEA-001's three priority open choices; then GPT prepares the Tur 3 synthesis.
+Claude reviews the updated Tur 3 proposal in the shared IDEA-001 file.
