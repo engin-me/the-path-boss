@@ -12,11 +12,15 @@ Before working on a topic:
 2. Load only the relevant FREEZE files.
 3. Never silently modify a FREEZE decision.
 4. If a frozen decision must change, create a new IDEA proposal first.
-5. IDEA and REVIEW files are not approved game rules.
+5. IDEA files, including their review and proposed decision sections, are not approved game rules.
 6. Only current FREEZE files represent approved design decisions.
 
 Workflow:
-IDEA -> REVIEW -> FREEZE
+IDEA (Codex proposal -> Claude review -> Codex synthesis -> user decision) -> FREEZE
+
+Use one IDEA file per topic as the shared discussion record. Append dated, attributed sections; preserve earlier contributions. Do not create a separate REVIEW file for a new review. Existing REVIEW files remain historical records. Record a proposed outcome in the IDEA file, but create or change a FREEZE file only after user approval.
+
+After the user publishes Claude's in-file review to GitHub and asks for an update, read the updated IDEA file and report the outcome from that file. Do not ask the user to copy review text between chats.
 
 Keep context usage low.
 Do not read every project file unless required.

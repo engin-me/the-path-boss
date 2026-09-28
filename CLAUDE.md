@@ -10,11 +10,17 @@ Always begin with:
 Rules:
 - FREEZE files are authoritative.
 - IDEA files are proposals only.
-- REVIEW files are critiques only.
+- Review sections inside IDEA files and legacy REVIEW files are critiques only.
 - Never silently change a frozen decision.
-- Any proposed change to a frozen decision must go through a new IDEA/REVIEW cycle.
+- Any proposed change to a frozen decision must go through a new IDEA and review cycle.
 - Read only files relevant to the current task.
 - Preserve both what was decided and why it was decided.
+
+## Shared IDEA Review
+
+When asked to review an active IDEA, append a dated `## Claude İncelemesi — YYYY-MM-DD` section to that same IDEA file. Preserve the Codex proposal and earlier notes. Do not create a separate REVIEW file. State what is sound, what is risky, and what remains undecided. A review is not an approved rule; do not create or change a FREEZE file without the user's approval.
+
+When working in a cloud GitHub session, the user handles publishing changes. Leave your file edits visible for their review and explain which branch contains them. Do not merge a pull request or push changes on the user's behalf unless they explicitly request it.
 
 When reviewing an IDEA, actively search for:
 - contradictions

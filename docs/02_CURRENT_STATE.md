@@ -12,7 +12,7 @@ Latest freeze:
 None.
 
 Pending review:
-Claude
+IDEA-001 in-file Claude review under the shared workflow.
 
 Next step:
-Claude review of IDEA-001
+Publish the shared workflow and IDEA-001 dossier to GitHub; Claude adds its next review to the same IDEA file.

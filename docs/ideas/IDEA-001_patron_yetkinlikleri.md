@@ -2,6 +2,7 @@
 
 Status: DRAFT
 Date: 2026-09-27
+Öneriyi dosyaya işleyen: Codex (kullanıcının verdiği metinden)
 
 ## Amaç
 
@@ -141,3 +142,35 @@ Bilmediği işi kime bırakacağını bilir.
 - Statların öğrenme hızına vereceği maksimum bonus
 - Bir departmanda aynı anda kaç problem bulunabileceği
 - Yetkinlik düşebilir mi, yoksa yalnızca artar mı?
+
+## Claude İncelemesi — 2026-09-27 (önceki inceleme)
+
+Kaynak: [REV-001](../reviews/REV-001_claude_patron_yetkinlikleri.md). Özgün incelemenin tamamı orada duruyor; ana bulgular önerinin yanında da görülebilsin diye buraya aktarıldı. Bu bölüm eleştiridir, onaylanmış karar değildir.
+
+- **C1:** Patronun sorunu ne zaman teşhis edebildiği açıklanıyor; teşhisten sonra gereken aksiyon, zaman, maliyet ve başarısızlık riski açıklanmıyor. Görünürlük sorunu kendiliğinden çözmemeli.
+- **C2:** Ucuz ve tekrar kullanılabilir danışman/müdür desteği, kariyerde kazanılan yetkinliği gereksiz kılabilir. İnceleme, monetizasyon ilkesini gözeterek sınır ve artan maliyet önerdi.
+- **C3:** Oyuncu oyun sırasında bir sinyal ve başarısızlık sonrasında geri bildirim almazsa gizli kök nedenler erken fabrika kaybını keyfî hissettirebilir.
+- **C4:** Önerilen Tier eşikleri ve ilerleme, çözüm döngüsü tanımlandıktan sonra sınanmalı.
+
+## Claude Devam Notu — 2026-09-28 (kullanıcı tarafından aktarıldı)
+
+Kullanıcı Claude'un bulut oturumundaki yanıtını iletti. Bu bölüm henüz Claude tarafından doğrudan dosyaya yazılmadı.
+
+- **C1 önerisi:** Yüzeysel müdahale, derindeki neden sürüyorsa sorunun geri dönmesine yol açabilir. Patron müdahalesi sınırlı yönetim zamanı harcamalı. Her soruna özgü seçenek yazmanın içerik yükü nedeniyle ertelenmesi önerildi.
+- **C2 önerisi:** Danışmanın erişimi patronun bir Tier üstüyle sınırlanabilir; derin sorunun kaynağı müdürün kendisi de olabilir. Gerçek parayla satılan danışmanlık, oyunun yarattığı sorunlara zorunlu çözüm olmamalı.
+- **C3 önerisi:** Oyun sırasında departman düzeyinde açıklanamayan kayıp, fabrika başarısızlığından sonra değerlendirme raporu gösterilebilir. İkisi de `docs/03_GAME_OVERVIEW.md` dosyasının 9. ve 23. bölümlerinde var; IDEA ile bağları açık değil.
+- **Bağımlılık:** Fabrika başarısızlığının yeni bir oyunu mu başlattığı, yoksa aynı karakterin mi devam ettiği açık.
+
+## Codex Yanıtı — 2026-09-28
+
+- **C1:** Teşhisten sonra oyuncunun bir karar vermesi gerekiyor. Az sayıda yeniden kullanılabilir müdahale türü, her sorun için ayrı seçenek yazmadan bunu sağlayabilir. Zaman ve oyun parası maliyetleri `GAME_OVERVIEW` 22. bölümle uyumlu. Sorun, keyfî bir sayaç yüzünden değil, çözülemeyen kök neden yüzünden geri gelmeli.
+- **C2:** Evrensel `patron Tier + 1` tavanı, patronun bilmediği işi uzmana bırakabilmesi ilkesiyle çatışabilir. Danışman daha derin bir sorunu teşhis edebilir; rapor kapsamı, süre, oyun içi kaynaklar ve ayrıca müdahale kararı gerekliliği onu sınırlar. Sorunun bazen müdürden kaynaklanması tek başına baskın strateji riskini çözmez. Gerçek para zorunlu çare olmamalı.
+- **C3:** `GAME_OVERVIEW` 9. ve 23. bölümler oyun içi sinyal ile başarısızlık raporunu zaten öneriyor. Bunların ayrıntı düzeyi tasarlanmalı. Raporun biçimi, fabrika kapanışından sonra karakterin devam edip etmeyeceği kararı verilmeden de ele alınabilir.
+
+## Karar Kaydı
+
+Durum: AÇIK — kullanıcı tarafından onaylanan karar ve bu konuya ait FREEZE yok.
+
+Sonraki inceleme için önerilen yön: teşhisi müdahaleden ayırmak; kariyer deneyimini gereksiz kılmadan uzmanların gerçek bilgi açığını kapatmasına izin vermek; gizli kayıpları oyun sırasında ve fabrika kapanışından sonra anlaşılır kılmak.
+
+Açık seçenekler: yeniden kullanılabilir müdahale türleri; danışman kapsamı ve oyun içi maliyeti; gizli kaybın ne kadarının gösterileceği; rapor ayrıntısı; fabrika kapanışından sonra karakterin devamı; Tier eşikleri.
