@@ -12,7 +12,7 @@ Latest freeze:
 None.
 
 Pending review:
-IDEA-001 in-file Claude review under the shared workflow.
+None. IDEA-001 Tur 2 Claude review is complete.
 
 Next step:
-Publish the shared workflow and IDEA-001 dossier to GitHub; Claude adds its next review to the same IDEA file.
+User resolves IDEA-001's three priority open choices; then GPT prepares the Tur 3 synthesis.
