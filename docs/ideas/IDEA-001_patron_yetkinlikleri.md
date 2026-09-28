@@ -2,12 +2,12 @@
 
 ## Durum/Tur
 
-Durum: DRAFT — Tur 4 GPT sentezi hazır, Claude incelemesi bekleniyor
+Durum: DRAFT — Tur 4 Claude incelemesi tamamlandı
 Tur: 4
 Son güncelleme: 2026-09-28
 Kaynak: Kullanıcının sağladığı ilk öneri Codex tarafından dosyaya işlendi.
-Tur 1, Tur 2 ve Tur 3 Claude incelemeleri: tamamlandı. Kullanıcının yeni yönlendirmeleri Tur 4 önerisine işlendi; `Notlar (Claude)` hâlâ Tur 3 incelemesidir.
-Sıradaki adım: Claude, Tur 4 önerisini inceleyip `Notlar (Claude)` bölümünü günceller.
+Tur 1–4 Claude incelemeleri: tamamlandı. Kullanıcının yeni yönlendirmeleri Tur 4 önerisine işlendi; `Notlar (Claude)` Tur 4 incelemesidir.
+Sıradaki adım: Kullanıcı, `Notlar (Claude)` → `Açık Sorular` altındaki öncelikli üç kararı seçer; ardından Codex Tur 5 sentezini yapar.
 
 ## Öneri (GPT)
 
@@ -171,46 +171,46 @@ Bilmediği işi kime bırakacağını bilir.
 
 ## Notlar (Claude)
 
-Tarihçe: Tur 1 inceleme [REV-001](../reviews/REV-001_claude_patron_yetkinlikleri.md) ve bu dosyanın Git geçmişi. Aşağıdakiler Tur 3 `Öneri (GPT)` metninin incelemesidir. Kullanıcının Tur 3 yönlendirmeleri (`Karar Özeti`) tartışmaya açılmamış; notlar bu yönlendirmelerin içindeki açıkları hedefler.
+Tarihçe: Tur 1 inceleme [REV-001](../reviews/REV-001_claude_patron_yetkinlikleri.md) ve bu dosyanın Git geçmişi. Aşağıdakiler Tur 4 `Öneri (GPT)` metninin incelemesidir. `Karar Özeti`'ndeki kullanıcı yönlendirmeleri tartışmaya açılmamış; notlar bu yönlendirmelerin içindeki açıkları ve uygulanma biçimini hedefler.
 
 ### Aldığım Notlar
 
-- Tek "Düzelt" eylemi, altı müdahale ailesinden çok daha sade. "Dünya karmaşık, ekran değil" (§27) ilkesine uyuyor ve 10 × 5 içerik yükünü tamamen kaldırıyor.
-- Model tutarlı bir çekirdeğe sahip: **bilgi = belirsizliğin ortadan kalkması.** Eşiğe ulaşan patron kesin çözer; ulaşamayan risk alır. Bilgi açığı çözümü imkânsız değil riskli kılıyor. Bu, "cezalandırma değil yönetim açığı" (§27) ilkesiyle uyumlu.
-- Satın Alma örneği ("kendi başına teşhis edemez; sinyal görünür kalır") ve danışman bedelinin "harcatır" olarak kesinleşmesi Tur 2 notlarına uygun işlenmiş.
-- Başarısız denemede harcanan kaynağın ve sorunun sürdüğünün açıkça gösterilmesi, "oyun beni sebepsiz cezalandırıyor" hissini önler.
+- Danışmanın artık somut bir mekanik etkisi var: etkin yetkinliğe katkı, görünürlük ve eşiğe ulaşınca kesin sonuç. Tur 3'teki "danışman işlevsiz" sorunu kapandı.
+- Toplama modeli tematik olarak güçlü: bilgili patron danışmanı daha verimli kullanır (60 + 30 = 90, ama 20 + 30 = 50). Kariyer yetkinliği, gereken danışmanı ucuzlatarak değer kazanıyor.
+- Kademe eğrisi (≈ %80 / %40 / %15 / %5) kör denemeyi derin sorunlarda gerçekten riskli kılıyor. Eşiklerdeki keskin sıçrama (49 → 50'de %40 → %80) okunur bir hedef yaratıyor; bir kusur değil.
+- Statların eşik altı ihtimali etkilememesi önerisi Tur 3 notuyla uyumlu; kabul edilmesi öneriliyor.
+- Borç + geçici psikoloji düşüşü + "kalıcı sarmal yaratmamalı" ilkesi, Tur 3'teki ölüm sarmalı uyarısını doğru yönde karşılıyor.
+- "Düzelt sade bir operasyon eylemidir; strateji başka sistemlerde" cümlesi Tur 3'teki tycoon'a kayma riskini IDEA'ya yazılı hale getirdi.
 
 ### Bulduğum Sakıncalar
 
-- **Danışman işlevsizleşiyor (kritik):** Düzelt'in başarısı yalnızca patron yetkinliğine bağlıysa danışman raporu hiçbir mekanik sonuç doğurmaz. Oyuncu kök nedeni bilmeden de aynı ihtimalle Düzelt'e basabilir. Danışman parası ve beklemesi boşa gider, kimse çağırmaz. Öneri: danışman teşhisi o sorun için patronu "eşiğe ulaşmış" sayar ve başarı kesinleşir. Böylece seçim temiz ve dengelenebilir hale gelir: danışman ücreti ve bekleme mi, yoksa kör denemelerin beklenen ek maliyeti (≈ 1/p) mi?
-- **Eşik altı eğrisi yetkinliği değersizleştirebilir (kritik):** 60/70 ≈ %80 ise ortalama maliyet yalnızca ≈ 1,25 katına çıkar. Eğri yumuşak kalırsa 30 yetkinlikli patron her sorunu birkaç denemeyle çözer; kariyer yatırımı ve görünürlük sistemi anlamını yitirir. Öneri: ihtimal puan farkına değil **kademe farkına** göre sert düşsün. Örnek başlangıç: 1 kademe altı ≈ %80, 2 kademe ≈ %40, 3 kademe ≈ %15, 4+ kademe ≈ %5. Tekrar deneme bu eğriyle doğal olarak pahalılaşır; ek bir ceza kuralına gerek kalmaz.
-- **Kişi kaynaklı sorunda "Düzelt" ne anlama geliyor?** T4–T5 örnekleri (müdür kayırması, komisyon) bir kişiden kaynaklanıyor. Düzelt para ve zamanla çözüyorsa müdür yerinde kalır, kaynak sürer ve sorun yeniden doğmalıdır. Aksi halde yolsuzluk parayla "kapatılmış" olur. Ya Düzelt bu tür sorunlarda soyut bir personel sonucunu da içermeli (müdür değişir, yeni müdür alışma maliyeti otomatik gelir), ya da müdürü kovmak ayrı eylem olmalı. Bu karar Tur 3'te açık bırakılmış, ama kişi kaynaklı sorunların anlamı buna bağlı.
-- **Müdür yetkinliği Düzelt'e katılıyor mu?** Tanımsız. Katılıyorsa (ör. patron ile müdürün yüksek olanı), iyi müdür patron yetkinliğinin yerini tümüyle tutar ve REV-001 C2 geri döner. Öneri: müdürün yetkinliği sayılsın, ancak kaynağı müdürün kendisi olan sorunlarda sayılmasın. Bu, 2x2 matrisi mekanik olarak işletir.
-- **Statlar yetkinliği atlatabilir:** `Statların Rolü` bölümü hâlâ "bazı görevlerdeki başarı oranını" etkiliyor diyor. Bu, eşik altı Düzelt'e uygulanırsa yüksek Zeka bilgi açığını kapatır ve "Zeka T4 görmez" ilkesi delinir. Öneri: statlar yalnızca Düzelt'in süresini ve maliyetini etkilesin, eşik altı ihtimali etkilemesin.
-- **İflas sonrası yetkinlik kaybı ölüm sarmalı riski taşıyor:** §20'de "kovulma → psikoloji → performans → kovulma" sarmalı zaten bir kez yaşanmış. İflas → yetkinlik kaybı → daha zayıf ikinci fabrika → ikinci iflas aynı yapıda. Ayrıca yetkinlik kaybı "başarısızlık öğretmeli" ilkesiyle çelişiyor: oyuncu tam da batırdığı alanda geriler. Öneri: kalıcı bedel para, borç, zaman veya itibardan gelsin; psikoloji ve stat kaybı geçici olsun. Yetkinlik kaybı yerine "acı tecrübe" verilsin: en çok kayıp yaratan departmanda küçük bir yetkinlik artışı.
-- **Fabrika dönemi "Düzelt'e tıkla" döngüsüne inme riski:** Tek eylemle sorun çözümü sadeleşti; bu yüzden fabrika dönemindeki stratejik derinlik başka sistemlerden gelmek zorunda (işe alma, ortaklık, satın alma kararları, bütçe ve zaman önceliklendirme). Aksi halde oyun genel bir tycoon'a kayar (CLAUDE.md guardrail). Bu bağımlılık IDEA'da yazılı olmalı.
+- **Danışman aboneliği baskın strateji olabilir (kritik):** Danışman "aktif" olduğu süre boyunca 3–5 alanda etkin yetkinliği yükseltiyorsa, o süredeki tüm sorunlar bu alanlarda kesin çözülür. Oyuncu parası yettiği sürece sürekli danışman tutar; kariyer yetkinliği yalnızca bir maliyet indirimine dönüşür (REV-001 C2 geri döner). Tur 1–2'de uzlaşılan "tek departman, geçici" sınırı da 3–5 alanlı profille fiilen kalkmış oluyor. Öneri (kullanıcı kararını bozmadan): profil danışmanın *hangi alanlarda tutulabileceğini* gösterir, ama her görevlendirme **tek alan ve kısa süre** için yapılır. Fiyat görevlendirilen alanın katkısına göre belirlenir.
+- **Katkıların üst üste eklenmesi ve 100'ü aşma:** İki danışman (+50 ve +50) toplanırsa her patron T5'e ulaşır; 60 + 70 = 130 gibi değerler anlamsızdır. Öneri: aynı alanda yalnızca en yüksek danışman katkısı geçerli olsun, etkin yetkinlik 100 ile sınırlansın.
+- **Kişi kaynaklı sorunlar artık rutin olarak çözülebilir hale geldi:** Danışmanla etkin değer 90–100'e kolayca çıkıyor. T4–T5 (müdür kayırması, komisyon) "Düzelt" ile kesin çözülüyor, ama müdürün yerinde kalıp kalmadığı hâlâ tanımsız. Tur 3'te açık kalan bu karar artık acil: tanımlanmazsa yolsuzluk parayla "kapatılan" bir sorun olur.
+- **Müdür ve danışman için kurallar tutarsız:** Danışmanın katkısı toplanıyor, müdürün katkısı tanımsız. Oyuncu doğal olarak "iyi müdür neden danışman kadar işe yaramıyor?" diye sorar. Öneri: müdür de aynı toplama kuralına girsin, ancak kaynağı müdürün kendisi olan sorunlarda katkısı sıfır sayılsın.
+- **Kasıtlı iflas istismarı:** İflastan sonra stat kazanımı hızlanıyor veya her kazanıma +1 ekleniyorsa, oyuncu küçük bir fabrika kurup bilerek batırarak bu bonusu toplayabilir. Öneri: telafi yalnızca raporda en çok kayıp yaratan alanlara bağlı olsun ("acı tecrübe"), bir kez verilsin ve üst sınırı olsun. Etkisi, borcun bir yıllık maliyetinden açıkça küçük kalmalı.
+- **Psikoloji −%25 ile §20 sarmalı:** Borçlu, düşük psikolojili ve muhtemelen yeniden iş arayan bir karakter, §20'de bir kez yaşanan "psikoloji → performans → kovulma" sarmalının başlangıç koşullarını taşıyor. "Sarmal yaratmamalı" bir niyet olarak yazılı, ama mekanizması yok. Öneri: psikoloji belirli bir sürede kendiliğinden toparlansın (ör. 6 ay); borç ödemesi gelire oranlanmış olsun.
 
 ### Kafama Yatmayanlar
 
-- **Açıklanamayan kayıpta Düzelt neyi hedefliyor?** Sinyal nedeni göstermiyor. Aynı departmanda birden fazla gizli sorun varsa, sinyal üzerinden basılan Düzelt hangisine uygulanır ve ihtimal hangi eşiğe göre hesaplanır? Öneri: önce en sığ gizli sorunu hedeflesin, ihtimal o sorunun eşiğine göre hesaplansın. Bu, eşzamanlı sorun sayısı kararına bağlı.
-- **İhtimalin gösterimi bilgi modeliyle uyumlu olmalı:** Kesin yüzde gösterilirse oyuncu kök nedeni bilmeden sorunun derinliğini çıkarabilir (%80 görürse "1 kademe yukarıda" anlar). Bu, görünürlük sistemini arka kapıdan açar. Öneri: yalnızca kaba bir aralık gösterilsin (yüksek / orta / düşük / çok düşük).
-- **GAME_OVERVIEW ile tutarsızlık:** "Aynı karakterle devam" yönlendirmesi, GAME_OVERVIEW §5–6 ve §25'teki "ikinci kariyer / ilk run / sonraki run" diliyle çelişiyor. Bu bir FREEZE çatışması değil. Ancak karar dondurulursa, proje kuralı gereği GAME_OVERVIEW güncellenmeli.
-- **Oyunun bitişi tanımsız:** Karakter iflastan sonra devam ediyorsa oyunun süresi ne olacak (açılıştaki "10 yıl sonra" ufku mu)? İflastan sonra ikinci bir fabrika için kalan zaman, sermaye ve borç durumu da belli değil. Replay döngüsü ("bu sefer daha iyi hazırlanacağım") aynı run içinde mi, yeni run'da mı yaşanacak?
-- `Statların Rolü` ve "Toplam teorik maksimum: 1000" satırları Tur 3 modeline göre güncellenmemiş (REV-001 M1).
+- **"Satış" kapsam genişlemesi:** Danışman örneğindeki Satış, on yetkinlik arasında yok. Aslında oyunda talep/satış tarafının hiç tanımlanmadığını ortaya çıkarıyor. Bu IDEA'ya 11. bir yetkinlik olarak sessizce girmemeli. Örnek profilden çıkarılsın; satış/talep tarafı ayrı bir IDEA konusu olarak işaretlensin.
+- **T4–T5 arası yalnızca 10 puan (REV-001 C4):** Kademe eğrisiyle bu artık daha önemli. 90 yetkinlikli patron, en derin (T5) sorunlarda %80 başarıyla neredeyse T4 kadar rahat. Eşik aralıkları eğriyle birlikte yeniden bakılmalı.
+- **Karar Özeti'nde gerekçe izi:** Tur 3'teki "bazı stat/yetkinlik kayıpları yaşar" maddesi, Tur 4'te "tam etkisi hâlâ açık" olarak yeniden yazılmış. Proje kuralı hem kararın hem gerekçesinin korunmasını istiyor. Değişikliğin kullanıcı yönlendirmesiyle yapıldığı tek satırla belirtilmeli.
+- **Tasarım İlkesi bölümünde yerleşim:** "Düzelt sade bir operasyon eylemidir" paragrafı, üç satırlık ilkenin ilk cümlesiyle devamı arasına girmiş. Paragraf ilkenin sonuna taşınmalı.
+- **Oyunun süresi ve bitişi hâlâ tanımsız:** İflastan sonra bir yıl toparlanma ve yeniden sermaye biriktirme süresi, oyunun ne kadar sürdüğü bilinmeden dengelenemez.
 
 ### Açık Sorular
 
-Tur 4'ten önce kullanıcının karar vermesi önerilen öncelikli üç konu:
+Tur 5'ten önce kullanıcının karar vermesi önerilen öncelikli üç konu:
 
-1. Danışman teşhisi Düzelt'i kesinleştirir mi (Claude önerisi), yoksa başka ne kazandırır?
-2. Eşik altı ihtimal kademe farkına göre sert mi düşsün (Claude önerisi), yoksa puana göre yumuşak mı?
-3. İflas bedeli yetkinlik kaybı mı, yoksa para/borç/zaman ile geçici psikoloji ve stat kaybı mı? "Acı tecrübe" önerisi kabul edilir mi?
+1. Danışman görevlendirmesi süreli bir abonelik mi (3–5 alan birden aktif), yoksa tek alan ve kısa görev mi (Claude önerisi)? Katkılar üst üste eklenmesin ve etkin değer 100 ile sınırlansın mı?
+2. Kişi kaynaklı sorunda "Düzelt" ne yapar: müdür değişimini otomatik içerir mi, yoksa müdürü kovmak ayrı bir eylem mi? Müdürün katkısı danışmanla aynı toplama kuralına girsin mi?
+3. İflas sonrası telafi kasıtlı iflasa karşı nasıl sınırlanacak? Yetkinlik kaybı tamamen kaldırılıp "acı tecrübe" mi kabul edilecek?
 
 Diğerleri:
-- Müdür yetkinliği Düzelt ihtimaline katılır mı; müdürün kaynak olduğu sorunlarda ne olur?
-- Kişi kaynaklı sorunda Düzelt müdür değişimini de kapsar mı?
-- Başarı ihtimali oyuncuya yüzde olarak mı, kaba aralık olarak mı gösterilir?
-- Oyunun süresi ve iflastan sonraki sermaye/borç durumu ne olacak?
+- Satış örnek profilden çıkarılsın mı; talep/satış tarafı ayrı IDEA mı olsun?
+- Psikolojinin kendiliğinden toparlanma süresi ve borç ödemesinin gelire oranı ne olsun?
+- Başarı ihtimali oyuncuya yüzde olarak mı, kaba aralık olarak mı gösterilecek?
 
 ## Açık Kararlar
 
@@ -218,9 +218,9 @@ Diğerleri:
 - Kabul edilen taslak kademe eğrisinin (≈ %80 / %40 / %15 / %5) oyun testlerinde ayarlanması; Tier içinde farklı puanların aynı şansa sahip olmasının uygunluğu.
 - Kör denemeyi baskın strateji yapmamak için tekrar denemede aynı mı, artan mı maliyet ve/veya bekleme süresi uygulanacağı.
 - Statların eşik altı “Düzelt” olasılığını etkileyip etkilemeyeceği; Tur 4 önerisi yalnızca süre ve maliyeti etkilemeleri.
-- Danışman katkılarının kesin fiyat formülü, görev süresi, eşzamanlı çalışma ve üst üste eklenme kuralı; katkının geçerli olduğu alan dışındaki bilginin kapsamı.
-- Danışmanın örnek profilindeki Satış'ın yeni yetkinlik mi yoksa mevcut bir alanın karşılığı mı olduğu.
-- Müdür yetkinliğinin “Düzelt” ihtimaline katılıp katılmayacağı; müdürün kendisinin kaynak olduğu sorunlarda istisna.
+- Danışman katkılarının kesin fiyat formülü, görev süresi, eşzamanlı çalışma ve üst üste eklenme kuralı; katkının geçerli olduğu alan dışındaki bilginin kapsamı. Claude önerisi: görevlendirme tek alan ve kısa süreli; aynı alanda yalnızca en yüksek katkı geçerli; etkin yetkinlik en fazla 100 (açık).
+- Danışmanın örnek profilindeki Satış'ın yeni yetkinlik mi yoksa mevcut bir alanın karşılığı mı olduğu. Claude önerisi: örnekten çıkarılır; talep/satış tarafı ayrı IDEA konusu olur (açık).
+- Müdür yetkinliğinin “Düzelt” ihtimaline katılıp katılmayacağı; müdürün kendisinin kaynak olduğu sorunlarda istisna. Claude önerisi: danışmanla aynı toplama kuralı; kaynak müdürse katkısı sıfır (açık).
 - Açıklanamayan kayıp sinyali üzerinden basılan “Düzelt”in hangi gizli sorunu hedeflediği.
 - Danışman seviyesi ve bulunabilirliği.
 - Müdür raporlarının çarpıtılıp çarpıtılamayacağı ve bunun hangi yetkinlikle fark edileceği.
@@ -228,13 +228,14 @@ Diğerleri:
 - Oyun içi açıklanamayan kayıp sinyalinin hesap tanımı ve netlik eşikleri; fabrika başarısızlık raporunun ayrıntı düzeyi ve ara dönem (yıllık) özet olup olmayacağı.
 - Müdürü kovma, yenisini alma ve alışma sürecinin basit bir ayrı eylem mi yoksa daha ayrıntılı bir sistem mi olacağı; kişi kaynaklı sorunlarda “Düzelt”in bu personel sonucunu kapsayıp kapsamadığı.
 - Sorun ertelendiğinde kaybın büyüme hızı.
-- İflas borcunun miktarı ve yaklaşık bir oyun yılında toparlanmanın denge hedefi olup olmayacağı; psikoloji düşüşünün süresi ve toparlanma hızı.
+- İflas borcunun miktarı ve yaklaşık bir oyun yılında toparlanmanın denge hedefi olup olmayacağı; psikoloji düşüşünün süresi ve toparlanma hızı. Claude önerisi: psikoloji belirli sürede kendiliğinden toparlanır, borç ödemesi gelire oranlanır (açık).
 - Stat kazanımını hızlandırma veya kazanım başına +1 önerisinden hangisinin, hangi sınırlarla uygulanacağı; önceki yetkinlik kaybı isteğinin korunup korunmayacağı ve “acı tecrübe” önerisi.
+- Kasıtlı iflasla telafi bonusu toplanmasının önlenmesi. Claude önerisi: telafi yalnızca kayıp yaratan alanlara bağlı, tek seferlik ve sınırlı (açık).
 - Oyunun süresi ve bitiş koşulu; iflastan sonraki sermaye/borç durumu; karar dondurulursa GAME_OVERVIEW'daki "run" dilinin güncellenmesi.
 - Fabrika dönemindeki stratejik derinliğin “Düzelt” dışında hangi sistemlerden geleceği.
 - Ortak, uzman çalışan, dış kaynak ve eğitim yollarının ayrıştırılması: bu IDEA'da mı, ayrı IDEA'da mı?
 - Patron görüş seviyesi ile sorun derinliği için ayrı terimler.
-- Yetkinlik Tier eşikleri, kazanılma hızı, düşüşü ve beşinci yıl hedefi.
+- Yetkinlik Tier eşikleri (T4–T5 arasındaki 10 puanlık aralığın kademe eğrisiyle birlikte yeniden değerlendirilmesi dahil), kazanılma hızı, düşüşü ve beşinci yıl hedefi.
 - Müdürlerin sorun çözme matematiği ve departman başına eşzamanlı problem sayısı.
 - Statların öğrenme hızına vereceği azami bonus.
 
