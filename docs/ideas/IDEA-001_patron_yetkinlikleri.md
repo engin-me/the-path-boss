@@ -2,12 +2,12 @@
 
 ## Durum/Tur
 
-Durum: DRAFT — Tur 7 Claude incelemesi tamamlandı
-Tur: 7
+Durum: DRAFT — Tur 8 GPT sentezi hazır, Claude incelemesi bekleniyor
+Tur: 8
 Son güncelleme: 2026-09-28
 Kaynak: Kullanıcının sağladığı ilk öneri Codex tarafından dosyaya işlendi.
-Tur 1–7 Claude incelemeleri: tamamlandı. Kullanıcının yeni yönlendirmeleri Tur 7 önerisine işlendi; `Notlar (Claude)` Tur 7 incelemesidir.
-Sıradaki adım: Kullanıcı, `Notlar (Claude)` → `Açık Sorular` altındaki öncelikli üç kararı seçer; ardından Codex Tur 8 sentezini yapar. Bu üç karar ve `Açık Kararlar` → "FREEZE öncesi" grubunun kapanmasıyla IDEA-001 FREEZE taslağına hazır görünüyor.
+Tur 1–7 Claude incelemeleri: tamamlandı. Kullanıcının yeni yönlendirmeleri Tur 8 önerisine işlendi; `Notlar (Claude)` hâlâ Tur 7 incelemesidir.
+Sıradaki adım: Claude, Tur 8 önerisini inceleyip `Notlar (Claude)` bölümünü günceller.
 
 ## Öneri (GPT)
 
@@ -70,13 +70,13 @@ Etkin yetkinlik sorunun Tier eşiğine ulaşıyorsa “Düzelt” para ve zaman 
 
 “Düzelt”, sorunun gerektirdiği işlemin yapılmış olmasıdır; kişi kaynaklı sorunda konuşma, yaptırım veya işten çıkarma gibi sonucu da kapsayabilir. Oyuncu için ayrıca müdür kovma zinciri veya her soruna özel eylem menüsü açılmaz. Hangi işlemin gerçekleştiği sonuç metninde anlatılabilir; buna ayrı bir müdür karakteri veya müdür yetkinliği gerekmez.
 
-Eşik altı olasılığı **Tier/kademe farkına** göre düşer. Kabul edilen taslak denge: bir kademe eksik ≈ %80, iki kademe ≈ %40, üç kademe ≈ %15, dört veya daha fazla kademe ≈ %5. Örneğin 60/70 bir kademe farktır ve yaklaşık %80 başarı verir. Rakamlar oyun testleriyle ayarlanabilir; Tier eşiklerinin kesin değerleri de henüz FREEZE değildir. Gizli sorunda oyuncuya kesin yüzde yerine **yüksek / orta / düşük / çok düşük** gibi kaba şans aralıkları gösterilir; bunların sınırları ve tekrar deneme maliyeti açık karardır.
+Eşik altı olasılığı **Tier/kademe farkına** göre düşer. Kabul edilen taslak denge: bir kademe eksik ≈ %80, iki kademe ≈ %40, üç kademe ≈ %15, dört veya daha fazla kademe ≈ %5. Örneğin 60/70 bir kademe farktır ve yaklaşık %80 başarı verir. Rakamlar oyun testleriyle ayarlanabilir; Tier eşiklerinin kesin değerleri de henüz FREEZE değildir. Gizli sorunda oyuncuya yüzde yazılmaz; çözüm ihtimali yalnızca **yüksek / orta / düşük** olmak üzere üç sözel düzeyde gösterilir. Tur 8 taslak eşlemesi: ≈ %80 yüksek, ≈ %40 orta, ≈ %15 ve ≈ %5 düşük. Böylece en az iki farklı kademe aynı etiket altında kalır; eşleme denge testinde değişebilir. Tekrar deneme maliyeti açık karardır.
 
 Bu akışta yetkinlik, hangi eyleme basılabileceğinden çok **neyin yanlış gittiğini bilme** ve bilinmeyen sorunu çözme şansıyla ilgilidir. Tekrar tekrar kör denemenin teşhis ve danışmanı değersizleştirmemesi denge testinde özellikle incelenmelidir.
 
 ### İnsan Yönetimi ve Personel
 
-Bu IDEA'da müdür için ayrı kimlik veya yetkinlik puanı tanımlanmıyor. Bu, gelecekte ekip/personel sisteminin ayrı bir IDEA'da tasarlanmasını engellemez. Patronun **İnsan Yönetimi** yetkinliği yükseldikçe departmanlardaki kişi kaynaklı sorunların ortaya çıkma sıklığı belirgin biçimde azalır; etki aylık performans raporlarına yansır. **%50 azalma tavanı kullanıcı tarafından yetersiz bulundu**; kesin üst sınır henüz kararlaştırılmadı. Tur 7 denge önerisi olarak yüksek yetkinlikte yaklaşık %80–90 azaltma sınanabilir; bu sayı kullanıcı kararı değildir. Kişi kaynaklı bir sorun başarıyla “Düzelt”ildiğinde gereken personel işlemi çözümün içinde sayılır. İnsan Yönetimi'nin kendi alanındaki sorunları ve kişi kaynaklı sorunların hangi Tier'larda bulunacağı açık karardır.
+Bu IDEA'da müdür için ayrı kimlik veya yetkinlik puanı tanımlanmıyor. Bu, gelecekte ekip/personel sisteminin ayrı bir IDEA'da tasarlanmasını engellemez. **Kişi kaynaklı sorunların ortaya çıkma sıklığını yalnızca patronun kalıcı İnsan Yönetimi puanı azaltır**; danışmanın İnsan Yönetimi puanı bu yatay sıklık etkisine katılmaz. Etki aylık performans raporlarına yansır. **%50 azalma tavanı kullanıcı tarafından yetersiz bulundu**; kesin üst sınır henüz kararlaştırılmadı. Tur 7 denge önerisi olarak yüksek yetkinlikte yaklaşık %80–90 azaltma sınanabilir; bu sayı kullanıcı kararı değildir. Kişi kaynaklı bir sorun başarıyla “Düzelt”ildiğinde gereken personel işlemi çözümün içinde sayılır. İnsan Yönetimi'nin kendi alanındaki sorunları ve kişi kaynaklı sorunların hangi Tier'larda bulunacağı açık karardır.
 
 Bu yönlendirme, `GAME_OVERVIEW` §10'daki ayrı müdür uzmanlığı ve iyi/kötü müdür matrisinden ayrılıyor. FREEZE öncesi bu tutarsızlık gözden geçirilmeli; yön dondurulursa vizyon belgesi de yeni tasarıma göre güncellenmelidir.
 
@@ -147,6 +147,8 @@ Oyunda önceden tanımlı **10–15 danışman kartı** bulunur. Her danışman�
 
 Kartın listelediği her alan **en az 25, en fazla 100** puandır. **Kartın toplam puanı ≤ listelenen alan sayısı × 60**. Örnek: beş alanlı kartın bütçesi en fazla 300'dür; iki alan 25'er puansa kalan üç alana toplam 250 puan dağıtılabilir (ör. **25 + 25 + 83 + 83 + 84 = 300**). İki alanlı kartta bütçe 120 olduğu için bir alanın 100 olması, diğer alanın en az 25 olma şartıyla mümkün değildir; iki alanlı üst sınır örneği **95 + 25 = 120**. 100 puanlık uzmanlık en az üç alanlı profilde mümkündür. Bu sonuçlar önerilen üç kuralın matematiksel sonucudur.
 
+Bir kartta **iki alanın 100 olması da mümkündür**: beş alanlı **100 + 100 + 50 + 25 + 25 = 300** kartı bütçe kuralını karşılar. Böyle güçlü profiller çok nadir ve çok pahalı olmalıdır. Kart başına “90+ en fazla bir alan” sınırı konmaz. Havuzda birlikte on alanı kapsayan iki kart bulunması da yasaklanmaz; kapsam, derin sorunların tamamında kesin çözüm anlamına gelmez.
+
 Danışmanların ilgili alan puanı **100'e ulaşabilir**; 90'lık sabit üst sınır yoktur. En güçlü profiller nadir ve pahalı olmalıdır; ücret özellikle yüksek yetkinlik puanlarında hızla artar. Böylece oyuncu kendi kariyerinde öğrenmediği en derin sorunu da danışman aracılığıyla kesin çözebilir, ama bunu sürekli yapmak ağır bir oyun içi maliyet doğurur. Kesin fiyat formülü, güçlü kartların havuzdaki sayısı ve küçük fabrika kârına göre maliyet dengesi açık karardır.
 
 Danışman **belirli süreli sözleşmeyle** tutulur ve işe alındığı anda başlar; profilindeki bütün alanlar sözleşme boyunca aktiftir. **Aynı anda en fazla iki danışman** aktif olabilir. Örnek fiyatlama: o danışmanın bir aylık ücreti **A** ise 3 ay **2,75A**, 12 ay **10A**. Süreler ve çarpanlar bağlayıcılık/indirim fikrini gösteren taslak değerlerdir. Ödenen sözleşme ücreti, danışman erken bırakılırsa da iade edilmez. İki danışman aynı anda çalışsa bile ilgili alanda **etkin yetkinlik = max(patronun puanı, aktif danışmanların o alandaki puanları)**; puanlar birbirine eklenmez ve 100'ü aşmaz. Etkin değer sorunun eşiğine ulaşırsa kök neden görünür ve “Düzelt” kesin başarı verir. Danışman ayrılınca patronun kalıcı puanı artmış sayılmaz.
@@ -208,10 +210,10 @@ Diğerleri:
 
 ### FREEZE öncesi kapanması önerilenler (ilke düzeyinde)
 
-- Kaba başarı aralıklarının UI eşikleri ve oyuncuya yeterince anlaşılır geri bildirim vermesi. Claude notu: dört aralık dört kademe farkıyla birebir eşleşiyor ve gizli Tier'ı ele veriyor. Claude önerisi: gizli sorunlarda en fazla iki geniş aralık ("makul risk" %80–40, "yüksek risk" %15–5) ya da yalnızca "belirsiz" (açık).
-- Kart toplam puan bütçesinin 2–5 alanın her birindeki en az 25 kuralıyla tutarlılığı ve oyuncunun bunu nasıl göreceği; iki alanlı kartta 100 puan çıkmaması özellikle doğrulanmalı. Claude doğrulaması: iki alanlı kartta en yüksek puan 95; ancak beş alanlı kartta iki tane 100 mümkün (100 + 100 + 50 + 25 + 25). Claude önerisi: bir kartta en fazla bir alan 90 veya üstü; havuzda iki kartla on alanın tamamı kapsanamaz (açık).
+- Üç sözel başarı düzeyinin kesin olasılıklarla eşleşmesi ve oyuncuya yeterince anlaşılır geri bildirim vermesi; Tur 8 eşlemesi %80 yüksek / %40 orta / %15–5 düşük yalnızca taslaktır.
+- Kart puan bütçesinin oyuncuya nasıl gösterileceği ve beş alanlı iki tane 100 puan içeren kartın nadirlik/fiyat dengesi; kullanıcı bu kartı ve iki kartla tam alan kapsamını yasaklamamayı seçti.
 - Sözleşmedeki kartın havuzdan çıkıp çıkmadığı; dördüncü kartın fiyatı ve beşinci kartın açılıp açılamayacağı. Claude önerisi: aktif kart havuzdan çıkar (açık).
-- İnsan Yönetimi'nin kişi kaynaklı sorunları azaltma üst sınırı (%50 kullanıcıya düşük geldi; %80–90 yalnızca Tur 7 denge önerisi); kendi alanındaki sorunları ve kaynak türü etiketleri. Danışmanın İnsan Yönetimi puanının sıklık etkisine sayılıp sayılmadığı. Claude önerisi: sıklık etkisi yalnızca patronun kalıcı puanıyla hesaplanır; kişi kaynaklı sorunlar her kademeye dağılır ve toplam sorunların sınırlı bir payıdır (ör. %30–40) (açık).
+- İnsan Yönetimi'nin kişi kaynaklı sorunları azaltma üst sınırı (%50 kullanıcıya düşük geldi; %80–90 yalnızca denge önerisi); kendi alanındaki sorunları, kaynak türü etiketleri ve kişi kaynaklı sorunların toplam içindeki payı. Yatay sıklık etkisi yalnızca patronun kalıcı puanına bağlıdır.
 - Açıklanamayan kayıp sinyali üzerinden basılan “Düzelt”in hangi gizli sorunu hedeflediği. Claude önerisi: en sığ gizli sorun; şans o sorunun eşiğine göre hesaplanır (açık).
 - `Eksik Yetkinliği Kapatma Yolları`ndaki ekip, ortak, uzman çalışan, dış kaynak ve eğitim maddelerinin FREEZE'de "ileride tasarlanacak" olarak mı yer alacağı; bunların ayrıştırılmasının bu IDEA'da mı ayrı IDEA'da mı yapılacağı. Claude notu: Tur 7 önerisi bunları "onaylanmış mekanik sayılmaz" diye işaretledi; kullanıcı onayıyla kapanabilir.
 - Gerçek paranın danışmanlık sistemindeki rolü (yalnızca kolaylık mı, hiç mi). Claude önerisi: danışman kartları ve ek kart gerçek parayla satılmaz (açık).
@@ -258,6 +260,7 @@ Kullanıcının yönlendirmeleri (IDEA düzeyinde; henüz FREEZE değil):
 - Etkin yetkinlik patron ve aktif danışman puanlarının en yükseğidir, toplama değildir; çünkü çok danışman tutmak 100 üstü puan veya sınırsız güç üretmemeli.
 - Aynı anda en fazla iki danışman aktiftir; çünkü tüm alanları sürekli dış destekle kapatmak kariyer yetkinliğinin değerini azaltır.
 - Kartta 2–5 alan bulunur, her biri 25–100 puandır ve toplamları alan sayısı × 60'ı aşmaz; çünkü güçlü uzman ile geniş profilli danışman arasında seçim olmalı.
+- Aynı kartta iki ayrı alan 100 puan olabilir ama böyle kartlar çok nadir ve pahalıdır; çünkü kullanıcı güçlü danışman seçeneklerini mümkün tutmak istiyor.
 - Danışman puanı 100'e ulaşabilir ve yüksek puan pahalı/nadir olur; çünkü öğrenilmemiş en derin sorun da danışmanla çözülebilmeli ama sürekli dış destek maliyetli olmalı.
 - Danışman sözleşme imzalanınca hemen başlar ve ödenen ücret iade edilmez; çünkü oyuncu ay sonu raporundan sonra hemen harekete geçebilmeli, uzun sözleşmenin indirimine de bağlanmalı.
 - Etkin yetkinlik eşiğe ulaştığında “Düzelt” kesin sonuç verir; çünkü danışman tutmanın kör denemeye göre somut faydası olmalı.
@@ -268,4 +271,7 @@ Kullanıcının yönlendirmeleri (IDEA düzeyinde; henüz FREEZE değil):
 - İnsan Yönetimi yükseldikçe kişi kaynaklı sorunların sıklığı azalır; çünkü bu yetkinliğin aylık personel sonuçlarında somut karşılığı olmalı.
 - İnsan Yönetimi için %50 azaltma tavanı reddedildi, daha güçlü etki önerilecek; çünkü oyuncunun bu yetkinliğe zaman ayırması anlamlı olmalı, kesin oran henüz açık.
 - Statlar eşik altı “Düzelt” şansını artırmaz ve gizli sorunlarda şans kaba aralıkla gösterilir; çünkü kariyer bilgisi statla aşılamamalı ve kesin yüzde gizli Tier'ı ele vermemeli.
+- Gizli sorunda şans yalnızca yüksek/orta/düşük sözcükleriyle gösterilir; çünkü dört sözcük dört kademe farkını birebir ele veriyordu.
+- Kişi kaynaklı sorunların sıklığını yalnızca patronun kalıcı İnsan Yönetimi puanı azaltır; çünkü danışman bu yatay kariyer yatırımının yerini almamalı.
+- İki danışman kartının birleşince on alanı kapsaması yasaklanmaz; çünkü kapsam tek başına derin sorunlarda kesin çözüm sağlamaz ve toplam puan bütçesi zaten geniş kartları sınırlar.
 - Ayrı müdür/ekip mekaniği IDEA-001'in kapsamı dışındadır ve daha sonra tasarlanabilir; çünkü bugünkü basit “Düzelt” akışı gelecekte ekip kararlarını kapatmamalı.
