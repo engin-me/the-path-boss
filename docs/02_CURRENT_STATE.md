@@ -12,7 +12,7 @@ Latest freeze:
 None.
 
 Pending review:
-Claude review of IDEA-001 Tur 5.
+Claude review of IDEA-001 Tur 6.
 
 Next step:
-Claude reviews the updated Tur 5 proposal in the shared IDEA-001 file.
+Claude reviews the updated Tur 6 proposal in the shared IDEA-001 file.

@@ -2,12 +2,12 @@
 
 ## Durum/Tur
 
-Durum: DRAFT — Tur 5 Claude incelemesi tamamlandı
-Tur: 5
+Durum: DRAFT — Tur 6 GPT sentezi hazır, Claude incelemesi bekleniyor
+Tur: 6
 Son güncelleme: 2026-09-28
 Kaynak: Kullanıcının sağladığı ilk öneri Codex tarafından dosyaya işlendi.
-Tur 1–5 Claude incelemeleri: tamamlandı. Kullanıcının yeni yönlendirmeleri Tur 5 önerisine işlendi; `Notlar (Claude)` Tur 5 incelemesidir.
-Sıradaki adım: Kullanıcı, `Notlar (Claude)` → `Açık Sorular` altındaki öncelikli üç kararı seçer; ardından Codex Tur 6 sentezini yapar.
+Tur 1–5 Claude incelemeleri: tamamlandı. Kullanıcının yeni yönlendirmeleri Tur 6 önerisine işlendi; `Notlar (Claude)` hâlâ Tur 5 incelemesidir.
+Sıradaki adım: Claude, Tur 6 önerisini inceleyip `Notlar (Claude)` bölümünü günceller.
 
 ## Öneri (GPT)
 
@@ -76,7 +76,7 @@ Bu akışta yetkinlik, hangi eyleme basılabileceğinden çok **neyin yanlış g
 
 ### İnsan Yönetimi ve Personel
 
-Bu IDEA'da müdür için ayrı kimlik veya yetkinlik puanı tanımlanmıyor. Patronun **İnsan Yönetimi** yetkinliği personel tarafındaki sonuçlara ve aylık performans raporlarına yansır; bunun kesin matematiği ayrı tasarlanacaktır. Kişi kaynaklı bir sorun başarıyla “Düzelt”ildiğinde gereken personel işlemi çözümün içinde sayılır.
+Bu IDEA'da müdür için ayrı kimlik veya yetkinlik puanı tanımlanmıyor. Bu, gelecekte ekip/personel sisteminin ayrı bir IDEA'da tasarlanmasını engellemez. Patronun **İnsan Yönetimi** yetkinliği yükseldikçe departmanlardaki kişi kaynaklı sorunların ortaya çıkma sıklığı azalır; etki aylık performans raporlarına yansır. Kesin sıklık matematiği ayrı tasarlanacaktır. Kişi kaynaklı bir sorun başarıyla “Düzelt”ildiğinde gereken personel işlemi çözümün içinde sayılır.
 
 Bu yönlendirme, `GAME_OVERVIEW` §10'daki ayrı müdür uzmanlığı ve iyi/kötü müdür matrisinden ayrılıyor. FREEZE öncesi bu tutarsızlık gözden geçirilmeli; yön dondurulursa vizyon belgesi de yeni tasarıma göre güncellenmelidir.
 
@@ -143,11 +143,13 @@ Eksikler şunlarla kapatılabilir:
 - dış kaynak
 - eğitim / sonradan öğrenme
 
-Oyuncu danışman aradığında **10 aday** görür. Her adayın mevcut patron yetkinliklerinden **2–5 alandaki puanı** görünür ve oyuncu bu profillere bakarak seçer. Örnek: bir danışman Planlama 30, Üretim 80, Finans 40, Kalite 60; bir başkası Planlama 50, Üretim 10, Finans 50 olabilir. İlk adayın ücreti, genel yetkinlik gücü ve kapsamı daha yüksek olduğu için ikinci adaydan yüksek olabilir. Kesin fiyat formülü açık karardır. Önceki taslaktaki **Satış** örneği, mevcut on yetkinlik arasında olmadığı için çıkarıldı; satış/talep tasarımı ayrı konu olarak ele alınabilir.
+Oyunda önceden tanımlı **10–15 danışman kartı** bulunur. Her danışmanın mevcut patron yetkinliklerinden **2–5 alandaki puanı** vardır. Ay sonu raporu görüldükten sonra bu havuzdan rastgele **3 kart açılır**; oyuncu görünen profiller arasından seçim yapar. Listeyi sınırsız veya ücretsiz yeniden çekemez. **Dördüncü kartı açmak oyun içi para ister**; daha fazla kart açılabilip açılamayacağı ve bedeli açık karardır. Örnek: bir danışman Planlama 30, Üretim 80, Finans 40, Kalite 60; bir başkası Planlama 50, Üretim 10, Finans 50 olabilir. Önceki taslaktaki **Satış** örneği, mevcut on yetkinlik arasında olmadığı için çıkarıldı; satış/talep tasarımı ayrı konu olarak ele alınabilir.
 
-Danışman **belirli süreli sözleşmeyle** tutulur; profilindeki bütün alanlar sözleşme boyunca aktiftir. Örnek fiyatlama: o danışmanın bir aylık ücreti **A** ise 3 ay **2,75A**, 12 ay **10A**. Süreler ve çarpanlar bağlayıcılık/indirim fikrini gösteren taslak değerlerdir. Birden çok danışman aynı anda çalışsa bile ilgili alanda **etkin yetkinlik = max(patronun puanı, aktif danışmanların o alandaki puanları)**; puanlar birbirine eklenmez ve 100'ü aşmaz. Etkin değer sorunun eşiğine ulaşırsa kök neden görünür ve “Düzelt” kesin başarı verir. Danışman ayrılınca patronun kalıcı puanı artmış sayılmaz.
+Danışmanların ilgili alan puanı **100'e ulaşabilir**; 90'lık sabit üst sınır yoktur. En güçlü ve en geniş profiller nadir ve pahalı olmalıdır; ücret özellikle yüksek yetkinlik puanlarında hızla artar. Böylece oyuncu kendi kariyerinde öğrenmediği en derin sorunu da danışman aracılığıyla kesin çözebilir, ama bunu sürekli yapmak ağır bir oyun içi maliyet doğurur. Kesin fiyat formülü, güçlü kartların havuzdaki sayısı ve küçük fabrika kârına göre maliyet dengesi açık karardır.
 
-Danışman tutmak oyun içi para ve sözleşme yükü doğurur. Arama/göreve başlama beklemesinin ve yönetim zamanı maliyetinin olup olmayacağı ayrıca değerlendirilecektir. Sürekli danışman tutmanın kariyer deneyimini değersizleştirmemesi için sözleşme fiyatları ve gelir dengesi sınanmalıdır. Oyunun ürettiği bir sorunu çözmek için gerçek para harcamak zorunlu olamaz.
+Danışman **belirli süreli sözleşmeyle** tutulur ve işe alındığı anda başlar; profilindeki bütün alanlar sözleşme boyunca aktiftir. Örnek fiyatlama: o danışmanın bir aylık ücreti **A** ise 3 ay **2,75A**, 12 ay **10A**. Süreler ve çarpanlar bağlayıcılık/indirim fikrini gösteren taslak değerlerdir. Ödenen sözleşme ücreti, danışman erken bırakılırsa da iade edilmez. Birden çok danışman aynı anda çalışsa bile ilgili alanda **etkin yetkinlik = max(patronun puanı, aktif danışmanların o alandaki puanları)**; puanlar birbirine eklenmez ve 100'ü aşmaz. Etkin değer sorunun eşiğine ulaşırsa kök neden görünür ve “Düzelt” kesin başarı verir. Danışman ayrılınca patronun kalıcı puanı artmış sayılmaz.
+
+Danışman tutmak oyun içi para ve sözleşme yükü doğurur. Ay sonu kart açılışı dışında ek bekleme yoktur; danışman hemen göreve başlar. Sürekli danışman tutmanın kariyer deneyimini değersizleştirmemesi için sözleşme fiyatları ve gelir dengesi sınanmalıdır. Oyunun ürettiği bir sorunu çözmek için gerçek para harcamak zorunlu olamaz.
 
 ### Tasarım İlkesi
 
@@ -208,14 +210,14 @@ Diğerleri:
 - Kabul edilen taslak kademe eğrisinin (≈ %80 / %40 / %15 / %5) oyun testlerinde ayarlanması; Tier içinde farklı puanların aynı şansa sahip olmasının uygunluğu.
 - Kör denemeyi baskın strateji yapmamak için tekrar denemede aynı mı, artan mı maliyet ve/veya bekleme süresi uygulanacağı.
 - Statların eşik altı “Düzelt” olasılığını etkileyip etkilemeyeceği; Tur 4 önerisi yalnızca süre ve maliyeti etkilemeleri.
-- Danışman adaylarının nasıl yenilendiği, aynı anda tutulabilecek sayı ve fiyat formülü; 1/3/12 ay ile A/2,75A/10A örneklerinin kesinleşmesi. Claude önerisi: aday listesi ücretsiz sınırsız yenilenemez (bedel veya bekleme); fiyat en yüksek puanla hızla artar (açık).
-- Uzun süreli çok alanlı danışmanların baskın strateji olup olmayacağı ve fiyat/erişilebilirlik dengesi. Claude önerisi: danışman puanı en fazla 90, T5 kesinliği yalnızca kariyerle; denge ölçütü yıllık danışman maliyetinin fabrika net kârına oranı (açık).
-- Danışmanın göreve başlama beklemesi ve yönetim zamanı maliyeti; erken fesih kuralı. Claude önerisi: en azından göreve başlama beklemesi korunur (açık).
+- Kart havuzunun kesin büyüklüğü (10–15), her ayki 3 kartın seçim yöntemi, dördüncü kartın fiyatı ve beşinci kartın açılıp açılamayacağı.
+- Aynı anda tutulabilecek danışman sayısı, kesin fiyat formülü ve 1/3/12 ay için A/2,75A/10A örneklerinin kesinleşmesi; güçlü kartların nadirliği.
+- Uzun süreli çok alanlı danışmanların baskın strateji olup olmayacağı; yıllık danışman maliyetinin küçük fabrika net kârına oranı ve kariyer yetkinliğinin değeri.
 - Satış/talep konusunun ayrı IDEA olarak ele alınması ve mevcut on yetkinlik listesine etkisi.
-- İnsan Yönetimi yetkinliğinin aylık performans raporlarına nasıl yansıdığı; `GAME_OVERVIEW` §10'daki müdür modelinin yeni yönle uyumlandırılması. Claude önerisi: İnsan Yönetimi kişi kaynaklı sorunların ortaya çıkma sıklığını azaltır; ekip/müdür katmanı "kapsam dışı, ayrı IDEA" olarak işaretlenir (açık).
+- İnsan Yönetimi yetkinliğinin kişi kaynaklı sorun sıklığını ne kadar azalttığı ve aylık performans raporlarına nasıl yansıdığı; ekip/personel tasarımı ayrı IDEA'da ele alınır.
+- `GAME_OVERVIEW` §10'daki müdür modelinin bu IDEA ile uyumlandırılması; bu IDEA'da ayrı müdür puanı yoktur.
 - `Eksik Yetkinliği Kapatma Yolları`ndaki ekip, ortak, uzman çalışan, dış kaynak ve eğitim maddelerinin FREEZE kapsamında mı, "ileride tasarlanacak" olarak mı yer alacağı.
 - Açıklanamayan kayıp sinyali üzerinden basılan “Düzelt”in hangi gizli sorunu hedeflediği.
-- Danışman seviyesi ve bulunabilirliği.
 - Gerçek paranın danışmanlık sistemindeki rolü (yalnızca kolaylık mı, hiç mi).
 - Oyun içi açıklanamayan kayıp sinyalinin hesap tanımı ve netlik eşikleri; fabrika başarısızlık raporunun ayrıntı düzeyi ve ara dönem (yıllık) özet olup olmayacağı.
 - Kişi kaynaklı sorunda “Düzelt”in hangi sonucu ve maliyeti ürettiğinin oyuncuya nasıl anlatılacağı; ayrı müdür karakteri veya eylemi açılmaz.
@@ -238,11 +240,16 @@ Kullanıcının yönlendirmeleri (IDEA düzeyinde; henüz FREEZE değil):
 - Yetkinlik Tier eşiğine ulaşıyorsa sorun kesin çözülür; ulaşmıyorsa başarı olasılığı yetkinliğe bağlıdır (60/70 için yaklaşık %80 hedefi); çünkü bilgi açığı çözmeyi imkânsız değil, riskli kılmalı.
 - Yetkinlik bilgi modeli olarak öncelikle kök neden görünürlüğünü belirler; çünkü seçenek kilitlemek yerine oyuncunun neyi bildiği öne çıkmalı.
 - Fabrika batınca aynı karakter devam eder; çünkü başarısızlık sonraki girişime ders taşımalı.
-- Oyuncu aramada 10 danışman adayı görür ve her aday 2–5 alandaki puanıyla fiyatlanır; çünkü farklı bilgi açıkları ve bütçeler için görünür seçenekler olmalı.
+- Ay sonunda 10–15 sabit profilden rastgele 3 danışman kartı açılır, dördüncü kart oyun içi para ister; çünkü oyuncu rapordan sonra seçim yapmalı ve sınırsız ücretsiz yeniden çekme olmamalı.
+- Her danışman 2–5 alandaki görünür puanıyla fiyatlanır; çünkü farklı bilgi açıkları ve bütçeler için seçenekler olmalı.
 - Danışman sözleşmesi süreli ve bütün profil alanları boyunca aktiftir; çünkü oyuncu tek alanlık kısa görev yerine kapsamlı bir danışman seçip süreye bağlanmak istiyor.
 - Etkin yetkinlik patron ve aktif danışman puanlarının en yükseğidir, toplama değildir; çünkü çok danışman tutmak 100 üstü puan veya sınırsız güç üretmemeli.
+- Danışman puanı 100'e ulaşabilir ve yüksek puan pahalı/nadir olur; çünkü öğrenilmemiş en derin sorun da danışmanla çözülebilmeli ama sürekli dış destek maliyetli olmalı.
+- Danışman sözleşme imzalanınca hemen başlar ve ödenen ücret iade edilmez; çünkü oyuncu ay sonu raporundan sonra hemen harekete geçebilmeli, uzun sözleşmenin indirimine de bağlanmalı.
 - Etkin yetkinlik eşiğe ulaştığında “Düzelt” kesin sonuç verir; çünkü danışman tutmanın kör denemeye göre somut faydası olmalı.
 - Eşik altı başarı ihtimali kademe farkına göre yaklaşık %80 / %40 / %15 / %5 düşer; çünkü derin bilgi açığında kör deneme anlamlı risk taşımalı.
 - İflas sonrası karakter borçla ve daha düşük psikolojiyle devam eder; çünkü kayıp hissedilmeli ama toparlanma mümkün olmalı, borç süresi ve yaklaşık %25 psikoloji farkı henüz örnektir.
 - İflas yetkinlik kaybettirmez veya genel stat kazanımını hızlandırmaz; bunun yerine karakter başına tek seferlik sınırlı “acı tecrübe” kazandırır, çünkü başarısızlık öğretmeli ve kasıtlı iflas ödül döngüsüne dönüşmemeli.
 - “Düzelt” gereken personel işlemlerini de kapsar ve ayrı müdür yetkinliği tanımlanmaz; çünkü oyuncunun yönetim bilgisi İnsan Yönetimi yetkinliği ve aylık sonuçlarda temsil edilmeli.
+- İnsan Yönetimi yükseldikçe kişi kaynaklı sorunların sıklığı azalır; çünkü bu yetkinliğin aylık personel sonuçlarında somut karşılığı olmalı.
+- Ayrı müdür/ekip mekaniği IDEA-001'in kapsamı dışındadır ve daha sonra tasarlanabilir; çünkü bugünkü basit “Düzelt” akışı gelecekte ekip kararlarını kapatmamalı.
