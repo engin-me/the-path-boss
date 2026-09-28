@@ -1,16 +1,21 @@
 # IDEA-001 — Patron Yetkinlikleri
 
-Status: DRAFT
-Date: 2026-09-27
-Öneriyi dosyaya işleyen: Codex (kullanıcının verdiği metinden)
+## Durum/Tur
 
-## Amaç
+Durum: DRAFT
+Tur: 1
+Son güncelleme: 2026-09-28
+Kaynak: Kullanıcının sağladığı ilk öneri Codex tarafından dosyaya işlendi.
+
+## Öneri (GPT)
+
+### Amaç
 
 Oyuncunun çalışanlık kariyerinde edindiği deneyimin, fabrika sahibi olduğunda doğrudan anlamlı hale gelmesini sağlamak.
 
 Patronun gücü yalnızca para veya statlardan değil, geçmişte hangi işleri ne kadar öğrendiğinden gelmeli.
 
-## Patron Yetkinlikleri
+### Patron Yetkinlikleri
 
 Her yetkinlik 0-100 arasındadır.
 
@@ -27,7 +32,7 @@ Her yetkinlik 0-100 arasındadır.
 
 Toplam teorik maksimum: 1000.
 
-## Temel Mantık
+### Temel Mantık
 
 Yetkinlik doğrudan üretim/verim bonusu değildir.
 
@@ -55,7 +60,7 @@ Satın Alma performansı düşüktür.
 
 Satın Alma yetkinliği 70 olan patron T1-T3 sorunlarını görebilir; T4-T5'i teşhis edemez.
 
-## Müdür Etkisi
+### Müdür Etkisi
 
 Müdürün kendi uzmanlığı bazı düşük Tier sorunları patrona ulaşmadan çözebilmelidir.
 
@@ -71,7 +76,7 @@ Sistem çoğunlukla yürür ancak müdürün çözemediği derin problemlerde pa
 Kötü müdür + bilgisiz patron:
 Yüksek işletme riski.
 
-## Statların Rolü
+### Statların Rolü
 
 Statlar doğrudan yetkinlik puanı veya Tier açmaz.
 
@@ -86,7 +91,7 @@ etkileyebilir.
 Örnek:
 Çok yüksek Zeka, hayatında satın almada çalışmamış bir patronun T4 satın alma sorununu otomatik görmesini sağlamaz.
 
-## Kariyerden Patronluğa Geçiş
+### Kariyerden Patronluğa Geçiş
 
 Oyuncunun fabrika kurması için bütün yetkinliklerinin yüksek olması gerekmez.
 
@@ -109,7 +114,7 @@ Bu oyuncunun fabrikayı kurabilmesi mümkündür ancak işletmenin uzun süre ay
 
 Oyuncunun ilk başarısızlığı sonraki kariyerinde hangi alanlarda deneyim kazanması gerektiğini öğretmelidir.
 
-## Eksik Yetkinliği Kapatma Yolları
+### Eksik Yetkinliği Kapatma Yolları
 
 Oyuncunun her işi yapmış olması zorunlu değildir.
 
@@ -124,7 +129,7 @@ Eksikler şunlarla kapatılabilir:
 
 Danışman özellikle patronun göremediği daha yüksek Tier sorunları geçici olarak teşhis edebilir.
 
-## Tasarım İlkesi
+### Tasarım İlkesi
 
 Mükemmel patron her şeyi kendisi yapan kişi değildir.
 
@@ -132,45 +137,42 @@ Neyi bildiğini bilir.
 Neyi bilmediğini bilir.
 Bilmediği işi kime bırakacağını bilir.
 
-## Henüz Kesinleşmeyen Konular
+## Notlar (Claude)
 
-- Yetkinlik Tier eşikleri kesin mi?
-- Yetkinliklerin kariyer boyunca kazanılma hızı
-- 5 oyun yılında hedef toplam yetkinlik seviyesi
-- Müdürlerin Tier çözme matematiği
-- Danışmanların fiyatlandırılması ve etki süresi
-- Statların öğrenme hızına vereceği maksimum bonus
-- Bir departmanda aynı anda kaç problem bulunabileceği
-- Yetkinlik düşebilir mi, yoksa yalnızca artar mı?
+Kaynak: İlk ayrıntılı inceleme [REV-001](../reviews/REV-001_claude_patron_yetkinlikleri.md); aşağıdaki son tur notları kullanıcının aktardığı Claude yanıtından özetlendi. Bir sonraki turda Claude bu bölümün içeriğini doğrudan günceller.
 
-## Claude İncelemesi — 2026-09-27 (önceki inceleme)
+### Aldığım Notlar
 
-Kaynak: [REV-001](../reviews/REV-001_claude_patron_yetkinlikleri.md). Özgün incelemenin tamamı orada duruyor; ana bulgular önerinin yanında da görülebilsin diye buraya aktarıldı. Bu bölüm eleştiridir, onaylanmış karar değildir.
+- GAME_OVERVIEW 9. bölümde oyun içi bilinmeyen sorun sinyali, 23. bölümde fabrika başarısızlık raporu zaten öneriliyor; IDEA ile bağları açık değil.
+- Görünürlük sonrasındaki çözüm döngüsü henüz tanımlı değil.
 
-- **C1:** Patronun sorunu ne zaman teşhis edebildiği açıklanıyor; teşhisten sonra gereken aksiyon, zaman, maliyet ve başarısızlık riski açıklanmıyor. Görünürlük sorunu kendiliğinden çözmemeli.
-- **C2:** Ucuz ve tekrar kullanılabilir danışman/müdür desteği, kariyerde kazanılan yetkinliği gereksiz kılabilir. İnceleme, monetizasyon ilkesini gözeterek sınır ve artan maliyet önerdi.
-- **C3:** Oyuncu oyun sırasında bir sinyal ve başarısızlık sonrasında geri bildirim almazsa gizli kök nedenler erken fabrika kaybını keyfî hissettirebilir.
-- **C4:** Önerilen Tier eşikleri ve ilerleme, çözüm döngüsü tanımlandıktan sonra sınanmalı.
+### Bulduğum Sakıncalar
 
-## Claude Devam Notu — 2026-09-28 (kullanıcı tarafından aktarıldı)
+- Ucuz ve sürekli danışman/müdür desteği, kariyerde kazanılan patron yetkinliğini gereksiz kılabilir.
+- Gerçek parayla satılan danışmanlık, oyunun yarattığı sorunlara zorunlu çözüm olmamalı.
+- Tier eşikleri çözüm döngüsü belli olmadan kesinleştirilmemeli.
 
-Kullanıcı Claude'un bulut oturumundaki yanıtını iletti. Bu bölüm henüz Claude tarafından doğrudan dosyaya yazılmadı.
+### Kafama Yatmayanlar
 
-- **C1 önerisi:** Yüzeysel müdahale, derindeki neden sürüyorsa sorunun geri dönmesine yol açabilir. Patron müdahalesi sınırlı yönetim zamanı harcamalı. Her soruna özgü seçenek yazmanın içerik yükü nedeniyle ertelenmesi önerildi.
-- **C2 önerisi:** Danışmanın erişimi patronun bir Tier üstüyle sınırlanabilir; derin sorunun kaynağı müdürün kendisi de olabilir. Gerçek parayla satılan danışmanlık, oyunun yarattığı sorunlara zorunlu çözüm olmamalı.
-- **C3 önerisi:** Oyun sırasında departman düzeyinde açıklanamayan kayıp, fabrika başarısızlığından sonra değerlendirme raporu gösterilebilir. İkisi de `docs/03_GAME_OVERVIEW.md` dosyasının 9. ve 23. bölümlerinde var; IDEA ile bağları açık değil.
-- **Bağımlılık:** Fabrika başarısızlığının yeni bir oyunu mu başlattığı, yoksa aynı karakterin mi devam ettiği açık.
+- Yüzeysel çözümün ne zaman geri döneceği ve patron müdahalesinin zaman maliyeti belirsiz.
+- Danışmanın patronun en fazla bir Tier üstünü görmesi önerisi, derin bilgi açığını kapatma amacıyla sınanmalı.
 
-## Codex Yanıtı — 2026-09-28
+### Açık Sorular
 
-- **C1:** Teşhisten sonra oyuncunun bir karar vermesi gerekiyor. Az sayıda yeniden kullanılabilir müdahale türü, her sorun için ayrı seçenek yazmadan bunu sağlayabilir. Zaman ve oyun parası maliyetleri `GAME_OVERVIEW` 22. bölümle uyumlu. Sorun, keyfî bir sayaç yüzünden değil, çözülemeyen kök neden yüzünden geri gelmeli.
-- **C2:** Evrensel `patron Tier + 1` tavanı, patronun bilmediği işi uzmana bırakabilmesi ilkesiyle çatışabilir. Danışman daha derin bir sorunu teşhis edebilir; rapor kapsamı, süre, oyun içi kaynaklar ve ayrıca müdahale kararı gerekliliği onu sınırlar. Sorunun bazen müdürden kaynaklanması tek başına baskın strateji riskini çözmez. Gerçek para zorunlu çare olmamalı.
-- **C3:** `GAME_OVERVIEW` 9. ve 23. bölümler oyun içi sinyal ile başarısızlık raporunu zaten öneriyor. Bunların ayrıntı düzeyi tasarlanmalı. Raporun biçimi, fabrika kapanışından sonra karakterin devam edip etmeyeceği kararı verilmeden de ele alınabilir.
+- Teşhisten sonra hangi müdahaleler mümkün?
+- Danışmanın kapsamı ve sınırı ne olacak?
+- Oyuncuya gizli kayıp ve başarısızlık nedeni hangi ayrıntıda gösterilecek?
 
-## Karar Kaydı
+## Açık Kararlar
 
-Durum: AÇIK — kullanıcı tarafından onaylanan karar ve bu konuya ait FREEZE yok.
+- Teşhis sonrası yeniden kullanılabilir müdahale türleri ve bunların zaman/oyun parası maliyeti.
+- Danışman, müdür ve ortağın patron bilgisini hangi kapsamda tamamlayacağı.
+- Oyun içi açıklanamayan kayıp sinyalinin ve fabrika başarısızlık raporunun ayrıntı düzeyi.
+- Fabrika kapanışından sonra aynı karakterin devam edip etmeyeceği.
+- Yetkinlik Tier eşikleri, kazanılma hızı, düşüşü ve beşinci yıl hedefi.
+- Müdürlerin sorun çözme matematiği ve departman başına eşzamanlı problem sayısı.
+- Statların öğrenme hızına vereceği azami bonus.
 
-Sonraki inceleme için önerilen yön: teşhisi müdahaleden ayırmak; kariyer deneyimini gereksiz kılmadan uzmanların gerçek bilgi açığını kapatmasına izin vermek; gizli kayıpları oyun sırasında ve fabrika kapanışından sonra anlaşılır kılmak.
+## Karar Özeti
 
-Açık seçenekler: yeniden kullanılabilir müdahale türleri; danışman kapsamı ve oyun içi maliyeti; gizli kaybın ne kadarının gösterileceği; rapor ayrıntısı; fabrika kapanışından sonra karakterin devamı; Tier eşikleri.
+Henüz kullanıcı tarafından onaylanmış karar veya FREEZE yok.

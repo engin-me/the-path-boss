@@ -18,7 +18,7 @@ Before working on a topic:
 Workflow:
 IDEA (Codex proposal -> Claude review -> Codex synthesis -> user decision) -> FREEZE
 
-Use one IDEA file per topic as the shared discussion record. Append dated, attributed sections; preserve earlier contributions. Do not create a separate REVIEW file for a new review. Existing REVIEW files remain historical records. Record a proposed outcome in the IDEA file, but create or change a FREEZE file only after user approval.
+Use one active IDEA file per topic with these fixed sections: `Durum/Tur`, `Öneri (GPT)`, `Notlar (Claude)`, `Açık Kararlar`, `Karar Özeti`. Update the relevant section in place each round; Git history preserves earlier rounds. Do not create a separate REVIEW file for a new review. Existing REVIEW files remain historical records. Each line in `Karar Özeti` must state WHAT was decided and WHY. Only user-approved decisions may be recorded as final; create or change a FREEZE file only after user approval.
 
 After the user publishes Claude's in-file review to GitHub and asks for an update, read the updated IDEA file and report the outcome from that file. Do not ask the user to copy review text between chats.
 
