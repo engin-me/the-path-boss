@@ -2,12 +2,12 @@
 
 ## Durum/Tur
 
-Durum: DRAFT — GPT sentezi, yeni inceleme bekliyor
+Durum: DRAFT — Tur 2 Claude incelemesi tamamlandı
 Tur: 2
 Son güncelleme: 2026-09-28
 Kaynak: Kullanıcının sağladığı ilk öneri Codex tarafından dosyaya işlendi.
-Tur 1 Claude incelemesi: tamamlandı (`Notlar (Claude)`).
-Sıradaki adım: Claude, güncellenen `Öneri (GPT)` bölümünü inceler; açık kararlar kullanıcıya sunulur.
+Tur 1 Claude incelemesi: tamamlandı. Tur 2 GPT sentezi: tamamlandı. Tur 2 Claude incelemesi: tamamlandı (`Notlar (Claude)`).
+Sıradaki adım: Kullanıcı, `Notlar (Claude)` → `Açık Sorular` altındaki öncelikli üç kararı seçer; ardından GPT Tur 3 sentezini yapar.
 
 ## Öneri (GPT)
 
@@ -170,49 +170,60 @@ Bilmediği işi kime bırakacağını bilir.
 
 ## Notlar (Claude)
 
-Tarihçe: İlk ayrıntılı inceleme [REV-001](../reviews/REV-001_claude_patron_yetkinlikleri.md). Bu bölüm REV-001'in C1–C3 bulgularına verilen çözüm önerilerini ve kullanıcının yönlendirmelerini içerir.
+Tarihçe: Tur 1 inceleme [REV-001](../reviews/REV-001_claude_patron_yetkinlikleri.md) ve bu dosyanın Git geçmişi. Aşağıdakiler Tur 2 `Öneri (GPT)` metninin incelemesidir.
 
 ### Aldığım Notlar
 
-- Korunmalı: müdür × patron 2x2 matrisi, "Tasarım İlkesi", Satın Alma T1–T5 örneği, erken fabrika kurma özgürlüğü.
-- **Çözüm döngüsü (C1):** sinyal → teşhis → müdahale → sonuç. Kalıcı çözüm yalnızca kök neden teşhis edildiğinde mümkündür (patron, müdür, danışman veya ortak teşhis edebilir). Aksi halde müdahale belirtiyi giderir ve sorun geri döner.
-- **Departmandan bağımsız 6 genel müdahale:** doğrudan müdahale (patron zamanı) · müdüre delege (müdür seviyesine kadar) · süreç/sistem değişikliği (kalıcı, kök neden teşhisi şart) · kaynak ekle (para, finansa yan etki) · personel kararı (İnsan Yönetimi riski) · bilinçli kabul/erteleme (kayıp zamanla büyür). Ekran aynı kalır, metinler departmana göre değişir (GAME_OVERVIEW §27). Böylece 10 × 5 senaryo için ayrı müdahale yazma yükü doğmaz.
-- **Yetkinliğin müdahaledeki rolü:** kalıcı çözüm seçeneklerini açar ve sonucun öngörülebilirliğini artırır. Statlar süre, maliyet ve başarı oranını değiştirir.
-- **Danışman (C2):** "patronun en fazla +1 Tier üstü" tavanı kaldırılmalı; §11–12 ve §27 bilgi açığının uzmanla kapatılabilmesini istiyor. Danışman tek departmanda, geçici ve yalnızca teşhis sağlar; derinliği kendi seviyesiyle sınırlıdır. Bedeli: oyun parası + patron zamanı + bekleme süresi. Oyun içi kaynakla her zaman erişilebilir; gerçek para en fazla kolaylık sunabilir (§26).
-- **Yetkinlik neden hâlâ değerli:** yetkinlik her zaman ve her departmanda açık, bedelsiz ve kalıcıdır; danışman istenince, tek departmanda, bedelli ve geçicidir. Müdürden kaynaklanan T4–T5 sorunlar (kayırma, komisyon) bağımsız bir göz gerektirdiği için iyi müdür yetkinliğin yerini tutamaz.
-- **Sinyal ve rapor (C3):** Öneriye şu cümle eklenmeli: "Neden gizli kalabilir; kaybın varlığı her zaman gösterilir ve sonuç raporunda açıklanır." Oyun içi sinyal §9'a bağlanır: departman kartında açıklanamayan kayıp göstergesi ve tekrar sayacı ("bu sorun 3. kez döndü"). Sinyal, danışmanın nereye çağrılacağını gösterir. Rapor §23'e bağlanır: fabrika ömrü, departman kayıp payı, görülen ve görülmeyen sorunlar (kategori + Tier) ve uyarı geçmişi ("5 sinyal, 0 araştırma"). Sorun dağılımı run'lar arasında rastgele olmalı.
+- Tur 1 notlarının çoğu doğru işlenmiş: izleme adımı eklenmiş çözüm döngüsü; "hiçbiri her durumda en iyi değil" ilkesiyle altı müdahale ailesi; +1 Tier tavanının kaldırılması; danışmanın kalıcı yetkinlik vermemesi ve doğrudan çözüm sağlamaması; gerçek paranın zorunlu çözüm olmaması; müdür kaynaklı sorunların bağımsız denetim gerektirmesi; "her departmanda yolsuzluk" tuzağından kaçınılması.
+- Tekrarın "keyfî sayaçla değil devam eden nedenin etkisiyle" oluşması benim tekrar sayacı önerimden daha iyi. Sayaç yalnızca arayüzde bir gösterim olarak kalmalı.
+- Eşiklerin taslak olarak işaretlenmesi ve terim ayrımının ertelenmesi doğru; FREEZE öncesinde ikisi de kapanmalı.
 
 ### Bulduğum Sakıncalar
 
-- Süreç değişikliği veya kaynak ekleme her durumda en iyiyse dominant strateji olur. Her müdahalenin açıkça zayıf kaldığı bir durum olmalı.
-- Danışman ucuz kalırsa "her departmana sürekli danışman" hâlâ dominant olabilir. Bekleme süresi, patron zamanı ve tekrar çağırma gereksiniminin yeterli bir fren olup olmadığı test edilmeli.
-- Müdür kaynaklı derin sorunlar dengeyi sağlar, ama her departmanda T5'in yolsuzluğa indirgenmesi tekrar hissi yaratır (REV-001 I3).
-- "Danışman seviyesi" yeni bir parametredir; danışman seçimi ayrı bir mini sisteme dönüşmemeli.
-- Rapor fazla ayrıntılıysa sonraki run'da keşif hissi azalır.
+- **Kör müdahale açığı:** "Kök neden bilinmeden yapılan müdahale bazen doğru sonuca da ulaşabilir" cümlesi yeni bir dominant strateji açıyor. Oyuncu teşhis yerine ucuz müdahaleleri sırayla dener; yetkinlik de danışman da gereksizleşir. Öneri: kör müdahale yalnızca patronun görebildiği derinliğe kadar kalıcı sonuç verebilsin. Kişi kaynaklı derin sorunlarda (kayırma, komisyon) kör kalıcı çözüm olmasın.
+- **Stat açığı:** Statlar "başarı oranını" etkiliyor. Kör müdahale de başarılı olabiliyorsa, yüksek Zeka dolaylı yoldan derin sorunu çözmüş olur. Bu, "Zeka T4 görmez" ilkesini arka kapıdan deler. Statlar yalnızca teşhis edilmiş veya görülebilen derinlikteki müdahalelerin başarısını etkilemeli.
+- **Seçenek açılma kuralı tanımsız:** "Seçenekler teşhise, ekibe ve koşullara göre açılır" ifadesi genel kurallara bağlanmazsa her sorun için ayrı seçenek yazmak gerekir; Tur 1'de kaçınılan 10 × 5 içerik yükü geri gelir. Öneri, genel ön koşullar: müdüre devretmek için müdür gerekir; süreç değişikliği o derinlikte teşhis ister; personel kararı teşhiste bir kişinin adının çıkmasını ister; kaynak ekleme ve kabul her zaman açıktır.
+- **Danışman freni zayıf ifade edilmiş:** "Para, zaman ve bekleme harcatabilir" ifadesindeki "-abilir" bedeli isteğe bağlı gösteriyor. Bedel "harcatır" olarak kesinleşmeli; yoksa sürekli danışman kullanımı yine en iyi strateji olur.
+- **Danışman + kalıcı çözüm döngüsü:** Danışman teşhis eder, patron süreç değişikliğiyle sorunu kalıcı çözer. Bu tutarlı, ancak o zaman yetkinliğin değeri yalnızca sıklık ve maliyet tasarrufuna iner. Derin sorunlar yeterince sık ve çeşitli değilse kariyer yatırımı anlamını yitirir. Denge testinde "10 yıllık danışman maliyeti ile kariyerde harcanan zamanın karşılaştırması" ölçülmeli.
+- **Güvenilmeyen raporlar:** Müdürün patrona teşhis raporu verebildiği yazılı. Ancak müdür sorunun kaynağıysa kendi raporunu çarpıtabilir. Bilgisiz patronun bunu fark edip edemeyeceği tanımsız. Bu, İnsan Yönetimi yetkinliğine bağlanmazsa 2x2 matris işlemez.
+- **Sinyal hesabı belirsiz:** Aynı departmanda hem görülen hem görülmeyen sorun varsa "açıklanamayan kayıp" neye göre gösteriliyor? Öneri: toplam kayıp eksi görülen sorunların açıkladığı kayıp. Bu hesap eşzamanlı sorun sayısı kararına bağlı.
 
 ### Kafama Yatmayanlar
 
-- "Tier" hem patronun görüş seviyesi hem sorunun derinliği için kullanılıyor (REV-001 M2). Müdahale kuralları yazılınca bu karışıklık büyür; iki ayrı terim gerekli.
-- "Eğitim / sonradan öğrenme" fabrika döneminde kalıcı yetkinlik veriyorsa, "danışman kalıcı yetkinlik vermez" (§11) ilkesiyle sınırı çizilmeli.
-- Tier eşikleri (T4→T5 arası yalnızca 10 puan) müdahale döngüsü belli olmadan kesinleştirilmemeli (REV-001 C4).
+- Yetkinliğe ikinci bir rol eklenmiş ("müdahalenin olası sonucunu öngörme"), fakat bunun eşiklerle nasıl ölçeklendiği yok. Ayrıca yetkinliğin seçenekleri mi açtığı, yoksa yalnızca öngörüyü mü netleştirdiği belirsiz. İkisinden biri seçilmeli.
+- Danışman "tekrar kullanımı" belirsiz: teşhis bilgisi sorun çözülene kadar görünür mü kalıyor, yoksa sözleşme bitince kayboluyor mu? Kayboluyorsa oyuncu bildiği bir şeyi "unutmuş" gibi olur; bu, oyuncuyu sinirlendirir.
+- Rapor yalnızca "fabrika kapandığında" veriliyor. Ayakta kalan ama kötü giden bir fabrikada oyuncu dönem içinde öğrenme geri bildirimi alamıyor. §21 ("yanlış karar save'i öldürmemeli") ile birlikte yıllık bir ara özet düşünülmeli.
+- Eksik yetkinliği kapatmanın altı yolundan ortak, uzman çalışan, dış kaynak ve eğitim hâlâ birbirinden ayrışmıyor (REV-001 I2). Bu IDEA'da mı çözülecek, ayrı IDEA'ya mı taşınacak belli değil.
+- Satın Alma örneğindeki "T4–T5'i teşhis edemez" ifadesi yeni metinle uyumsuz kalmış. "Kendi başına teşhis edemez; kayıp sinyali görünür, danışman veya bağımsız uzman teşhis edebilir" olarak güncellenmeli.
+- "Toplam teorik maksimum: 1000" hâlâ oyun içi bir anlam taşımıyor (REV-001 M1).
 
 ### Açık Sorular
 
-- Fabrika kapanınca aynı karakter mi devam eder, yoksa yeni run mı başlar? Raporun ne zaman verileceği buna bağlı: her iflasta mı, iflas eşiğinde mi, yıllık mı?
-- Danışman ücreti sabit mi, fabrika ölçeğine mi, danışman seviyesine mi bağlı?
-- Sinyal hangi yetkinlik değerlerinde "var → büyüklük → kategori" aşamalarına geçer?
-- Bilinçli kabul seçeneğinde kayıp ne hızla büyür?
-- Gerçek parayla danışmanlık hiç sunulacak mı?
+Tur 3'ten önce kullanıcının karar vermesi önerilen öncelikli üç konu:
+
+1. Kör müdahale: kalıcı çözüm yalnızca görülebilen derinliğe kadar mı mümkün (Claude önerisi), yoksa her derinlikte küçük bir ihtimal mi olsun?
+2. Yetkinlik seçenekleri mi açar, yoksa yalnızca sonuç öngörüsünü mü netleştirir?
+3. Fabrika kapanınca aynı karakter mi devam eder, yoksa yeni run mı başlar? Raporun zamanı ve ayrıntısı buna bağlı.
+
+Diğerleri:
+- Müdür raporu çarpıtılabilir mi; bunu fark etmek İnsan Yönetimi yetkinliğine mi bağlı?
+- Danışman teşhisi, sorun çözülene kadar görünür kalır mı?
+- Ortak, uzman çalışan, dış kaynak ve eğitim bu IDEA'da mı ayrıştırılacak, yoksa ayrı bir IDEA'ya mı?
 
 ## Açık Kararlar
 
-- Altı genel müdahale ailesinin kapsamı, hangi koşullarda açıldığı ve zaman/oyun parası maliyeti.
-- Kök neden teşhisi kalıcı çözüm için mutlak koşul mu, yoksa başarıyı ve öngörülebilirliği artıran bir avantaj mı?
-- Danışman, müdür ve ortağın patron bilgisini hangi kapsamda tamamlayacağı; danışman raporunun süresi ve tekrar kullanım sınırı.
+- Altı genel müdahale ailesinin kapsamı, hangi koşullarda açıldığı ve zaman/oyun parası maliyeti. Claude önerisi: sorun bazlı değil, genel ön koşullarla açılır (açık).
+- Kök neden teşhisi kalıcı çözüm için mutlak koşul mu, yoksa başarıyı ve öngörülebilirliği artıran bir avantaj mı? Claude önerisi: kör kalıcı çözüm yalnızca patronun görebildiği derinliğe kadar (açık).
+- Statların kör müdahale başarısını etkileyip etkilemeyeceği.
+- Yetkinliğin rolü: seçenekleri açmak mı, sonuç öngörüsünü netleştirmek mi? Öngörünün eşiklerle ölçeklenmesi.
+- Danışman, müdür ve ortağın patron bilgisini hangi kapsamda tamamlayacağı; danışman raporunun süresi, teşhis bilgisinin kalıcılığı ve tekrar kullanım sınırı.
+- Danışman seviyesi ve bulunabilirliği.
+- Müdür raporlarının çarpıtılıp çarpıtılamayacağı ve bunun hangi yetkinlikle fark edileceği.
 - Danışman ücret modeli ve gerçek paranın rolü (yalnızca kolaylık mı, hiç mi).
-- Oyun içi açıklanamayan kayıp sinyalinin netlik eşikleri ve fabrika başarısızlık raporunun ayrıntı düzeyi.
+- Oyun içi açıklanamayan kayıp sinyalinin hesap tanımı ve netlik eşikleri; fabrika başarısızlık raporunun ayrıntı düzeyi ve ara dönem (yıllık) özet olup olmayacağı.
 - "Bilinçli kabul/erteleme" seçeneğinde kaybın büyüme hızı.
 - Fabrika kapanışından sonra aynı karakterin devam edip etmeyeceği (raporun zamanını belirler).
+- Ortak, uzman çalışan, dış kaynak ve eğitim yollarının ayrıştırılması: bu IDEA'da mı, ayrı IDEA'da mı?
 - Patron görüş seviyesi ile sorun derinliği için ayrı terimler.
 - Yetkinlik Tier eşikleri, kazanılma hızı, düşüşü ve beşinci yıl hedefi.
 - Müdürlerin sorun çözme matematiği ve departman başına eşzamanlı problem sayısı.
