@@ -2,12 +2,12 @@
 
 ## Durum/Tur
 
-Durum: DRAFT — Tur 5 GPT sentezi hazır, Claude incelemesi bekleniyor
+Durum: DRAFT — Tur 5 Claude incelemesi tamamlandı
 Tur: 5
 Son güncelleme: 2026-09-28
 Kaynak: Kullanıcının sağladığı ilk öneri Codex tarafından dosyaya işlendi.
-Tur 1–4 Claude incelemeleri: tamamlandı. Kullanıcının yeni yönlendirmeleri Tur 5 önerisine işlendi; `Notlar (Claude)` hâlâ Tur 4 incelemesidir.
-Sıradaki adım: Claude, Tur 5 önerisini inceleyip `Notlar (Claude)` bölümünü günceller.
+Tur 1–5 Claude incelemeleri: tamamlandı. Kullanıcının yeni yönlendirmeleri Tur 5 önerisine işlendi; `Notlar (Claude)` Tur 5 incelemesidir.
+Sıradaki adım: Kullanıcı, `Notlar (Claude)` → `Açık Sorular` altındaki öncelikli üç kararı seçer; ardından Codex Tur 6 sentezini yapar.
 
 ## Öneri (GPT)
 
@@ -161,46 +161,46 @@ Bilmediği işi kime bırakacağını bilir.
 
 ## Notlar (Claude)
 
-Tarihçe: Tur 1 inceleme [REV-001](../reviews/REV-001_claude_patron_yetkinlikleri.md) ve bu dosyanın Git geçmişi. Aşağıdakiler Tur 4 `Öneri (GPT)` metninin incelemesidir. `Karar Özeti`'ndeki kullanıcı yönlendirmeleri tartışmaya açılmamış; notlar bu yönlendirmelerin içindeki açıkları ve uygulanma biçimini hedefler.
+Tarihçe: Tur 1 inceleme [REV-001](../reviews/REV-001_claude_patron_yetkinlikleri.md) ve bu dosyanın Git geçmişi. Aşağıdakiler Tur 5 `Öneri (GPT)` metninin incelemesidir. `Karar Özeti`'ndeki kullanıcı yönlendirmeleri tartışmaya açılmamış; notlar bu yönlendirmelerin içindeki açıkları ve uygulanma biçimini hedefler.
 
 ### Aldığım Notlar
 
-- Danışmanın artık somut bir mekanik etkisi var: etkin yetkinliğe katkı, görünürlük ve eşiğe ulaşınca kesin sonuç. Tur 3'teki "danışman işlevsiz" sorunu kapandı.
-- Toplama modeli tematik olarak güçlü: bilgili patron danışmanı daha verimli kullanır (60 + 30 = 90, ama 20 + 30 = 50). Kariyer yetkinliği, gereken danışmanı ucuzlatarak değer kazanıyor.
-- Kademe eğrisi (≈ %80 / %40 / %15 / %5) kör denemeyi derin sorunlarda gerçekten riskli kılıyor. Eşiklerdeki keskin sıçrama (49 → 50'de %40 → %80) okunur bir hedef yaratıyor; bir kusur değil.
-- Statların eşik altı ihtimali etkilememesi önerisi Tur 3 notuyla uyumlu; kabul edilmesi öneriliyor.
-- Borç + geçici psikoloji düşüşü + "kalıcı sarmal yaratmamalı" ilkesi, Tur 3'teki ölüm sarmalı uyarısını doğru yönde karşılıyor.
-- "Düzelt sade bir operasyon eylemidir; strateji başka sistemlerde" cümlesi Tur 3'teki tycoon'a kayma riskini IDEA'ya yazılı hale getirdi.
+- `max` kuralı üst üste ekleme ve 100'ü aşma sorununu tek satırda kapattı; anlaşılması da toplama kuralından kolay.
+- "Acı tecrübe"nin karakter başına bir kez verilmesi kasıtlı iflas istismarını kapattı. Yetkinlik kaybının kaldırılması, Tur 3'teki ölüm sarmalı riskini de azalttı.
+- Kişi kaynaklı sorunların "Düzelt" içinde personel işlemiyle kapanması, Tur 3–4'teki "yolsuzluk parayla kapatılıyor" açığını çözdü. T4–T5 örneklerinin "müdür" yerine süreç ve çıkar çatışması diliyle yeniden yazılması, "her departmanda yolsuzluk" riskini (REV-001 I3) de azalttı.
+- Satış'ın çıkarılması, §10 tutarsızlığının öneride açıkça yazılması ve Tasarım İlkesi paragrafının yerinin düzeltilmesi doğru.
+- Kör deneme ile danışman arasında sağlıklı bir seçim alanı oluştu. Bir kademe açıkta kör deneme (≈ 1,25 kat beklenen maliyet) çoğu zaman danışmandan ucuz. İki veya daha fazla kademede ya da aynı alanda çok sayıda sorun varken danışman kârlı. Bu ayrım korunmalı.
 
 ### Bulduğum Sakıncalar
 
-- **Danışman aboneliği baskın strateji olabilir (kritik):** Danışman "aktif" olduğu süre boyunca 3–5 alanda etkin yetkinliği yükseltiyorsa, o süredeki tüm sorunlar bu alanlarda kesin çözülür. Oyuncu parası yettiği sürece sürekli danışman tutar; kariyer yetkinliği yalnızca bir maliyet indirimine dönüşür (REV-001 C2 geri döner). Tur 1–2'de uzlaşılan "tek departman, geçici" sınırı da 3–5 alanlı profille fiilen kalkmış oluyor. Öneri (kullanıcı kararını bozmadan): profil danışmanın *hangi alanlarda tutulabileceğini* gösterir, ama her görevlendirme **tek alan ve kısa süre** için yapılır. Fiyat görevlendirilen alanın katkısına göre belirlenir.
-- **Katkıların üst üste eklenmesi ve 100'ü aşma:** İki danışman (+50 ve +50) toplanırsa her patron T5'e ulaşır; 60 + 70 = 130 gibi değerler anlamsızdır. Öneri: aynı alanda yalnızca en yüksek danışman katkısı geçerli olsun, etkin yetkinlik 100 ile sınırlansın.
-- **Kişi kaynaklı sorunlar artık rutin olarak çözülebilir hale geldi:** Danışmanla etkin değer 90–100'e kolayca çıkıyor. T4–T5 (müdür kayırması, komisyon) "Düzelt" ile kesin çözülüyor, ama müdürün yerinde kalıp kalmadığı hâlâ tanımsız. Tur 3'te açık kalan bu karar artık acil: tanımlanmazsa yolsuzluk parayla "kapatılan" bir sorun olur.
-- **Müdür ve danışman için kurallar tutarsız:** Danışmanın katkısı toplanıyor, müdürün katkısı tanımsız. Oyuncu doğal olarak "iyi müdür neden danışman kadar işe yaramıyor?" diye sorar. Öneri: müdür de aynı toplama kuralına girsin, ancak kaynağı müdürün kendisi olan sorunlarda katkısı sıfır sayılsın.
-- **Kasıtlı iflas istismarı:** İflastan sonra stat kazanımı hızlanıyor veya her kazanıma +1 ekleniyorsa, oyuncu küçük bir fabrika kurup bilerek batırarak bu bonusu toplayabilir. Öneri: telafi yalnızca raporda en çok kayıp yaratan alanlara bağlı olsun ("acı tecrübe"), bir kez verilsin ve üst sınırı olsun. Etkisi, borcun bir yıllık maliyetinden açıkça küçük kalmalı.
-- **Psikoloji −%25 ile §20 sarmalı:** Borçlu, düşük psikolojili ve muhtemelen yeniden iş arayan bir karakter, §20'de bir kez yaşanan "psikoloji → performans → kovulma" sarmalının başlangıç koşullarını taşıyor. "Sarmal yaratmamalı" bir niyet olarak yazılı, ama mekanizması yok. Öneri: psikoloji belirli bir sürede kendiliğinden toparlansın (ör. 6 ay); borç ödemesi gelire oranlanmış olsun.
+- **Uzun sözleşmeli, çok alanlı danışman REV-001 C2'yi geri getiriyor (kritik):** `max` kuralında danışman patrondan güçlüyse patronun puanı hiç önemli olmuyor. 12 aylık sözleşme indirimi (10A) ve profildeki tüm alanların aktif olması birleşince baskın strateji şu: zayıf alanları kapsayan 1–2 geniş profilli danışmanı yıllık sözleşmeyle sürekli tutmak. Kariyer yetkinliğinin tek değeri, danışman gerektirmeyen alanlardaki maliyet tasarrufu olarak kalıyor. Kullanıcı kararlarını bozmadan önerilen frenler:
+  - Danışman puanlarının üst sınırı **90** olsun. T5 kesinliği (100) yalnızca kariyerle kazanılsın. Bu, REV-001 C4'teki "T4–T5 arası 10 puan" sorununu da anlamlı hale getirir: en derin sorunları kesin çözebilen tek kişi o işi yıllarca yapmış patrondur.
+  - Fiyat, profilin en yüksek puanıyla doğrusal değil hızlı artsın (ör. 70'lik danışman A ise 90'lık yaklaşık 3A). 10 aday içinde 90'lık puan nadir olsun.
+  - Denge testi ölçütü yazılsın: "zayıf bir alanı T3'e taşıyan yıllık danışman maliyeti, tipik küçük fabrikanın yıllık net kârının belirgin bir kısmı olmalı."
+- **Danışman aramasında yeniden çekme istismarı:** 10 aday ücretsiz ve sınırsız yenilenebiliyorsa oyuncu ideal 5 alanlı profili bulana kadar aramayı tekrarlar. Arama ya bir bedele ya da bekleme süresine bağlanmalı (ör. ayda bir yeni liste).
+- **Danışman frenleri zayıfladı:** Tur 3'te "para, yönetim zamanı ve bekleme harcatır" diye kesinleşen bedel, Tur 5'te yalnızca paraya indi; zaman ve bekleme "değerlendirilecek" durumunda. Geriye tek fren olarak para kalıyor; fabrika kâr ettikçe bu fren de zayıflıyor. En azından göreve başlama beklemesi korunmalı. Böylece acil bir sorunda danışman anında çözüm olmaz, kariyer yetkinliği hazır bilgi olarak değer kazanır.
+- **Erken fesih tanımsız:** 12 aylık indirimli sözleşme erken bozulabiliyorsa bağlayıcılık fikri anlamını yitirir; bozulamıyorsa oyuncu işe yaramayan bir danışmana 10A ödemiş olur. Kural yazılmalı (ör. fesih mümkün, kalan tutarın bir kısmı ödenir).
+- **İnsan Yönetimi mekaniksiz kalma riski:** Müdür kaldırılınca İnsan Yönetimi'nin etkisi "aylık raporlara yansır" düzeyinde belirsiz kaldı. Diğer dokuz yetkinlik bir departmanın sorunlarını teşhis ederken İnsan Yönetimi'nin ne yaptığı tanımsız. Oyuncu bu alana yatırım yapmaz. Somut öneri: İnsan Yönetimi tüm departmanlarda kişi kaynaklı sorunların **ortaya çıkma sıklığını** azaltsın. Böylece mevcut "Düzelt" kuralına dokunmadan yatay bir değer kazanır.
 
 ### Kafama Yatmayanlar
 
-- **"Satış" kapsam genişlemesi:** Danışman örneğindeki Satış, on yetkinlik arasında yok. Aslında oyunda talep/satış tarafının hiç tanımlanmadığını ortaya çıkarıyor. Bu IDEA'ya 11. bir yetkinlik olarak sessizce girmemeli. Örnek profilden çıkarılsın; satış/talep tarafı ayrı bir IDEA konusu olarak işaretlensin.
-- **T4–T5 arası yalnızca 10 puan (REV-001 C4):** Kademe eğrisiyle bu artık daha önemli. 90 yetkinlikli patron, en derin (T5) sorunlarda %80 başarıyla neredeyse T4 kadar rahat. Eşik aralıkları eğriyle birlikte yeniden bakılmalı.
-- **Karar Özeti'nde gerekçe izi:** Tur 3'teki "bazı stat/yetkinlik kayıpları yaşar" maddesi, Tur 4'te "tam etkisi hâlâ açık" olarak yeniden yazılmış. Proje kuralı hem kararın hem gerekçesinin korunmasını istiyor. Değişikliğin kullanıcı yönlendirmesiyle yapıldığı tek satırla belirtilmeli.
-- **Tasarım İlkesi bölümünde yerleşim:** "Düzelt sade bir operasyon eylemidir" paragrafı, üç satırlık ilkenin ilk cümlesiyle devamı arasına girmiş. Paragraf ilkenin sonuna taşınmalı.
-- **Oyunun süresi ve bitişi hâlâ tanımsız:** İflastan sonra bir yıl toparlanma ve yeniden sermaye biriktirme süresi, oyunun ne kadar sürdüğü bilinmeden dengelenemez.
+- **Müdür katmanının kalkması çekirdek kimliğe dokunuyor:** CLAUDE.md'nin korunan kimlik maddesi "a great boss … knows who should handle it" ve GAME_OVERVIEW §10 (2x2 matris) ile §22 ("iyi ekip patronun zamanını büyümeye ayırır") kalıcı ekip üzerine kurulu. Tur 5'te "kime bırakacağını bilmek" yalnızca "hangi danışmanı tutacağını bilmek"e indi. Öneri: IDEA-001 "müdür yetkinliği yoktur" diye dondurulmasın; "ekip/müdür katmanı IDEA-001'in kapsamı dışındadır, ayrı IDEA'da tasarlanacaktır" diye dondurulsun. Böylece bugünkü sadeleştirme korunur, gelecekteki ekip tasarımının yolu kapanmaz.
+- `Eksik Yetkinliği Kapatma Yolları` listesindeki "iyi ekip ve personel düzeni", ortak, uzman çalışan, dış kaynak ve eğitim maddelerinin hâlâ hiçbir mekaniği yok. Yalnızca danışman tanımlı. Liste ya "ileride tasarlanacak" diye işaretlensin ya da FREEZE kapsamından çıkarılsın; aksi halde FREEZE tanımsız sistemleri onaylamış olur.
+- `Statların Rolü` bölümündeki "eşik altı ihtimali etkilemesin" önerisi hâlâ kullanıcı kararı bekliyor. `max` kuralıyla birlikte FREEZE öncesinde kapanması gereken son çekirdek kurallardan biri.
+- Başarı ihtimalinin gösterimi (yüzde mi, kaba aralık mı) ve oyunun süresi/bitişi hâlâ açık. İkisi de FREEZE öncesinde en azından ilke düzeyinde kapanmalı.
 
 ### Açık Sorular
 
-Tur 5'ten önce kullanıcının karar vermesi önerilen öncelikli üç konu:
+Tur 6'dan önce kullanıcının karar vermesi önerilen öncelikli üç konu:
 
-1. Danışman görevlendirmesi süreli bir abonelik mi (3–5 alan birden aktif), yoksa tek alan ve kısa görev mi (Claude önerisi)? Katkılar üst üste eklenmesin ve etkin değer 100 ile sınırlansın mı?
-2. Kişi kaynaklı sorunda "Düzelt" ne yapar: müdür değişimini otomatik içerir mi, yoksa müdürü kovmak ayrı bir eylem mi? Müdürün katkısı danışmanla aynı toplama kuralına girsin mi?
-3. İflas sonrası telafi kasıtlı iflasa karşı nasıl sınırlanacak? Yetkinlik kaybı tamamen kaldırılıp "acı tecrübe" mi kabul edilecek?
+1. Danışman puanlarına 90 üst sınırı konsun mu, yani T5 kesinliği yalnızca kariyerle mi kazanılsın (Claude önerisi)? Fiyat en yüksek puanla hızla artsın mı?
+2. Danışman frenlerinden hangileri olsun: arama yenileme sınırı, göreve başlama beklemesi, erken fesih kuralı?
+3. Müdür/ekip katmanı IDEA-001'de "yok" diye mi dondurulsun, yoksa "kapsam dışı, ayrı IDEA" diye mi (Claude önerisi)? İnsan Yönetimi kişi kaynaklı sorunların sıklığını mı azaltsın?
 
 Diğerleri:
-- Satış örnek profilden çıkarılsın mı; talep/satış tarafı ayrı IDEA mı olsun?
-- Psikolojinin kendiliğinden toparlanma süresi ve borç ödemesinin gelire oranı ne olsun?
-- Başarı ihtimali oyuncuya yüzde olarak mı, kaba aralık olarak mı gösterilecek?
+- Statlar eşik altı ihtimali etkilemesin önerisi onaylanıyor mu?
+- Başarı ihtimali yüzde olarak mı, kaba aralık olarak mı gösterilecek?
+- Oyunun süresi ve bitiş koşulu ne olacak?
 
 ## Açık Kararlar
 
@@ -208,10 +208,12 @@ Diğerleri:
 - Kabul edilen taslak kademe eğrisinin (≈ %80 / %40 / %15 / %5) oyun testlerinde ayarlanması; Tier içinde farklı puanların aynı şansa sahip olmasının uygunluğu.
 - Kör denemeyi baskın strateji yapmamak için tekrar denemede aynı mı, artan mı maliyet ve/veya bekleme süresi uygulanacağı.
 - Statların eşik altı “Düzelt” olasılığını etkileyip etkilemeyeceği; Tur 4 önerisi yalnızca süre ve maliyeti etkilemeleri.
-- Danışman adaylarının nasıl yenilendiği, aynı anda tutulabilecek sayı ve fiyat formülü; 1/3/12 ay ile A/2,75A/10A örneklerinin kesinleşmesi.
-- Uzun süreli çok alanlı danışmanların baskın strateji olup olmayacağı ve fiyat/erişilebilirlik dengesi.
+- Danışman adaylarının nasıl yenilendiği, aynı anda tutulabilecek sayı ve fiyat formülü; 1/3/12 ay ile A/2,75A/10A örneklerinin kesinleşmesi. Claude önerisi: aday listesi ücretsiz sınırsız yenilenemez (bedel veya bekleme); fiyat en yüksek puanla hızla artar (açık).
+- Uzun süreli çok alanlı danışmanların baskın strateji olup olmayacağı ve fiyat/erişilebilirlik dengesi. Claude önerisi: danışman puanı en fazla 90, T5 kesinliği yalnızca kariyerle; denge ölçütü yıllık danışman maliyetinin fabrika net kârına oranı (açık).
+- Danışmanın göreve başlama beklemesi ve yönetim zamanı maliyeti; erken fesih kuralı. Claude önerisi: en azından göreve başlama beklemesi korunur (açık).
 - Satış/talep konusunun ayrı IDEA olarak ele alınması ve mevcut on yetkinlik listesine etkisi.
-- İnsan Yönetimi yetkinliğinin aylık performans raporlarına nasıl yansıdığı; `GAME_OVERVIEW` §10'daki müdür modelinin yeni yönle uyumlandırılması.
+- İnsan Yönetimi yetkinliğinin aylık performans raporlarına nasıl yansıdığı; `GAME_OVERVIEW` §10'daki müdür modelinin yeni yönle uyumlandırılması. Claude önerisi: İnsan Yönetimi kişi kaynaklı sorunların ortaya çıkma sıklığını azaltır; ekip/müdür katmanı "kapsam dışı, ayrı IDEA" olarak işaretlenir (açık).
+- `Eksik Yetkinliği Kapatma Yolları`ndaki ekip, ortak, uzman çalışan, dış kaynak ve eğitim maddelerinin FREEZE kapsamında mı, "ileride tasarlanacak" olarak mı yer alacağı.
 - Açıklanamayan kayıp sinyali üzerinden basılan “Düzelt”in hangi gizli sorunu hedeflediği.
 - Danışman seviyesi ve bulunabilirliği.
 - Gerçek paranın danışmanlık sistemindeki rolü (yalnızca kolaylık mı, hiç mi).
