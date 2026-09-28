@@ -2,12 +2,12 @@
 
 ## Durum/Tur
 
-Durum: DRAFT — Tur 8 GPT sentezi hazır, Claude incelemesi bekleniyor
+Durum: DRAFT — Tur 8 Claude incelemesi tamamlandı
 Tur: 8
 Son güncelleme: 2026-09-28
 Kaynak: Kullanıcının sağladığı ilk öneri Codex tarafından dosyaya işlendi.
-Tur 1–7 Claude incelemeleri: tamamlandı. Kullanıcının yeni yönlendirmeleri Tur 8 önerisine işlendi; `Notlar (Claude)` hâlâ Tur 7 incelemesidir.
-Sıradaki adım: Claude, Tur 8 önerisini inceleyip `Notlar (Claude)` bölümünü günceller.
+Tur 1–8 Claude incelemeleri: tamamlandı. Kullanıcının yeni yönlendirmeleri Tur 8 önerisine işlendi; `Notlar (Claude)` Tur 8 incelemesidir.
+Sıradaki adım: Kullanıcı, `Notlar (Claude)` → `Açık Sorular` altındaki üç kararı (onay paketi dahil) verir; ardından Codex Tur 9 sentezini yapar. Bu kararlarla `Açık Kararlar` → "FREEZE öncesi" grubu kapanır ve kullanıcı onayıyla FRZ-001 taslağına geçilebilir.
 
 ## Öneri (GPT)
 
@@ -167,53 +167,53 @@ Bilmediği işi kime bırakacağını bilir.
 
 ## Notlar (Claude)
 
-Tarihçe: Tur 1 inceleme [REV-001](../reviews/REV-001_claude_patron_yetkinlikleri.md) ve bu dosyanın Git geçmişi. Aşağıdakiler Tur 7 `Öneri (GPT)` metninin incelemesidir. `Karar Özeti`'ndeki kullanıcı yönlendirmeleri tartışmaya açılmamış; notlar bu yönlendirmelerin içindeki açıkları ve uygulanma biçimini hedefler.
+Tarihçe: Tur 1 inceleme [REV-001](../reviews/REV-001_claude_patron_yetkinlikleri.md) ve bu dosyanın Git geçmişi. Aşağıdakiler Tur 8 `Öneri (GPT)` metninin incelemesidir. `Karar Özeti`'ndeki kullanıcı yönlendirmeleri (iki 100'lük kart ve iki kartla tam kapsam dahil) tartışmaya açılmamış; notlar bu yönlendirmelerin gerekçelerinin doğruluğunu ve kalan açıkları hedefler.
 
 ### Aldığım Notlar
 
-- Tur 6'nın kritik bulgusu kapandı: aynı anda en fazla iki danışman. Sözleşmelerin iade edilmemesiyle birlikte bu iki yuva gerçek bir kaynağa dönüştü. 12 aylık bir danışman bir yuvayı kilitler; başka alanda yeni bir sorun çıkarsa oyuncu ya bekler ya da ödediği ücreti yakarak yer açar. Anlamlı bir karar.
-- Statların eşik altı şansı etkilememesi ve kaba şans aralıkları Karar Özeti'ne girdi. Tur 4'ten beri bekleyen iki çekirdek ilke kapandı.
-- Aylık akış (ay sonu raporu → sinyal → kart → Düzelt) öneride açıkça yazıldı. "Danışman tutmadan da denenebilir" cümlesi kör denemeyi meşru bir seçenek olarak koruyor.
-- `Eksik Yetkinliği Kapatma Yolları` listesi "onaylanmış mekanik sayılmaz" diye işaretlendi. FREEZE'in tanımsız sistemleri onaylama riski kapandı.
-- Kart bütçesinin matematiği doğrulandı: iki alanlı kartta en yüksek puan 95'tir (95 + 25 = 120). Üç alanlı kartta 100 mümkündür (100 + 25 + 25 = 150 ≤ 180). Öneride yazılan sonuçlar doğru.
+- Tur 7'nin kritik bulgularından biri kapandı: kişi kaynaklı sorunların sıklığını artık yalnızca patronun kalıcı İnsan Yönetimi puanı azaltıyor. Danışman bu yatay kariyer yatırımının yerini tutamaz.
+- Dört sözel düzeyden üçe inildi; en derin iki kademe farkı artık tek etiket ("düşük") altında birleşiyor.
+- İki 100'lük kart ve iki kartla tam alan kapsamı kullanıcının bilinçli tercihi olarak Karar Özeti'ne gerekçesiyle girdi. Denge artık iki yuva kuralına, nadirliğe ve fiyata dayanıyor.
+- Çekirdek kurallar tamamlandı. "FREEZE öncesi" grubunda kalan maddelerin çoğu küçük ve evet/hayır niteliğinde; tek önemli tasarım sorusu İnsan Yönetimi.
 
 ### Bulduğum Sakıncalar
 
-- **Dört şans aralığı dört kademeyle birebir eşleşiyor (kritik):** Eşik altı olasılığı yalnızca dört değer alıyor (≈ %80 / %40 / %15 / %5). Arayüzdeki dört aralık da (yüksek / orta / düşük / çok düşük) bunlarla bire bir eşleşiyor. Oyuncu "orta" gördüğünde sorunun tam iki kademe yukarıda olduğunu anlar. Yani kaba aralık, kesin yüzde kadar gizli Tier'ı ele verir ve Karar Özeti'ndeki "gizli Tier'ı ele vermemeli" gerekçesi boşa çıkar. Öneri: gizli sorunlarda en fazla iki geniş aralık gösterilsin ("makul risk" = %80–40, "yüksek risk" = %15–5), ya da yalnızca "belirsiz" yazsın. Kesin başarı ve görünür sorunlar olduğu gibi kalabilir.
-- **Beş alanlı kartta iki tane 100 mümkün:** Bütçe alan sayısıyla büyüdüğü için 100 + 100 + 50 + 25 + 25 = 300 geçerli bir kart. Tur 6'daki "süper kart" riski azaldı ama kapanmadı. Ayrıca bütçe geniş kartları derin kartlardan da güçlü kılıyor: 25'lik dolgu alanlar bütçe açıyor, bu yüzden beş alanlı kart üç alanlı karttan hem daha geniş hem daha derin olabiliyor. Bu da "derin uzman ile geniş genelci arasında seçim" gerekçesini zayıflatıyor. Öneri, mevcut kurallara tek ekleme: **bir kartta en fazla bir alan 90 veya üstü olabilir.**
-- **İki geniş kartla on alanın tamamı kapsanabilir:** İki yuva ve beş alanlı kartlarla, alanları çakışmayan iki kart on departmanın tamamını en az 25, çoğunu 50 ve üstünde kapsar. Kariyer yetkinliğinin 50'nin altındaki kısmı o süre boyunca etkisiz kalır. Öneri (içerik kuralı): havuzda alanları birleştiğinde on alanın tamamını kapsayan iki kart bulunmasın. Denge testinde "iki kartla kapsanabilen en geniş alan kümesi" ölçülsün.
-- **Danışmanın İnsan Yönetimi puanı sıklık etkisine sayılıyor mu? (kritik):** Öneride sıklık etkisi "patronun İnsan Yönetimi yetkinliği" ile tanımlı, ama etkin yetkinlik kuralı `max(patron, danışman)`. Bu kural sıklık etkisine de uygulanırsa, İnsan Yönetimi 100 olan tek bir danışman tüm departmanlarda kişi kaynaklı sorunları %80–90 azaltır. Bu, iki yuvadan birini neredeyse zorunlu hale getiren baskın bir seçim olur. Öneri: sıklık etkisi yalnızca patronun **kalıcı** İnsan Yönetimi puanıyla hesaplansın. Danışmanın İnsan Yönetimi puanı yalnızca İnsan Yönetimi alanındaki sorunların çözümüne katılsın.
-- **Güçlü İnsan Yönetimi etkisi alan yetkinliklerini gölgeleyebilir:** %80–90 azaltma ile kişi kaynaklı sorunlar en derin kademelerde yoğunlaşırsa, yüksek İnsan Yönetimi, alan yetkinliklerinde 90–100'e çıkma ihtiyacının büyük kısmını ortadan kaldırır. Güçlü etki kullanıcının tercihi. Bu tercihin güvenli kalması için kişi kaynaklı sorunlar her kademeye dağılmalı ve toplam sorunların sınırlı bir payı olmalı (ör. %30–40). Bu oran içerik yazımının kuralıdır.
+- **Üç etiket gizli kademeyi hâlâ kısmen ele veriyor:** "Yüksek" tam 1 kademe, "orta" tam 2 kademe farkı demek; yalnızca "düşük" 3 ile 4+ kademeyi birleştiriyor. Dört olasılık üç etikete dağıtılınca en az iki etiket her zaman tek bir kademeye karşılık gelir; bu matematiksel olarak kaçınılmaz. Karar Özeti'ndeki gerekçe ("dört sözcük dört kademe farkını birebir ele veriyordu") yeni durumu tam karşılamıyor. İki yol var:
+  - (a) Kısmi ifşa bilinçli kabul edilir ve gerekçe "yakın bilgi açıklarını sezdirir, derin açıkları gizler" olarak düzeltilir. Bu tematik olarak da savunulabilir: patron bir kademe yukarıdaki sorunu sezer ama çok derindekini sezemez.
+  - (b) Tam gizlilik isteniyorsa iki etikete inilir.
+  - Claude önerisi: (a). Kullanıcı kararını değiştirmez, yalnızca gerekçeyi doğru kılar.
+- **Kart bütçesi gerekçesi matematikle çelişiyor:** Karar Özeti "toplam puan bütçesi zaten geniş kartları sınırlar" diyor. Oysa bütçe alan sayısıyla büyüyor (beş alanlı kartta 300, üç alanlı kartta 180), bu yüzden geniş kartlar hem daha geniş hem daha derin olabiliyor. Bütçe geniş kartları sınırlamıyor, ödüllendiriyor. Kullanıcı kararı korunabilir, ama bu durumda denge tamamen fiyata ve nadirliğe dayanıyor. Öneri: fiyat formülü kartın en yüksek iki puanını ağırlıklı saysın. Böylece 25'lik dolgu alanlar kartı ucuzlatmaz ve iki 100'lük kart gerçekten "çok pahalı" olur. Karar Özeti'ndeki gerekçe de buna göre düzeltilmeli.
 
 ### Kafama Yatmayanlar
 
-- **İnsan Yönetimi'nin kendi alan sorunları hâlâ tanımsız:** Diğer dokuz alanın Tier sorunları var; İnsan Yönetimi'nin yalnızca yatay bir etkisi mi var, yoksa bir İK departmanı ve kendi sorunları da mı? Danışmanın İnsan Yönetimi puanının neye yarayacağı bu cevaba bağlı.
-- **Açıklanamayan kayıpta "Düzelt"in hedefi:** Tur 3'ten beri açık. Kaba aralık kuralı yazıldıktan sonra artık zorunlu: şans hangi gizli sorunun eşiğine göre hesaplanıyor? Öneri: en sığ gizli sorun hedeflensin.
-- **Gerçek para ve dördüncü kart:** Dördüncü kart oyun içi para istiyor. İleride gerçek parayla satılırsa, ücretli yeniden çekme mekanizmasına dönüşür ve GAME_OVERVIEW §26 ilkesiyle çelişir. FREEZE metninde "danışman kartları ve ek kart gerçek parayla satılmaz" diye açıkça yazılması öneriliyor.
-- **Terimler:** "Tier" hâlâ hem patron hem sorun için kullanılıyor. FREEZE metni bu terimlerle yazılacağı için artık seçilmeli. Öneri: patron için "Görüş Seviyesi", sorun için "Sorun Derinliği" (REV-001 M2).
+- **Danışmanın İnsan Yönetimi puanı boşta kalabilir:** Danışmanın İnsan Yönetimi puanı artık yalnızca İnsan Yönetimi alanındaki sorunlarda işe yarıyor. Ama İnsan Yönetimi'nin kendi alan (İK) sorunları hâlâ tanımsız. Tanımlanmazsa kartlardaki İnsan Yönetimi puanı hiçbir şey yapmayan bir sayı olur. İki yol var: İnsan Yönetimi'nin kendi alan sorunları olsun, ya da danışman kartlarında İnsan Yönetimi alanı hiç bulunmasın.
+- **İnsan Yönetimi azaltma üst sınırı ve kişi kaynaklı sorunların payı hâlâ açık:** Tur 7'de önerilen %30–40 pay sınırı yanıt bekliyor. Güçlü bir azaltma oranı (%80–90) ancak bu pay sınırlıysa alan yetkinliklerini gölgelemez.
+- **Uzun süredir bekleyen küçük kararlar:** aktif kartın havuzdan çıkması (Tur 6'dan beri), açıklanamayan kayıp üzerinden "Düzelt"in hedefi (Tur 3'ten beri), gerçek paranın rolü, terimler ve eksik yetkinliği kapatma listesinin FREEZE'deki durumu. Hepsi evet/hayır sorusu ve tek seferde onaylanabilir.
 
 ### Açık Sorular
 
-Tur 8'den önce kullanıcının karar vermesi önerilen öncelikli üç konu:
+Tur 9'dan önce kullanıcının karar vermesi önerilen üç konu:
 
-1. Gizli sorunlarda şans kaç aralıkla gösterilsin? Dört aralık gizli kademeyi birebir ele veriyor. Claude önerisi: iki geniş aralık ya da yalnızca "belirsiz".
-2. İnsan Yönetimi'nin sıklık etkisi yalnızca patronun kalıcı puanıyla mı hesaplansın (Claude önerisi), yoksa danışman puanı da sayılsın mı? Kişi kaynaklı sorunların toplam içindeki payı sınırlansın mı?
-3. Kart bütçesine "bir kartta en fazla bir alan 90 veya üstü" kuralı eklensin mi? Havuzda iki kartla on alanın tamamını kapsayan kombinasyon olmasın mı?
+1. Üç etiketin kısmi ifşası bilinçli kabul edilip Karar Özeti gerekçesi düzeltilsin mi (Claude önerisi), yoksa iki etikete mi inilsin?
+2. İnsan Yönetimi: azaltma üst sınırı ne olsun (ör. %80–90)? İnsan Yönetimi'nin kendi alan sorunları olsun mu (olmayacaksa danışman kartlarında İnsan Yönetimi alanı bulunmasın)? Kişi kaynaklı sorunların payı %30–40 ile sınırlansın mı?
+3. **Onay paketi:** aşağıdaki Claude önerileri tek seferde kabul edilsin mi?
+   - Sözleşmedeki kart havuzdan çıkar.
+   - Açıklanamayan kayıp üzerinden "Düzelt" en sığ gizli sorunu hedefler; şans o sorunun eşiğine göre hesaplanır.
+   - Danışman kartları ve ek kart gerçek parayla satılmaz.
+   - Terimler: patron için "Görüş Seviyesi", sorun için "Sorun Derinliği".
+   - Eksik yetkinliği kapatma listesi FREEZE'e "onaylanmamış, ileride tasarlanacak" olarak girer.
+   - Danışman fiyatı kartın en yüksek iki puanını ağırlıklı sayar; kart bütçesi gerekçesi buna göre düzeltilir.
 
-Diğerleri:
-- Sözleşmedeki kart havuzdan çıksın mı?
-- Açıklanamayan kayıp üzerinden "Düzelt" en sığ gizli sorunu mu hedeflesin?
-- Terimler "Görüş Seviyesi" ve "Sorun Derinliği" olsun mu?
-- Danışman kartları ve dördüncü kart gerçek parayla satılmasın mı?
+Bu üç kararla "FREEZE öncesi" grubu kapanır. Sonraki adım, kullanıcı onayıyla FRZ-001 taslağı olabilir.
 
 ## Açık Kararlar
 
 ### FREEZE öncesi kapanması önerilenler (ilke düzeyinde)
 
-- Üç sözel başarı düzeyinin kesin olasılıklarla eşleşmesi ve oyuncuya yeterince anlaşılır geri bildirim vermesi; Tur 8 eşlemesi %80 yüksek / %40 orta / %15–5 düşük yalnızca taslaktır.
-- Kart puan bütçesinin oyuncuya nasıl gösterileceği ve beş alanlı iki tane 100 puan içeren kartın nadirlik/fiyat dengesi; kullanıcı bu kartı ve iki kartla tam alan kapsamını yasaklamamayı seçti.
+- Üç sözel başarı düzeyinin kesin olasılıklarla eşleşmesi ve oyuncuya yeterince anlaşılır geri bildirim vermesi; Tur 8 eşlemesi %80 yüksek / %40 orta / %15–5 düşük yalnızca taslaktır. Claude notu: "yüksek" ve "orta" hâlâ tam kademe farkını gösteriyor; üç etiketle bu kaçınılmaz. Claude önerisi: kısmi ifşa bilinçli kabul edilir, Karar Özeti gerekçesi "yakın açıkları sezdirir, derin açıkları gizler" olarak düzeltilir (açık).
+- Kart puan bütçesinin oyuncuya nasıl gösterileceği ve beş alanlı iki tane 100 puan içeren kartın nadirlik/fiyat dengesi; kullanıcı bu kartı ve iki kartla tam alan kapsamını yasaklamamayı seçti. Claude notu: alan sayısı × 60 bütçesi geniş kartları sınırlamıyor, ödüllendiriyor; Karar Özeti gerekçesi matematikle çelişiyor. Claude önerisi: fiyat formülü kartın en yüksek iki puanını ağırlıklı sayar; gerekçe buna göre düzeltilir (açık).
 - Sözleşmedeki kartın havuzdan çıkıp çıkmadığı; dördüncü kartın fiyatı ve beşinci kartın açılıp açılamayacağı. Claude önerisi: aktif kart havuzdan çıkar (açık).
-- İnsan Yönetimi'nin kişi kaynaklı sorunları azaltma üst sınırı (%50 kullanıcıya düşük geldi; %80–90 yalnızca denge önerisi); kendi alanındaki sorunları, kaynak türü etiketleri ve kişi kaynaklı sorunların toplam içindeki payı. Yatay sıklık etkisi yalnızca patronun kalıcı puanına bağlıdır.
+- İnsan Yönetimi'nin kişi kaynaklı sorunları azaltma üst sınırı (%50 kullanıcıya düşük geldi; %80–90 yalnızca denge önerisi); kendi alanındaki sorunları, kaynak türü etiketleri ve kişi kaynaklı sorunların toplam içindeki payı. Yatay sıklık etkisi yalnızca patronun kalıcı puanına bağlıdır. Claude önerisi: kişi kaynaklı sorunların payı %30–40 ile sınırlanır; İnsan Yönetimi'nin kendi alan sorunları yoksa danışman kartlarında İnsan Yönetimi alanı bulunmaz (açık).
 - Açıklanamayan kayıp sinyali üzerinden basılan “Düzelt”in hangi gizli sorunu hedeflediği. Claude önerisi: en sığ gizli sorun; şans o sorunun eşiğine göre hesaplanır (açık).
 - `Eksik Yetkinliği Kapatma Yolları`ndaki ekip, ortak, uzman çalışan, dış kaynak ve eğitim maddelerinin FREEZE'de "ileride tasarlanacak" olarak mı yer alacağı; bunların ayrıştırılmasının bu IDEA'da mı ayrı IDEA'da mı yapılacağı. Claude notu: Tur 7 önerisi bunları "onaylanmış mekanik sayılmaz" diye işaretledi; kullanıcı onayıyla kapanabilir.
 - Gerçek paranın danışmanlık sistemindeki rolü (yalnızca kolaylık mı, hiç mi). Claude önerisi: danışman kartları ve ek kart gerçek parayla satılmaz (açık).
