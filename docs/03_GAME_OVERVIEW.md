@@ -740,6 +740,8 @@ Temel ilke:
 
 Monetizasyon oyunun temel stratejik anlamını yok etmemelidir.
 
+Danışman kartlarının oyun parası veya gerçek parayla alınabilen aynı çekiliş koşullarına ilişkin mevcut onaylı sınırlar [FRZ-006 v2](freeze/FRZ-006_v2_danisman_pazari.md) içindedir. Kesin fiyatlar ve sunum henüz belirlenmemiştir.
+
 ---
 
 # 27. Oyunun Temel Tasarım Felsefesi

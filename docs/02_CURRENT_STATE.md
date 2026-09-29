@@ -15,4 +15,4 @@ Pending review:
 None. Kullanıcının aktardığı Claude incelemesi IDEA-007 ve IDEA-008 içinde kaydedildi.
 
 Next step:
-Sayısal dengeye geçmeden önce çalışanlık ve fabrika dönemini bağlayan kısa oynanabilir akış ve kabul senaryoları tasarlanacak. Kesin fiyat, oran ve monetizasyon sunumu açık kalır.
+Dört taslak kabul senaryosu docs/04_ACCEPTANCE_SCENARIOS.md içinde hazır. Şimdi bu senaryoların FREEZE kurallarıyla tutarlılığı gözden geçirilecek; ardından sayısal denge/prototip sırası belirlenecek.

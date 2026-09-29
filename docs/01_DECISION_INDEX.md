@@ -20,4 +20,4 @@
 
 ## Open design work
 
-- Kesin sayısal denge, danışman ücretleri/gerçek para sunumu, teklif sayısı, makine fiyat/kapasite değerleri, personel etkisinin kesin eğrisi ve kariyer ilerleme formülleri henüz FREEZE kapsamında değildir.
+- Kesin sayısal denge, danışman ücretleri/gerçek para sunumu, teklif sayısı, makine fiyat/kapasite değerleri, personel etkisinin kesin eğrisi ve kariyer ilerleme formülleri henüz FREEZE kapsamında değildir. Danışman profil havuzunun ölçeği ve kişisel borç tavanındaki referans maaş da açıktır. [Kabul senaryoları](04_ACCEPTANCE_SCENARIOS.md) bu kararların yerini almaz.
