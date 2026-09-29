@@ -2,18 +2,24 @@
 
 ## Durum/Tur
 
-Durum: DRAFT — Tur 2 sentezi; bu dosya FREEZE değildir.
-Tur: 2
+Durum: DRAFT — Tur 3 sentezi; bu dosya FREEZE değildir.
+Tur: 3
 Date: 2026-09-29
 Bağımlılıklar: [FRZ-001](../freeze/FRZ-001_patron_yetkinlikleri.md), [FRZ-002](../freeze/FRZ-002_fabrika_ekonomisi.md).
 
 ## Öneri (GPT)
 
-**İflas eşiği.** Kullanıcının kararı: **kasa eksideyse ve açık, fabrikanın azami aylık brüt kârının altı katına eşit veya daha büyükse fabrika batar.** Formül: `kasa < 0 ve −kasa ≥ 6 × azami aylık brüt kâr`. Örneğin en iyi performansta aylık **50K brüt kâr** üretebilen fabrika, kasa **−300K** olduğunda batar: en iyi durumda bile altı ay yalnızca borca çalışması gerekecektir. Kasa ay sonunda FRZ-002 sırasıyla hesaplanır. Geçici zarar tek başına iflas sayılmaz; eşik yaklaşırken açık uyarı gösterilir. “Azami” değer gerçekleşen son ayın kârı değildir; makine sayısının belirlediği kapasiteye, makine niteliğinin belirlediği kârlılığa ve fabrikanın alabileceği işlere dayanır. Örnek: A/B/C marka torna tezgâhları farklı üretim ve iş yeterlilikleri sağlar; bazı ihaleler belirli tezgâh niteliği ister. Makine yatırımı ve **İş Alma** ayrı IDEA'da tasarlanır. Bu dosya onların sayılarını, marka listesini veya ihale kuralını dondurmaz.
+**İflas eşiği.** Kullanıcının altı aylık toparlanma fikri, kabul ettiği Claude düzeltmesiyle **borca ayrılabilecek azami aylık net katkı** üzerinden ölçülür: `net katkı = max(0, azami aylık brüt kâr − aylık olağan giderler)`, `net pozisyon = kasa − ödenmemiş şirket/kriz kredisi bakiyesi`. Net pozisyon eksideyse ve `−net pozisyon ≥ 6 × net katkı` ise fabrika iflas eder. Azami brüt kâr, son ayın gerçekleşen kârı değil; makine sayısı/kalitesi ile alınabilir işler üzerinden hesaplanan potansiyeldir. Örneğin 50K azami brüt kâr ve sıfır olağan giderde −300K net pozisyon iflastır; olağan gider 40K ise katkı 10K, eşik −60K olur. Net katkı sıfırken net borç varsa eşik sıfırdır. Ay sonu kasa FRZ-002 sırasıyla hesaplanır; eşik yaklaşırken açık uyarı gösterilir. Makine markalarının kapasite, iş yeterliliği ve kârlılık farkı ile **İş Alma** ayrı IDEA'da tasarlanır.
 
-**Kriz hamlesi.** Eşik aşılmadan önce oyuncu kapasiteyi ve nakdi etkileyen makine satışı/küçülme ya da tek seferlik kriz kredisi gibi yolları değerlendirebilir. Satışın kasaya katkısı ile kapasite kaybı aynı hesapta görünmelidir. Kredi borcu artırır; sadece süre kazandırır, iflas eşiğini tek başına iyileştirmez. FRZ-002'nin Düzelt için kullanılabilir nakit güvencesi değişmez. Ayrı sabit “iki aylık kriz penceresi” önerilmez; oyuncunun toparlanma şansı borç/potansiyel eşik oranından gelir.
+**Kriz hamlesi.** Eşik aşılmadan önce makine satışı/küçülme veya tek seferlik kriz kredisi değerlendirilebilir. Kredi nakdi artırırken aynı tutarda borç yarattığından **net pozisyonu tek başına iyileştirmez**; işletmeye kısa vadeli harcama olanağı verir. Makine satışı onayında satış sonrası net açık, düşen kapasite ve **yeni iflas eşiği** birlikte gösterilir; eşik satışla aşılabilir. İş havuzunun oynaklığı için azami katkı yakın dönem alınabilir işlerin ortalamasından hesaplansın ve yalnızca ay sonunda güncellensin. Eksi şirket net pozisyonuna düşük, önceden görünen aylık finansman gideri işlensin; böylece borçlu fabrikanın hiçbir şey yapmadan süresiz beklemesi cazip olmaz. Bu gider çalışanlık dönemindeki kişisel borca uygulanmaz. FRZ-002'nin Düzelt güvencesi değişmez. Sabit kriz süresi eklenmez.
 
-**Sonrası.** Fabrika kapanır, aynı karakter çalışanlık kariyerine döner; yetkinlikleri ve mevcut statları silinmez. Borç, harcanmış oyun zamanı ve geçici psikoloji düşüşü bedeldir. Claude'un kullanıcının kabul ettiği önerisi: borç taksiti **çalışan gelirinin sabit yüzdesi** olur, işsiz ayda durur ve faiz işlemez; yeni fabrika ancak bu iflas borcu kapandıktan sonra kurulabilir. İflas kaynaklı psikoloji düşüşü zamanla kendiliğinden toparlanır; işten çıkarılma bu özel toparlanma sürecini geriye sarmaz. Yaklaşık bir yılda borcu kapatma ve yaklaşık %25 psikoloji farkı denge hedefi/örneğidir, kesin sayı değildir.
+**Erken tasfiye ve fabrika satışı.** Oyuncu zorunlu iflastan önce fabrikayı gönüllü kapatıp yatırımlarını satabilir. Makine/varlıklar normal satışta referans değerinin yaklaşık **%70'i**, zorunlu iflas tasfiyesinde yaklaşık **%50'si** üzerinden değerlendirilsin; oranlar kullanıcı örneği ve ilk denge hedefidir. “Yatırım” görünümünde yatırılmış toplam, her varlığın ve bütün fabrikanın **bu ay sonundaki tahmini satış değeri**, borçlar ve oyuncuya kalacak net tutar ayrı gösterilsin. Tasfiye geliri şirket borçlarını kapatırsa bu **iflas değil gönüllü çıkıştır**: karakter kalan parayla, FRZ-002'nin kuruluş kasası koşulunu karşılayarak yeni fabrika kurabilir. Satış gelirinden sonra açık kalırsa şirket tasfiye edilir, kişisel borç/psikoloji/öğrenme kurallarıyla **iflas** gerçekleşir; makineyi erken satmak daha az kişisel kayıp yaratabilir.
+
+**Başarılı fabrikanın devri.** İşleri iyi giden fabrika da **çalışır işletme olarak** satılabilsin. Değer, yalnızca tezgâhların ikinci el bedeli değil; kanıtlanmış sürdürülebilir kârlılık ve iş alma kapasitesini de yansıtsın, borçlar satışta düşülsün. Net satış geliri karakterin yeni fabrika kurma sermayesi olur. Aynı gün al-satla bedelsiz büyüme olmaması için kârlılık primi ancak belli bir faaliyet geçmişiyle oluşsun; kesin değerleme formülü İş Alma/yatırım tasarımında belirlensin. Bu çıkış **iflasın psikoloji ve acı tecrübe sonuçlarını tetiklemez**.
+
+**FREEZE bağımlılığı.** FRZ-002'nin mevcut kasa formülünde kredi, varlık/fabrika satışı ve finansman gideri ayrıca tanımlı değildir. Bu taslak söz konusu nakit olaylarını önerir; onaylanırsa FRZ-002 ile uyumlu yeni FREEZE sürümü gerekir. Bu IDEA mevcut FREEZE metnini değiştirmez.
+
+**İflas sonrası.** Şirket borcu ile karakterin kişisel borcu ayrılır. Şirket varlıkları zorunlu tasfiye değeriyle borca sayılır; karaktere geçen kalan borç, beklenen çalışan gelirinden yaklaşık bir yılda ödenebilecek **tavanla** sınırlanır. Böylece büyük fabrika iflası karakteri kalıcı borca kilitlemez. Aynı karakter çalışanlık kariyerine döner; yetkinlikleri ve mevcut statları silinmez. Kişisel borç taksiti çalışan gelirinin sabit yüzdesidir, işsiz ayda durur ve faiz işlemez; yeni fabrika ancak bu borç kapandıktan sonra kurulabilir. İflas kaynaklı psikoloji düşüşü zamanla kendiliğinden toparlanır; işten çıkarılma bu özel toparlanma sürecini geriye sarmaz. Yaklaşık bir yıllık ödeme ve yaklaşık %25 psikoloji farkı ilk denge hedefi/örneğidir.
 
 **Öğrenme.** Karakter, en büyük kayba neden olan alanda küçük ve sınırlı bir “acı tecrübe” yetkinlik artışını karakter başına yalnızca bir kez alır. Genel stat kazanım hızı artmaz; kasıtlı tekrarlı iflas bir gelişim yöntemi olmaz.
 
@@ -63,12 +69,18 @@ Eşik azami potansiyele bağlı, potansiyel de makinelere ve alınabilir işlere
 
 ## Açık Kararlar
 
-1. “Azami brüt kâr” potansiyelinin hangi ulaşılabilir iş havuzundan hesaplanacağı, İş Alma sistemi tasarlanırken netleşmelidir.
-2. Kriz kredisinin hangi koşulda işe yaradığı ve makine satışının borç/kapasite hesabı, İş Alma ve yatırım sistemi tasarlanırken sınanmalıdır.
+1. İkinci el varlıkların **referans değeri** alış bedeli mi, güncel piyasa değeri mi olmalı? Erken satış %70 ve zorunlu tasfiye %50 oranlarının kesin dengesi yatırım tasarımında sınanmalıdır.
+2. Çalışır fabrikanın kârlılık primi hangi faaliyet geçmişiyle kazanılmalı; aynı gün al-sat istismarını hangi sade kural önlemeli?
+3. Azami net katkı için yakın dönem alınabilir iş havuzu, şirket borcunun finansman gideri ve kişisel borç tavanının kesin hesabı İş Alma/ekonomi dengesinde netleşmelidir.
 
 ## Karar Özeti
 
-- Kasa açığı azami **aylık brüt kârın altı katına eşit veya daha büyükse** fabrika batar; çünkü en iyi performansta bile altı ay yalnızca borca çalışmak gerekecek ve tek kötü ay otomatik son olmayacaktır.
+- Net pozisyon açığı, olağan giderlerden sonraki azami aylık **net katkının altı katına eşit veya daha büyükse** fabrika batar; çünkü en iyi performansta altı ayda ödenemeyecek borç, tek kötü aydan daha anlamlı iflas ölçüsüdür.
+- Şirket kredisi net pozisyonda borç sayılır, azami katkı yakın dönem iş havuzuyla ay sonunda güncellenir ve makine satışında yeni eşik önizlenir; çünkü krediyle eşik aşılmamalı ve satışın iflas etkisi oyuncuya görünmelidir.
+- Borçlu şirkete görünen küçük finansman gideri uygulanır; çünkü müdahale yapamayan fabrikanın süresiz beklemesi bir çıkış yolu olmamalıdır.
+- Şirket ve kişisel borç ayrılır, kişisel borç yaklaşık bir yıllık çalışma ödemesiyle sınırlanır; çünkü büyük fabrika kaybı aynı karakterin gelecek girişimini kalıcı olarak kilitlememelidir.
+- Erken varlık tasfiyesi, zorunlu tasfiyeden daha yüksek değerle yapılabilir; çünkü kötü gidişi erken gören oyuncu daha az kayıpla çıkabilmelidir. %70/%50 oranları denge örneğidir.
+- Kârlı fabrika çalışır işletme olarak satılıp net gelirle daha büyük bir fabrika kurulabilir; çünkü başarılı işletmeyi devretmek oyuncuya yeni bir büyüme kararı sunar. Değerleme ayrıntısı açıktır.
 - İflas sonrası aynı karakterin borcu gelir yüzdesiyle, işsizken faizsiz/ödemesiz kapatması ve psikolojisinin kendiliğinden toparlanması benimsendi; çünkü oyuncu borç ve performans sarmalına kilitlenmemelidir.
 - İflas borcu bitmeden yeni fabrika kurulmaması benimsendi; çünkü tekrar iflaslarla borçların üst üste binmesi engellenmelidir.
 - Gizli köklerin iflas raporunda tam açıklanması benimsendi; çünkü başarısızlık sonraki kariyere somut öğrenme hedefi bırakmalıdır.
