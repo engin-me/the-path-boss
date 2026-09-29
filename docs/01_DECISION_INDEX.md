@@ -3,13 +3,16 @@
 ## Current FREEZE decisions
 
 - [FRZ-001 — Patron Yetkinlikleri ve Fabrika Sorun Döngüsü](freeze/FRZ-001_patron_yetkinlikleri.md) — patron yetkinliğinin bilgi modeli, departman sorunu görünürlüğü, ortak kök, Düzelt, danışman katkısı ve ölçeğe bağlı güvence. Source: [IDEA-001](ideas/IDEA-001_patron_yetkinlikleri.md), Tur 16. Status: CURRENT.
-- [FRZ-002 v2 — Fabrika Ekonomisinin Çekirdeği ve Kasa Olayları](freeze/FRZ-002_v2_fabrika_ekonomisi.md) — ortak çıktı eşdeğeri raporu, aylık kasa sırası, kredi/yatırım/satış nakit hareketleri ve erken müdahale erişimi. Source: [IDEA-002](ideas/IDEA-002_fabrika_ekonomisi.md) ve [IDEA-003](ideas/IDEA-003_iflas_ve_yeniden_baslangic.md). Status: CURRENT. Supersedes FRZ-002.
-- [FRZ-003 — İflas, Tasfiye ve Fabrika Satışı](freeze/FRZ-003_iflas_ve_fabrika_satisi.md) — varlık değeri ve altı aylık kazançla zorunlu kapanış eşiği, gönüllü/başarılı satış ve iflas sonrası aynı karakterin devamı. Source: [IDEA-003](ideas/IDEA-003_iflas_ve_yeniden_baslangic.md), Tur 4. Status: CURRENT. Depends on FRZ-001 and FRZ-002 v2.
+- [FRZ-002 v3 — Fabrika Ekonomisi, İş Hedefi ve Kasa Olayları](freeze/FRZ-002_v3_fabrika_ekonomisi.md) — çıktı eşdeğeri raporu, kabul edilen iş hedefi, ayrı boş kapasite, nakit sırası ve iş maliyeti güvencesi. Source: [IDEA-002](ideas/IDEA-002_fabrika_ekonomisi.md), [IDEA-003](ideas/IDEA-003_iflas_ve_yeniden_baslangic.md), [IDEA-004](ideas/IDEA-004_is_alma_ve_makine_yatirimlari.md). Status: CURRENT. Supersedes FRZ-002 v2.
+- [FRZ-003 v2 — İflas, Tasfiye ve Fabrika Satışı](freeze/FRZ-003_v2_iflas_ve_fabrika_satisi.md) — altı aylık kurtarma eşiği, makinenin kazanç hesabına giriş zamanı, yatırım referansı, satış ve iflas sonrası devam. Source: [IDEA-003](ideas/IDEA-003_iflas_ve_yeniden_baslangic.md), [IDEA-004](ideas/IDEA-004_is_alma_ve_makine_yatirimlari.md). Status: CURRENT. Supersedes FRZ-003.
+- [FRZ-004 — İş Alma ve Makine Yatırımları](freeze/FRZ-004_is_alma_ve_makine_yatirimlari.md) — sabit koşullu birden çok tam iş, makine uygunluğu, teslim, iş maliyeti ve azami kâr potansiyeli. Source: [IDEA-004](ideas/IDEA-004_is_alma_ve_makine_yatirimlari.md), Tur 2. Status: CURRENT. Depends on FRZ-001, FRZ-002 v3, FRZ-003 v2.
 
 ## Superseded decisions
 
 - [FRZ-002 — Fabrika Ekonomisinin Çekirdeği](freeze/FRZ-002_fabrika_ekonomisi.md) — historical version. Status: SUPERSEDED by FRZ-002 v2.
+- [FRZ-002 v2 — Fabrika Ekonomisinin Çekirdeği ve Kasa Olayları](freeze/FRZ-002_v2_fabrika_ekonomisi.md) — historical version. Status: SUPERSEDED by FRZ-002 v3.
+- [FRZ-003 — İflas, Tasfiye ve Fabrika Satışı](freeze/FRZ-003_iflas_ve_fabrika_satisi.md) — historical version. Status: SUPERSEDED by FRZ-003 v2.
 
 ## Open design work
 
-- Kesin denge değerleri, danışman kart piyasası/monetizasyonu, personel, makine yatırımı ve İş Alma sistemi henüz FREEZE kapsamında değildir.
+- Kesin sayısal denge, danışman kart piyasası/monetizasyonu, personel, teklif sayısı ve makine fiyat/kapasite değerleri henüz FREEZE kapsamında değildir.

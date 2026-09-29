@@ -2,7 +2,7 @@
 
 ## Durum/Tur
 
-Durum: Tur 2 sentezi; Claude'un üç önerisi kullanıcı tarafından kabul edildi. Bu dosya FREEZE değildir.
+Durum: Kullanıcı onayıyla [FRZ-004](../freeze/FRZ-004_is_alma_ve_makine_yatirimlari.md), [FRZ-002 v3](../freeze/FRZ-002_v3_fabrika_ekonomisi.md) ve [FRZ-003 v2](../freeze/FRZ-003_v2_iflas_ve_fabrika_satisi.md) CURRENT. Kesin kurallar FREEZE dosyalarındadır.
 Tur: 2
 Date: 2026-09-29
 Bağımlılıklar: [FRZ-001](../freeze/FRZ-001_patron_yetkinlikleri.md), [FRZ-002 v2](../freeze/FRZ-002_v2_fabrika_ekonomisi.md), [FRZ-003](../freeze/FRZ-003_iflas_ve_fabrika_satisi.md).
@@ -21,7 +21,7 @@ Bağımlılıklar: [FRZ-001](../freeze/FRZ-001_patron_yetkinlikleri.md), [FRZ-00
 
 **Yatırım değeri ve çıkış.** Yatırım ekranı her makinenin alış bedelini, güncel referans değerini, bu ay normal satış tutarını ve zorunlu tasfiye tutarını ayrı gösterir. FRZ-003'teki `yatırım değeri`, eldeki satılabilir varlıkların **güncel piyasa referans değerleri toplamıdır**; alınmış ama artık elde olmayan makineler sayılmaz. Referans değer alış bedelinden başlar ve zamanla düşer. FRZ-003'teki normal %70 / zorunlu %50 çarpanları aynı referansa uygulanır; makine alıp hemen satmak kâr sağlamaz. Satış önizlemesi kapasite, alınabilir işler, azami net katkı ve iflas eşiğindeki değişimi birlikte gösterir.
 
-**FREEZE etkisi.** Beklenen çıktı tanımı ve iş maliyeti güvencesi FRZ-002 v2'yi, yeni makinenin azami kâra ne zaman dahil olacağı ve yatırım referansı FRZ-003'ü ayrıntılandırır. Onaylanan tasarım FREEZE'e geçirildiğinde bu iki dosyanın yeni sürümleri hazırlanmalı, eski sürümler SUPERSEDED işaretlenmelidir; bu IDEA dosyası yürürlükteki kararları tek başına değiştirmez.
+**FREEZE etkisi.** Beklenen çıktı ve iş maliyeti güvencesi [FRZ-002 v3](../freeze/FRZ-002_v3_fabrika_ekonomisi.md), yeni makinenin kazanç zamanlaması ve yatırım referansı [FRZ-003 v2](../freeze/FRZ-003_v2_iflas_ve_fabrika_satisi.md), iş alma kuralları [FRZ-004](../freeze/FRZ-004_is_alma_ve_makine_yatirimlari.md) olarak yürürlüğe girdi. Önceki FREEZE sürümleri tarihsel kayıttır.
 
 ## Notlar (Claude)
 

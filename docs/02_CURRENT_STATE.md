@@ -6,13 +6,13 @@ Current phase:
 Core game design
 
 Active topic:
-IDEA-004 İş Alma ve Makine Yatırımları (Tur 2); Claude'un üç önerisi kullanıcı tarafından kabul edildi.
+None. IDEA-004 approved as FRZ-004 with FRZ-002 v3 and FRZ-003 v2.
 
 Latest freeze:
-FRZ-003 İflas, Tasfiye ve Fabrika Satışı (CURRENT, 2026-09-29). FRZ-001 and FRZ-002 v2 remain current.
+FRZ-004 İş Alma ve Makine Yatırımları (CURRENT, 2026-09-29). FRZ-001, FRZ-002 v3 and FRZ-003 v2 remain current.
 
 Pending review:
-None. Sayısal denge ayrıntıları açık; FREEZE sürümlemesi gerekli.
+None.
 
 Next step:
-IDEA-004 Tur 2'yi yayımla; ardından FRZ-004 ile FRZ-002 v3 / FRZ-003 v2 uyumlu FREEZE metinlerini hazırla.
+Choose the next short design topic; exact numerical balance and consultant marketplace remain open.
