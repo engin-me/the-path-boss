@@ -180,81 +180,73 @@ Bilmediği işi kime bırakacağını bilir.
 
 ## Notlar (Claude)
 
-Tarihçe: Tur 1 inceleme [REV-001](../reviews/REV-001_claude_patron_yetkinlikleri.md) ve bu dosyanın Git geçmişi. Aşağıdakiler Tur 10 revizyonunun ikinci incelemesidir. Kullanıcı Tur 10 notlarına yanıt verdi ve 2026-09-28 akşamı ChatGPT ile yaptığı beyin fırtınasının Codex'e hazırlanmış özetini (`the_path_boss_2026-09-28_brainstorm_codex.md`; repoda değil, kullanıcı sohbette paylaştı) Claude'a iletti. Bu bölüm: (1) kullanıcının yeni yönlendirmelerini Codex için kayda geçirir, (2) beyin fırtınası belgesi ile Tur 10 önerisi arasındaki farkları işaretler, (3) Tur 10 notlarımdaki yanlış varsayıma dayanan bulguları geri çeker. `Karar Özeti` ve `Açık Kararlar` Claude tarafından değiştirilmedi.
+Tarihçe: Tur 1 inceleme [REV-001](../reviews/REV-001_claude_patron_yetkinlikleri.md) ve bu dosyanın Git geçmişi. Aşağıdakiler Tur 11 `Öneri (GPT)` metninin incelemesidir. Kullanıcının isteğiyle özellikle **farklı Tier satırlarının ortak kökü** ve **gizli sorunların bağlantı kuralı** ele alındı. `Karar Özeti` tartışmaya açılmamış; notlar kararların içindeki açıkları ve uygulanma biçimini hedefler. Bu turda yalnızca `Notlar (Claude)` değişti.
 
 ### Aldığım Notlar
 
-**Kullanıcının Tur 10 sonrası yönlendirmeleri (Codex'in Tur 11'de işlemesi için):**
-
-1. **Bağlı satırların maliyeti:** Claude'un Tur 10 önerileri kabul edildi. Kart tahmini maliyet gösterir, tahsil edilen bedel kökün gerçek maliyetidir. Bağlantı, etkin yetkinlik ortak kökün Sorun Derinliğine ulaşınca görünür olur. Bir kökün birden fazla satır üretip üretemeyeceği gözlemciye değil, sorun üretimine bağlanır.
-2. **Fabrika geneli tek "Düzelt" hakkı yoktur.** Patronun aylık bir zaman bütçesi vardır (ilk değer 40 saat, değişebilir). Patron ve danışman, para ve zaman sınırları içinde istedikleri kadar müdahale yapabilir. Danışman tutulduğunda sorun çözmenin patron zamanı maliyeti düşer.
-3. **Fabrika büyüdükçe sorun sayısı artar.**
-4. **Danışman kartları fabrikanın büyüklüğüne göre belirlenir.** Bu artık kullanıcı kararı; Tur 10'da "beyin fırtınası önerisi, kullanıcı kararı değil" diye yazılmıştı. Örnek: küçük bir fabrikaya iki alanı 100 olan danışman gelmez.
-5. **Her departmanın performansı en az %33'tür;** sorunlar buna göre üretilir.
-6. **Fabrika çıktısı basit bir birim modeliyle açıklanır:** kapasite/beklenti 100 birim, gerçekleşen 40 birim, kayıp 60 birim. Kayıp departmanlara dağıtılır (ör. Planlama 10, Satın Alma 20, Sevkiyat 5, Finans 5, Üretim 20). Her departman kaybının alt nedenleri (sorun satırları) vardır; oyuncu bunları düzeltmeye çalışır. Departmanlar arası çarpımsal model gibi karmaşık bir kurgu istenmiyor.
-7. **Danışman kartları dinamik:** oyuncunun yetkinlik eksikliğine göre gelir. Kullanıcı örneği: kayıplar Satın Alma 20 ve Üretim 20; patron Satın Alma 40, Üretim 60. Ücretsiz kartlar A (Satın Alma 60, Planlama 40), B (Üretim 70, Sevkiyat 30), C (Satın Alma 50, Finans 65). Ücretli dördüncü kart (Satın Alma 55, Üretim 70), beşinci kart (Satın Alma 75, Üretim 65).
-
-**Beyin fırtınası belgesinden ve yeni kararlardan olumlu karşıladıklarım:**
-
-- **Zaman bütçesi fabrika döneminin ana stratejik katmanı oluyor** (belge §3.3: 40 saat var, 65 saatlik iş var → önceliklendirme). Tur 10'daki "fabrika geneli tek hak" yerine bu yapı geçince oyuncunun her ay verdiği asıl karar "hangi sorun, hangi sırayla, kimin yardımıyla" oluyor. Bu, oyunu idle tycoon'dan uzaklaştıran en güçlü dayanak.
-- **Danışman zaman bütçesini artırmıyor, patron zamanının verimini artırıyor** (belge §2.2: 18 saat → 5–6 saat). Sade ve anlaşılır.
-- **Firma ölçeğine bağlı danışman gücü**, Tur 5'te önerdiğim "danışmana 90 tavanı" fikrinin daha iyi bir biçimi: tavan sabit değil, fabrikayla büyüyor. İlk fabrikada, yani kariyer yetkinliğinin en çok önem taşıdığı dönemde, en derin sorunları kesin çözmek yalnızca kariyerle mümkün oluyor.
-- **%33 taban**, Tur 10'da bulduğum "performans eksiye düşebilir" sorununu kapatıyor.
-- **Dinamik kartlar**, Tur 6'daki "sabit 10–15 kartlık havuz ezberlenir" sorununu kapatıyor.
+- Tur 10 notlarındaki kullanıcı yönlendirmeleri doğru işlenmiş: fabrika geneli tek müdahale sınırı kaldırıldı ve "aynı soruna ayda bir deneme" kuralı geldi; 40 saatlik zaman bütçesi, firma ölçeğine bağlı danışman gücü, %33 taban, birim modeli, sözleşmenin ilk yarısında uzatma ve rutin/stratejik ayrımın ayrı kapsam olarak saklanması öneriye girdi.
+- Ayrı "Görüş Seviyesi" kavramının kaldırılması ve tek yetkinlik puanının doğrudan Tier eşiğiyle karşılaştırılması sadeleştirdi; terim sorusu kapandı.
+- Beş satırlı departman kartı okunur bir yapı. Departmanda her Tier'de en fazla bir sorun olması içerik ve arayüz yükünü sınırlıyor: departman başına en fazla 5, fabrikada en fazla 50 satır.
+- Codex, ortak kök ile gizli sorun kuralı arasındaki gerilimi doğru tespit edip açık bırakmış.
 
 ### Bulduğum Sakıncalar
 
-- **Tur 10 önerisi beyin fırtınasındaki "ayda bir müdahale" kuralını yanlış aktarmış (kritik):** Belge §1.1 kuralı açıkça **aynı sorun için** ayda bir deneme olarak tanımlıyor. Tur 10 bunu "fabrika genelinde ayda yalnızca bir Düzelt hakkı" diye yazmış ve Karar Özeti'ne de böyle girmiş. Kullanıcı yanıtı da fabrika geneli sınırı reddediyor. Karar Özeti'ndeki "Fabrika genelinde ayda yalnızca bir “Düzelt” denemesi yapılır" maddesi Tur 11'de kullanıcı onayıyla şöyle düzeltilmeli: **"aynı sorun için ayda en fazla bir deneme; toplam müdahale para ve patron zamanıyla sınırlı"**.
-  - **Geri çektiğim Tur 10 bulguları:** Notlarımdaki üç bulgu bu yanlış kurala dayanıyordu: "tek hak C2'ye karşı en güçlü fren", "hak sayısı fabrika ölçeğiyle büyümüyor" ve "patron zamanı ile tek hak üst üste biniyor". Üçü de geçersiz.
-  - **C2'ye karşı fren artık dört kurala dayanıyor:** firma ölçeğine bağlı danışman gücü, iki danışman yuvası, para ve patron zamanı.
-- **Kullanıcının dinamik kart örneği kart bütçesi kuralını aşıyor ve ücretli kartları ücretsizlerden güçlü yapıyor (kritik):** Karar Özeti'ndeki kural: toplam puan ≤ alan sayısı × 60; iki alanlı kartta bütçe 120.
-  - A (100), B (100) ve C (115) kurala uyuyor. Dördüncü kart (55 + 70 = 125) ve beşinci kart (75 + 65 = 140) bütçeyi aşıyor. Yani örnekte ücretli kartlar hem iki eksiği birden kapatıyor hem de bütçe dışı güçte.
-  - Bu, kullanıcının beyin fırtınasında koyduğu ilkeyle çelişiyor (belge §10: "Gerçek para daha güçlü danışman vermemeli; ücretli aday da firmanın normal danışman havuzundan gelmeli; Pay-to-Win olmamalı"). Dördüncü ve beşinci kart gerçek parayla da açılabildiği için, ücretli kartın sistematik olarak daha güçlü olması doğrudan pay-to-win olur.
-  - Öneri: ücretli kartlar ücretsizlerle **aynı üretim kurallarına ve aynı bütçeye** uysun; avantajları güç değil yalnızca **hedefleme** olsun. Örnek: Satın Alma 60 + Üretim 60 = 120. Bu kart kullanıcı örneğindeki iki sorunu da hedefler ama ücretsiz kartlardan güçlü değildir.
-  - Tur 10'daki "+10 yüzde puan" kuralında da aynı sorun var. Hedefleme avantajı yalnızca oyun parasıyla açılan kartlara verilirse çelişki tamamen kalkar.
-- **Dinamik kartlar gizli sorunların yerini ele verebilir:** Kartlar "yetkinlik eksikliğine göre" gelirse ve eksiklik gizli sorunlar dahil hesaplanırsa, kart teklifi gizli sorunun hangi alanda olduğunu söyler. Öneri: hedefleme yalnızca oyuncunun zaten gördüğü bilgilere dayansın, yani departman kayıp birimlerine ve görünür sorun satırlarına. Departman kayıpları raporda zaten açık olduğu için bu hiçbir şeyi ele vermez.
-- **%33 departman tabanı ile birim modelinin nasıl birleşeceği belli değil:** Kullanıcı hem "her departmanın performansı en az %33" hem de "kayıp birim olarak departmanlara dağıtılır" diyor. Departman yüzdesi ile fabrika birimi arasında bir köprü tanımlanmazsa iki kural birbirinden kopuk kalır. İki basit seçenek:
-  - **(a) Yalnızca fabrika tabanı:** Gerçekleşen çıktı kapasitenin en az %33'üdür; toplam kayıp en fazla 67 birimdir ve departmanlar bu payı paylaşır. En basit hali bu, ama "departman başına %33" sözünü karşılamaz.
-  - **(b) Departman ağırlığı (Claude önerisi):** Her departmanın fabrikada sabit bir ağırlığı olur (ağırlıklar toplamı 100 birim; fabrika türüne göre tasarımcı belirler). Departman performansı = 1 − (departman kaybı / departman ağırlığı), en az %33. Örnek: Satın Alma'nın ağırlığı 30 ve kaybı 20 ise performansı %33 olur. Oyuncu raporda birimleri görür, departman yüzdesi yalnızca ayrıntı ekranında çıkar. Bu seçenek kullanıcının iki kuralını da karşılar; tek ek parametre departman ağırlığıdır.
-- **Aylık 40 saatin sayısal çerçevesi yok:** Zaman artık ana kaynak, ama bir müdahalenin kaç saat sürdüğü tanımlı değil. Testle ayarlanacak başlangıç önerisi:
-  - Süre Sorun Derinliğine bağlı olsun: T1 4 saat, T2 6, T3 10, T4 14, T5 18.
-  - Danışman kapsadığı alanda bu süreyi yaklaşık %60–70 azaltsın (belgedeki 18 → 5–6 saat örneğiyle uyumlu).
-  - Tipik bir ayda toplam iş ihtiyacı 40 saatin üzerinde olsun (belge örneği: 65 saat); yoksa önceliklendirme kararı oluşmaz.
-  - Başarısız deneme de zaman harcar; kullanılmayan saat sonraki aya devretmez.
-- **Sabit 40 saat ile büyüyen sorun sayısı, gelecekteki ekip IDEA'sının kancası olmalı:** Fabrika büyüdükçe sorunlar artıyor ama patronun saati sabit kalıyor. Bu kasıtlıysa çok iyi bir tasarım: büyüyen fabrika patronu işi başkasına bırakmaya (ileride müdür/ekip) zorlar ve CLAUDE.md'deki "iyi patron kime bırakacağını bilir" kimliğini mekaniğe bağlar. Bu bağ öneride açıkça yazılmalı. Aksi halde büyük fabrikada 40 saat aşılmaz bir darboğaz olur ve oyuncu büyümekten kaçınır.
+**1. Ortak kök için önerilen tek kural: kökün derinliği, bağlı satırların en derini (ana öneri).**
+Beş satırlı kartta aynı departmanda aynı Tier'de ikinci satır olamıyor. Bu yüzden departman içindeki her bağlantı zorunlu olarak farklı Tier'ler arasında kuruluyor; kullanıcının "farklı Tier satırları bağlanabilir" teyidi bu yapıda kaçınılmaz. Tur 10'daki "bağlı satırlar aynı Sorun Derinliğini paylaşır" önerim bu yapıda geçersiz; geri çekiyorum. Önerilen kural:
+- Her kökün tek bir derinliği vardır: bağlı satırlarının en derin Tier'i.
+- Bir satırın kendi belirtisi, patronun puanı o satırın Tier eşiğine ulaşıyorsa görünür. Bugünkü kural değişmez.
+- Hangi satırdan basılırsa basılsın "Düzelt" kökü hedefler. Başarı kökün derinliğine göre hesaplanır; süre ve para kökün işidir. Başarı halinde bağlı satırların hepsi kapanır.
+- Örnek (Tur 11 kartı, Planlama yetkinliği 60 olan patron): T2 (20 birim) ile T4 (30 birim) aynı köke bağlıysa kökün derinliği T4 olur. Patron T2'nin belirtisini görür, ama T2'ye bastığında şans "kesin" değil, T4'e göre "orta" (≈ %40) çıkar. Başarılı olursa 50 birim birden geri gelir.
+- Bu kural kullanıcının önceki iki isteğinin amacını korur: gizli derin problem, görünür kolay bir satıra basarak ucuza aşılamaz, çünkü şans ve maliyet kökün derinliğiyle hesaplanır. Bu durumda "gizli sorun, görünür düşük Tier'le ortak kök taşımaz" yasağına gerek kalmaz; yasak kaldırılabilir.
+- Tematik kazancı da var: patronun gördüğü bir satırda şansın beklenenden düşük çıkması, GAME_OVERVIEW §9'daki "burada benim anlayamadığım bir problem var" hissinin ta kendisi. Bilgi modeliyle uyumlu bir sezgi sinyali.
+
+**2. "T1 ile T5 aynı köke bağlanmaz" kuralını genelleştirin: bir kökün satırları en fazla 2 kademe aralıkta olsun.**
+Kök derinliği kuralıyla T1–T5 bağlantısı bir istismar değil, ama oyuncuyu sinirlendirir: herkesin gördüğü T1 satırına basan patron %5 şansla karşılaşır ve nedenini anlamaz. Öneri: bir kökün satırları en fazla 2 kademe aralıkta olsun (T1–T3, T2–T4, T3–T5).
+- Bu kural kullanıcının "T1–T5 olmaz" kuralını kapsar.
+- Faydalı bir sonucu var: görünür bir satırda patron zaten o satırın Tier'ine ulaşmıştır ve kök en fazla 2 kademe daha derindedir. Bu yüzden görünür satırda şans hiçbir zaman "düşük"e inmez, en kötü "orta" olur.
+- Gerçekçi de kalır: Satın Alma örneğinde T1 (yüksek fiyat) T3'ten (tek tedarikçi), T2 (kötü termin) T4'ten (kayırma) doğabilir.
+
+**3. "Aynı soruna ayda bir deneme" kuralında "sorun" kök olmalı; başarısız deneme bağlantıyı ele verir ve bu bir özellik olsun.**
+Kural satır düzeyinde uygulanırsa oyuncu aynı kökü üç satırdan üç kez dener: %40 şansla üç deneme ≈ %78 eder ve bu baskın strateji olur. Bu yüzden kilit kök düzeyinde olmalı. Ancak kök kilitlenince bağlı satırlar da kilitlenir ve oyuncu bağlantıyı öğrenir. Öneri: bunu bilinçli bir özellik yapın. Başarısız denemeden sonra şu mesaj görünsün: "Bu sorunla aynı kökten geldiği anlaşılan T4 satırı da bu ay denenemez." Başarısızlık bilgi üretir; bu, "başarısızlık öğretmeli" ilkesiyle uyumlu. Öneri metnindeki "bu satırın aynı ay yeniden denenemeyeceği" ifadesi "bu kökün" olarak düzeltilmeli.
+
+**4. Tahmini maliyet ile kökün maliyeti arasındaki fark bağlantıyı ödemeden önce ele verebilir.**
+Tur 10'da kabul edilen "tahsilat her zaman kökün gerçek maliyeti" kuralı, farklı derinlikteki köklerde ödeme ekranında sızıntı yapar. Örnek: T2 satırının tahmini bedeli 50.000; kök T4 olduğu için onay ekranında 250.000 görünürse oyuncu bağlantıyı ödemeden önce anlar. Öneri:
+- Onayda satırın tahmini bedeli tahsil edilir.
+- Müdahale başarılı olursa kökün gerçek maliyetiyle arasındaki fark sonradan, "kök daha derindeymiş" açıklamasıyla faturalanır. Başarı halinde toplam bedel her zaman kökün maliyeti olur, bu yüzden "en ucuz satırı seç" istismarı kapalı kalır.
+- Başarısızlıkta yalnızca tahmin yanar. Sürpriz ek maliyet yalnızca iyi haberle, yani birden fazla satırın kapanmasıyla birlikte gelir.
+- Patron zamanı için sadelik amacıyla yalnızca satırın kendi süresi harcansın; ek fark yalnızca para için olsun.
+
+**5. Beş satırlı kart gizli sorunların derinliğini tamamen gösteriyor (kritik; önceki kararların gerekçesiyle çelişki).**
+Satırlar T1–T5 diye adlandırıldığı için gizli bir satırın derinliği de yazılı (ör. "T4: 30 birim"). Tur 7–9'daki üç sözel etiket kararı "kesin yüzde gizli Tier'ı ele vermemeli" gerekçesiyle alınmıştı. Şimdi Tier zaten satırın adında: oyuncu "patron 60, satır T4, iki kademe, %40" hesabını kendisi yapar ve etiketin gizleme işlevi kalmaz. Karar Özeti'nde bununla çelişen iki gerekçe var: "Statlar … gizli sorunlarda şans kaba aralıkla gösterilir; çünkü … kesin yüzde gizli Tier'ı ele vermemeli" ve "üç etiket gizli nedeni tam açıklamamalı". Öneri 1 ile birlikte bir etkisi daha var: görünür satırda şans düşük çıkarsa ve derin satırlardan biri doluysa, oyuncu bağlantıyı neredeyse kesin olarak çıkarır. İki yol var:
+- **(a) Derinliği göster, nedeni gizle:** Patron "neyi bilmediğini tam olarak bilir". En basit yol; danışman seçimi de rasyonel hale gelir. Bu durumda üç etiket kararının gerekçesi "sadelik" olarak güncellenmeli; istenirse kesin yüzde de gösterilebilir.
+- **(b) Patronun erişemediği satırları adsız göster:** Kart, patronun ulaştığı Tier'e kadar T1…Tk satırlarını adlarıyla gösterir; bunun üstündekiler "Açıklanamayan kayıp — derinlik bilinmiyor" başlığı altında sırasız satırlar olarak durur. Her gizli satırın kendi "Düzelt"i ve kaba şans etiketi kalır. Önceki kararların gerekçesi korunur ve GAME_OVERVIEW §9'a daha yakın olur.
+- Claude önerisi: (b). Yeni bir mekanik eklemiyor, yalnızca satır başlıklarını değiştiriyor. Kullanıcı sadeliği tercih ederse (a) da tutarlı, ama o zaman Karar Özeti'ndeki gerekçeler güncellenmeli.
+
+**6. Örnek sayılar birbiriyle ve %33 tabanıyla çelişiyor.**
+Tur 11'deki departman kartında Planlama'nın kaybı 100 birim. Fabrika örneğinde ise bütün fabrikanın kapasitesi 100 birim ve Planlama'nın kaybı 10 birim. Tek departmanın 100 birim kaybı fabrika kapasitesinin tamamı demek ve departman başına %33 tabanını da aşıyor. Kart örneği ya departman içi ölçekle yazılmalı ya da birimler fabrika ölçeğine indirilmeli. Örnek: Planlama'nın ağırlığı 30 ise T2 6, T3 8, T4 6, toplam 20 birim olur ve %33 tabanının içinde kalır. Tur 10 notumdaki departman ağırlığı önerisi bu köprüyü kurar; hâlâ açık.
+
+**7. Departmanlar arası ortak kök tanımsız.**
+Gerçek bir fabrikada Satın Alma kaynaklı bir kök (ör. tek tedarikçi) Üretim'de malzeme beklemesi olarak görünür. Farklı departmanlardaki satırlar bağlanırsa hangi alanın yetkinliği geçerli olacak? Öneri: IDEA-001'de bağlantı yalnızca aynı departman içinde olsun; departmanlar arası nedensellik ekonomi veya ayrı bir IDEA konusu olarak kalsın.
 
 ### Kafama Yatmayanlar
 
-Beyin fırtınası belgesinde olup Tur 10'da eksik, farklı ya da kullanıcı kararı gibi yazılmış noktalar. Hangisinin gerçek karar olduğunu kullanıcının teyit etmesi gerekiyor:
-
-- **Sözleşme uzatma (belge §12):** Kullanıcı belgede uzatma fikrini geliştirmiş: uzatma yalnızca sözleşmenin ilk yarısında mümkün, sonrasında danışman başka firmalarla görüşebilir; bu da "şimdi mi uzatayım, sonra daha iyisini mi bulurum?" kararını doğurur. Tur 10 ise Karar Özeti'ne "uzatma teklifi yapılmaz; çünkü gereksiz ayrıntı ekler" diye yazmış. Hangisi geçerli?
-- **Danışman önerisi ve iki eylem (belge §2.1 ve §2.3):** Belge "danışman analiz eder, çözüm önerir; patron uygular ya da kendi kararını verir" modelini "güçlü biçimde değerlendirilmeli" diye işaretliyor. Tur 10 ise "ikinci eylem eklenmez" diyerek konuyu kapatmış. Kullanıcının bunu açıkça reddedip reddetmediği belli değil.
-- **Rutin / stratejik sorun ayrımı (belge §9):** Rutin sorunlarda tek Düzelt, yüksek etkili sorunlarda 2–3 çözüm alternatifi önerisi Tur 10'da hiç geçmiyor; açık karar olarak bile kayıtlı değil. Bence belgenin en değerli fikri bu.
-  - Belgedeki örnek (A: yeni kamyon, B: vardiya değişikliği, C: 3PL) zaten genel bir kalıba oturuyor: **yatırım (para ağırlıklı) / süreç (patron zamanı ağırlıklı) / dış kaynak (aylık sürekli gider)**. Bu üç kalıp her departmanda yeniden kullanılabilir, bu yüzden içerik yükü sınırlı kalır.
-  - Kariyer yetkinliği, hangi alternatifin kök nedene uyduğunu görmeye yarar ("deneyimli oyuncu doğru çözümü seçer").
-  - Danışmanın "önerisi" ayrı bir eylem olmak yerine bu alternatiflerden doğru olanı işaretleyebilir; böylece §2.3 ve §9 tek mekanikte birleşir.
-  - Kapsamı sınırlamak için yalnızca T3 ve üstü kökler ya da ayda en fazla 1–2 sorun "stratejik" olsun.
-- **Bir belirtinin birden fazla kök nedeni (belge §6):** Belge bir belirtinin altında tek kök, birden fazla kök ya da daha derin gizli bir problem olabileceğini söylüyor; Tur 10 ise "gizli sorunlar ortak kök paylaşmaz" diyor. Önerim: bir satır tek bir köke bağlı olsun. Bir kök birden fazla satır üretebilir, ama bir satırın birden fazla kökü olmaz. Böylece satırın kaybı tek bir köke yazılır ve birim hesabı karışmaz. Derin kökler de satır üretebilir; bağlantı, etkin yetkinlik o derinliğe ulaşınca görünür. Bu, hem belgedeki "belirtinin altında göremediğin derin bir problem olabilir" fikrini hem de Tur 10 notlarımdaki üretim kuralını karşılar.
-- **Terimler (belge §13):** Belge "Yetkinlik Seviyesi / Sorun Derinliği"ni önerip "Görüş Seviyesi"nin daha az doğal olduğunu söylüyor; Tur 10 ise "Görüş Seviyesi"ni Karar Özeti'ne yazmış. Hangisi seçildi?
-- **Risk etiketleri (belge §5):** Belge dört etiket (Yüksek / Orta / Düşük / Çok düşük) sayıyor. Karar Özeti'nde Tur 8'den beri üç etiket var, çünkü dört etiket gizli derinliği birebir ele veriyordu. Belge muhtemelen bu karardan önce yazıldı; Karar Özeti'ndeki üç etiket korunmalı.
-- **Ar-Ge ve Yatırım kayıpları:** Birim modelinde Planlama ya da Üretim kaybı aynı ay çıktıya yansır; Ar-Ge ve Yatırım sorunları ise daha çok gelecekteki kapasiteyi ve ürün fırsatını etkiler. Basitlik için bunlar da aylık birim kaybı olarak gösterilebilir, ama bu bilinçli bir sadeleştirme olarak yazılmalı.
+- **Ücretli kartlar ve pay-to-win:** Konu Açık Kararlar'a taşınmış ama öneride çözülmemiş. Tur 10 notumdaki "ücretli kartlar aynı bütçeye uysun, avantajları yalnızca hedefleme olsun" önerisi hâlâ yanıt bekliyor.
+- **Eski örneklerin güncellenmesi:** Temel Mantık'taki "Satın Alma yetkinliği 70 olan patron T1–T3'ü görebilir … Açıklanamayan kayıp sinyali görünür kalır" örneği ve Planlama %60 / ERP örneği beş satırlı kart modeline göre yeniden yazılmalı. ERP örneğindeki "aynı Tier'de iki bağlı satır" artık beş satırlı kartta mümkün değil.
+- **Kayıpların ne zaman geri geldiği:** Ortak kök başarıyla çözülünce kapanan satırların kaybı aynı ay mı, sonraki ay mı geri kazanılıyor? Ay sonu raporu modelinde müdahalenin etkisinin zamanı tanımlanmalı. Öneri: etki sonraki ayın raporuna yansısın.
 
 ### Açık Sorular
 
-Tur 11'den önce kullanıcının teyit etmesi önerilen konular:
+Tur 12'den önce kullanıcının karar vermesi önerilen üç konu:
 
-1. **Ücretli kartlar ve pay-to-win:** Ücretli dördüncü ve beşinci kart aynı bütçe kuralına uyup yalnızca hedeflemede mi avantaj sağlasın (Claude önerisi)? Yoksa örnekteki gibi bütçeyi aşan güçlü kartlar yalnızca oyun parasıyla mı açılsın?
-2. **%33 taban:** Yalnızca fabrika tabanı mı (a), yoksa departman ağırlığıyla departman başına %33 mü (b, Claude önerisi)?
-3. **Beyin fırtınası farkları:** Hangileri gerçek kullanıcı kararı?
-   - Sözleşme uzatma: var mı (ilk yarıda uzatma, sonra danışman piyasaya açılır), yok mu?
-   - Rutin / stratejik sorun ayrımı: açık karar olarak eklensin mi? (Claude önerisi: evet, üç genel kalıpla.)
-   - Danışmanın ayrı "önerisi" ya da iki eylem: reddedildi mi, yoksa stratejik sorunlardaki alternatiflerle birleşsin mi?
-   - Terim: "Görüş Seviyesi" mi, "Yetkinlik Seviyesi" mi?
+1. **Ortak kök kuralı:** Kökün derinliği bağlı satırların en derini olsun; "Düzelt" hangi satırdan basılırsa basılsın kökü hedeflesin, şans ve maliyet kökün derinliğine göre hesaplansın. Bu kuralla "gizli sorun görünür satırla bağlanmaz" yasağı kaldırılsın mı (Claude önerisi)?
+2. **Bağlantı sınırı:** Bir kökün satırları en fazla 2 kademe aralıkta olsun mu? Bu, T1–T5 yasağını kapsar ve görünür satırda şansın "düşük"e inmesini önler. Bağlantı yalnızca aynı departman içinde mi olsun?
+3. **Gizli satırların derinliği:** Beş satırlı kartta gizli satırların Tier'i görünsün mü (a), yoksa patronun erişemediği satırlar "derinlik bilinmiyor" başlığı altında mı toplansın (b, Claude önerisi)?
 
 Diğerleri:
 
-- Müdahale sürelerinin Sorun Derinliğine göre başlangıç değerleri (4 / 6 / 10 / 14 / 18 saat) ve danışmanın yaklaşık %60–70 zaman azaltması testte başlangıç noktası olarak kullanılsın mı?
-- Sabit 40 saatin büyüyen fabrikada ekip/müdür IDEA'sının kancası olduğu öneride açıkça yazılsın mı?
+- Aylık tek deneme kilidi kök düzeyinde olsun ve başarısız denemenin bağlı satırları da kilitleyip bağlantıyı göstermesi bilinçli bir özellik olarak kabul edilsin mi?
+- Onayda satırın tahmini bedeli, başarı halinde kökün maliyetiyle fark tahsili modeli kabul edilsin mi?
+- Kart örneğindeki birimler fabrika ölçeğine göre düzeltilsin mi?
 
 ## Açık Kararlar
 
