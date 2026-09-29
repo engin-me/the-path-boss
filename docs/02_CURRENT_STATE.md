@@ -6,13 +6,13 @@ Current phase:
 Core game design
 
 Active topic:
-IDEA-001 Patron Yetkinlikleri
+None. IDEA-001 core design approved as FRZ-001; remaining topics await separate design work.
 
 Latest freeze:
-None.
+FRZ-001 Patron Yetkinlikleri ve Fabrika Sorun Döngüsü (CURRENT, 2026-09-29).
 
 Pending review:
-Claude review of IDEA-001 Tur 15 after the user publishes the local changes.
+None.
 
 Next step:
-User commits and pushes the Tur 15 IDEA-001 synthesis; Claude reviews public scale caps, non-overlapping Tier price bands, time bounds and early-game hidden-problem access in Notlar (Claude).
+User commits and pushes FRZ-001 and the updated index/state/IDEA files. Then choose the next design topic: factory economy and balance, consultant marketplace/monetization, or personnel. GAME_OVERVIEW should be reconciled with approved decisions when those adjacent topics are designed.
