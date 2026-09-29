@@ -2,7 +2,7 @@
 
 ## Durum/Tur
 
-Durum: Tur 2 sentezi; Claude'un önerileri kullanıcı tarafından kabul edildi. Bu dosya henüz FREEZE değildir.
+Durum: Kullanıcı onayıyla [FRZ-005](../freeze/FRZ-005_personel_ve_insan_yonetimi.md) CURRENT. Yürürlükteki kurallar FREEZE dosyasındadır.
 Tur: 2
 Date: 2026-09-29
 Bağımlılıklar: [FRZ-001](../freeze/FRZ-001_patron_yetkinlikleri.md), [FRZ-002 v3](../freeze/FRZ-002_v3_fabrika_ekonomisi.md).
@@ -17,7 +17,7 @@ Bağımlılıklar: [FRZ-001](../freeze/FRZ-001_patron_yetkinlikleri.md), [FRZ-00
 
 **Rapor ve maliyet.** Kişi kaynaklı sorun, kökün ait olduğu tek departmanın Tier satırında FRZ-001'e göre kayıp üretir; başka departmanda ikinci kez yazılmaz. İnsan Yönetimi alanının kendine özgü sorunları da bulunur. Mevcut **gizli** satırda “kişi kaynaklı” etiketi veya sayısı gösterilmez; kök türü ancak ilgili satır görünür olduğunda ya da Düzelt sonucunda açıklanır. İnsan Yönetimi'nin faydası, mevcut satırlardan bağımsız **“bu ay önlenen kişi kaynaklı olay”** sayısıyla aylık raporda gösterilir. Önlenen olay hiç oluşmadığı için gizli kök nedeni sızdırmaz. Olağan personel giderleri FRZ-002 v3'ün bilinen gider/kasa sırasındadır; Düzelt bedeli FRZ-001 kuralıyla ayrıca ödenir.
 
-**Vizyon bağı.** [GAME_OVERVIEW](../03_GAME_OVERVIEW.md) §10 ve §19 adlı müdürler ile işe alma kararlarını daha ayrıntılı anlatır. Kullanıcının önceki sadeleştirme yönü bu taslakta önceliklidir. Bu konu FREEZE olursa overview'daki ayrıntılı müdür kurgusu yürürlükteki tasarımla uyumlu hale getirilmelidir; bugünkü metin sessizce onaylı kural sayılmaz.
+**Vizyon bağı.** [GAME_OVERVIEW](../03_GAME_OVERVIEW.md) §10 ve §19, [FRZ-005](../freeze/FRZ-005_personel_ve_insan_yonetimi.md) ile uyumlu hale getirildi. Bu IDEA tarihsel öneri kaydıdır; kesin personel kuralları FREEZE dosyasındadır.
 
 ## Notlar (Claude)
 
@@ -61,7 +61,7 @@ Rapor, İnsan Yönetimi'nin etkisini göstermek için mevcut satırlarda "kişi 
 
 1. Yaklaşık %80 azaltma, %30 başlangıç payı ve eşit Tier/departman dağılımının kesin değerleri denge testinde belirlenecektir.
 2. Önlenen olay sayısının raporda sunumu ve personel işlemi sonuç metinleri içerik/arayüz testinde sınanacaktır.
-3. FREEZE sonrasında GAME_OVERVIEW §10 ve §19'daki ayrıntılı müdür/aday anlatımı yürürlükteki sade personel tasarımıyla uyumlu hale getirilmelidir.
+3. GAME_OVERVIEW §10 ve §19'daki müdür/aday anlatımı FRZ-005 ile uyumlu hale getirildi; yeni personel arayüzü önerisi ayrı IDEA gerektirir.
 
 ## Karar Özeti
 
