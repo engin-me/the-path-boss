@@ -19,7 +19,45 @@ Bağımlılıklar: [FRZ-001](../freeze/FRZ-001_patron_yetkinlikleri.md), [FRZ-00
 
 ## Notlar (Claude)
 
-İnceleme bekleniyor. Lütfen yalnızca kritik çelişkileri ve en fazla üç açık kararı yaz.
+Tur 1 incelemesi, kısa. Yalnızca **kritik çelişkiler** ve **en fazla üç açık karar** yazıldı. FRZ-001, FRZ-002 v2 ve FRZ-003 bağlayıcı kabul edildi. Bu turda yalnızca `Notlar (Claude)` değişti.
+
+### Aldığım Notlar
+
+- Azami brüt kârın "mevcut makinelerle teknik olarak alınabilir işlerin kapasite içindeki en iyi bileşimi ve yakın dönem ortalaması" olarak tanımlanması FRZ-003 §1 ile tutarlı. Yatırım değerinin elde olan varlıkların güncel referansı olması da tutarlı.
+
+### Bulduğum Sakıncalar
+
+**1. "Beklenen çıktı" tanımsız kalırsa boş kapasite kayıp gibi görünür (kritik; FRZ-002 v2 §1 ile çelişki).**
+FRZ-002 v2'ye göre raporda her kayıp birimi bir sorun satırına aittir. Beklenen çıktı makine potansiyeli olarak alınırsa, oyuncunun iş almadığı kapasite de raporda "kayıp" görünür. Oysa bu kaybın ait olduğu bir sorun satırı yoktur. Öneri: **beklenen çıktı = bu ay kabul edilmiş işlerin, kapasite içindeki üretim hedefi.** Kullanılmayan kapasite kayıp değil, raporda ayrı bir satırda **"boş kapasite"** olarak gösterilsin. %33 taban ve yaklaşık %20 departman tavanı da bu hedefe uygulanır.
+
+**2. Gizli sorun kaybı teslim taahhüdüyle çakışıyor; gecikme cezası aynı kaybı iki kez yazar (kritik; FRZ-002 v2 §1 ile çelişki).**
+Kabul edilen iş, kapasiteyi ve teslim tarihini bağlıyor. Sorun satırları ise gerçekleşen çıktıyı düşürüyor; gizli satırların kaybı oyuncunun göremediği bir nedenden geliyor. Teslim kaçınca ayrıca ceza kesilirse, aynı kayıp hem sorun satırında hem cezada sayılır. Öneri:
+- **İlk sürümde ayrı gecikme cezası olmasın.** Kaybın etkisi yalnızca gerçekleşmeyen satış gelirinde görünsün.
+- Ceza istenirse, cezanın çıktı eşdeğeri **aynı sorun satırının kaybına dahil** edilsin.
+- Teklif ekranındaki boş kapasite, **son raporda görülen toplam kayıp düşülerek** gösterilsin. Oyuncu bilinen kayıplarla kendini fazla yüklemesin.
+
+**3. İş maliyetleri FRZ-002 v2'nin kullanılabilir nakit kuralında yok (kritik).**
+Kabul edilen işin "tahmini maliyeti" (malzeme vb.) ay içinde ödeniyorsa, FRZ-002 v2'deki güvence hesabı bunu bilmiyor. Oyuncu işi kabul eder, aynı ay güvenceden geçen Düzelt'lere de para harcar, ay sonunda kasa eksiye düşer. Güvencenin amacı delinir. Öneri:
+- İş kabulü akıştaki **karar adımında** yapılsın.
+- Kabul edilen işlerin bu ay ödenecek bilinen maliyetleri, kullanılabilir nakitten **"bilinen gider"** olarak düşülsün.
+- Gelir, iş teslim edildiği ayın satışında yazılsın.
+
+### Kafama Yatmayanlar
+
+- Kapsam gereği bu turda ayrıca not yazılmadı.
+
+### Açık Sorular
+
+`Açık Kararlar` 1–3 için öneriler:
+
+1. **Sabit koşullu teklif:** İlk sürüm için yeterli; pazarlık ertelensin. Katılıyorum.
+2. **Birden çok iş:** Kapasite toplamını aşmamak koşuluyla **birden çok tam iş** alınabilsin. Tek bir işi parçalı almak olmasın.
+   - Tek iş akışı makine çeşitliliğini anlamsızlaştırır.
+   - Azami kâr zaten "en iyi iş bileşimi" olarak tanımlı; tek iş kuralı bu tanımla çelişir.
+3. **Havuz ve referans değeri:**
+   - Referans değer, alış bedelinden başlayıp zamanla düşen **güncel piyasa değeri** olsun. %70 çarpanıyla birlikte al-sat hiçbir zaman kâr etmez.
+   - Potansiyel, son birkaç ayın teklif havuzunun ortalaması olsun ve ay sonunda güncellensin.
+   - **Yeni alınan makinenin potansiyele katkısı, ilk tam faaliyet ayından sonra** sayılsın. Aksi halde krizdeki oyuncu kredili makine alımıyla FRZ-003 eşiğini anında yükseltip zorunlu kapanıştan kaçabilir.
 
 ## Açık Kararlar
 
