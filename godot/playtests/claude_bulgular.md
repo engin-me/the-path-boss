@@ -38,3 +38,48 @@ Bu dosya tasarım kararı değildir. Geçerli bulgular IDEA'ya taşınmalıdır;
 - Kayıp birimi test kolaylığı için fiziksel teslimatla bire bir alındı.
 
 Bulgu 3 ve 4'ün bir kısmı bu sayılardan kaynaklanabilir. Bulgu 1, 2 ve 5 ise kural yapısından geliyor.
+
+---
+
+# Claude oyun testi bulguları — Tur 2 (taslak kurallarla)
+
+Patron testine, kullanıcının onayladığı ama henüz FREEZE olmayan kurallar **test için** eklendi. Her karakter **100 tohumla** oynandı (`reports/_ozet.md`, `reports/_ozet_ayni_makine.md`).
+
+| Kural | Test değeri | Kaynak |
+| --- | --- | --- |
+| Diplomasız tavan | Saha alanları 70 (T3); Planlama / Satın Alma / İnsan Yönetimi 50 (T2); Finans / Yatırım / Ar-Ge 30 (T1) | IDEA-009, FRZ-007 v2 taslağı |
+| Diploma bölümleri | Mühendislik: Üretim, Bakım, Kalite, Ar-Ge, Planlama, Depo & Sevkiyat · İşletme/İktisat: Finans, Yatırım, Satın Alma, İnsan Yönetimi, Planlama, Depo & Sevkiyat · ikisi birden | IDEA-009 |
+| Eşik altı şans | Her eksik puan −%4, en az %5 | FRZ-001 v2 taslağı |
+| Sorun büyümesi | Çözülmeyen sorunun zararı her ay %5 artar, başlangıcın en fazla 2 katı; bütün Tier'lerde aynı | IDEA-010 taslağı |
+| Danışman ücreti | Aylık 2 + (en yüksek iki puan)/30; 3 aylık sözleşme ≈ 15–24 | Denge girdisi; üç formül karşılaştırıldı |
+
+Karakterlere diploma verildi: Teknik Usta ve Erken Kurucu **diplomasız**, Dengeli Yönetici **iki diploma**, Finansçı Kumarbaz ve İnsan Yöneticisi **İşletme/İktisat**. Tavanı aşan puanlar kırpıldı.
+
+**Tekrarlanabilirlik düzeltmesi:** Danışman adayları karıştırılırken tohumdan bağımsız genel rastgele üreteç kullanılıyordu. Bu yüzden Tur 1'de aynı tohum farklı sonuç verebiliyordu (ör. aynı kodla 87 ve 98). Düzeltildi; iki ardışık koşu artık birebir aynı özeti üretiyor. Tur 1 sayıları farklı rastgele akışla üretildiği için aşağıda yalnız yön olarak karşılaştırılıyor.
+
+## Aynı makine parkıyla (A+B), 100 tohum
+
+| Karakter | Ort. son net kasa | Düzelt başarısı | Ort. danışman | Görülmeyen kayıp payı |
+| --- | ---: | ---: | ---: | ---: |
+| Finansçı Kumarbaz (kör dener) | 124 | %57 | 0 | %58 |
+| **Danışman Arayan** | **80** | %100 | 4,1 | %71 |
+| İnsan Yöneticisi | 53 | %100 | 0,7 | %53 |
+| Dengeli Yönetici | 22 | %90 | 0 | %33 |
+| **Kör Tamirci** | **9** | %48 | 0 | %75 |
+| Temkinli Patron | −15 | %100 | 0 | %73 |
+| Teknik Usta (diplomasız) | −32 | %100 | 1,0 | %55 |
+
+Danışman ücreti karşılaştırması (aynı kod, 100 tohum; Danışman Arayan / Kör Tamirci net kasa): eski ücret 4 + puan/12 → **12 / 9** · seçilen 2 + puan/30 → **80 / 9** · 1 + puan/40 → **107 / 9**. Seçilen formül danışmanı değerli kılıyor; en ucuzu fazla cazip.
+
+Kendi makineleriyle ayakta kalma (100 tohum): Teknik Usta (A×2) 46, İnsan Yöneticisi (A×2) 41, Erken Kurucu (A×2) 6; diğerleri 100.
+
+## Bulgular
+
+1. **Danışman artık anlamlı (Tur 1 bulgu 4 çözüldü).** Büyüme ve yeni ücretle danışman tutmak kör denemeyi açıkça geçiyor (80'e 9). Ancak Danışman Arayan 12 ayda ortalama 4,1 sözleşme yapıyor; iki yuva neredeyse hiç boş kalmıyor. FRZ-006 v2'nin "sürekli danışman, kariyer yetkinliğinin yerini almamalı" gerekçesiyle gerilim oluşabilir; 24–36 aylık testte izlenmeli.
+2. **Kör denemenin aşırı ödülü kalktı (Tur 1 bulgu 7).** Kör deneyenlerin başarısı Tur 1'deki %80–86'dan %48–57'ye indi. Kör Tamirci artık zar zor kâr ediyor (9). Finansçı Kumarbaz hâlâ önde, ama nedeni kör deneme değil: İşletme diploması ve 2. ayda aldığı C tezgâhı.
+3. **Derin sorunu görmezden gelmek artık bedava değil (Tur 1 bulgu 1).** Yalnız görünür sorunu düzelten Temkinli Patron eksiye düştü (−15); görülmeyen kayıp payı %73.
+4. **Gizli sorun birikimi hâlâ çözülmedi; büyüme onu ağırlaştırdı (Tur 1 bulgu 2, en acil).** Erken Kurucu 100 tohumun 94'ünde iflas ediyor. Çoğu karakterde görülmeyen kayıp payı %53–75. Erken dönemde gizli satırları deneyecek nakit güvencesi sorunu şimdi daha kritik. Büyüme kuralı bu çözülmeden FREEZE olursa erken fabrikalar daha hızlı batar.
+5. **Diplomasız rota zor ama oynanabilir.** Diplomasız Teknik Usta A+B parkıyla 100/100 ayakta kalıyor ama 12 ayı eksi net kasayla (−32) bitiriyor; A×2 parkıyla yalnız 46/100. Kullanıcının "teoriyi bilmeden derine inemesin" hedefi tutuyor. Diplomasız rotanın yaşayabilmesi büyük ölçüde danışmana bağlı.
+6. **Makine baskınlığı sürüyor (Tur 1 bulgu 3).** A×2 ile Teknik Usta 46/100, İnsan Yöneticisi 41/100 ayakta; A+B ile hepsi 100/100.
+7. **Genel ekonomi sıkılaştı.** Dengeli ve Temkinli karakterler 12 ayı sıfır civarında net kasayla bitiriyor. Bu bir denge işi: iş fiyatları ve giderler, taslak kurallar kesinleşince yeniden ayarlanmalı.
+8. **ChatGPT karakterlerinde diploma yok.** Diploma alanı olmayan karakterler diplomasız sayıldı ve tavana kırpıldı (ör. Temkinli Patron'un Finans, Yatırım, Ar-Ge değerleri 60 → 30). `reports/06–08` bu koşuda yeniden üretildi; `_ozet_chatgpt.md` ve `chatgpt_bulgular.md` eski kurallara göredir. ChatGPT kendi karakterlerine `"diploma"` alanı eklemeli.

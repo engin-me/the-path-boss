@@ -5,6 +5,7 @@
   "seed": 44,
   "budget": 600,
   "cash": 400,
+  "diploma": "isletme",
   "months": 12,
   "skills": {
     "Üretim": 60,
@@ -14,7 +15,7 @@
     "Kalite": 60,
     "Satın Alma": 50,
     "Finans": 50,
-    "Ar-Ge / Ür-Ge": 40,
+    "Ar-Ge / Ür-Ge": 30,
     "Yatırım": 50,
     "İnsan Yönetimi": 100
   },

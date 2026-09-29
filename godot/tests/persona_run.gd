@@ -99,7 +99,7 @@ func _simulate(persona: Dictionary, months_override: int):
 	var game = BossState.new()
 	var policy: Dictionary = persona.get("policy", {})
 	game.max_months = months_override if months_override > 0 else int(persona.get("months", 12))
-	if game.configure(persona["skills"], int(persona.get("budget", 600)), float(persona.get("cash", 400)), persona["name"], int(persona.get("seed", 1))) != "":
+	if game.configure(persona["skills"], int(persona.get("budget", 600)), float(persona.get("cash", 400)), persona["name"], int(persona.get("seed", 1)), String(persona.get("diploma", "")), true) != "":
 		return game
 	if game.open_factory(persona.get("machines", {"A": 1})) != "":
 		return game
@@ -114,7 +114,7 @@ func play(persona: Dictionary, months_override: int) -> String:
 		game.max_months = months_override
 	else:
 		game.max_months = int(persona.get("months", 12))
-	var error: String = game.configure(persona["skills"], int(persona.get("budget", 600)), float(persona.get("cash", 400)), persona["name"], int(persona.get("seed", 1)))
+	var error: String = game.configure(persona["skills"], int(persona.get("budget", 600)), float(persona.get("cash", 400)), persona["name"], int(persona.get("seed", 1)), String(persona.get("diploma", "")), true)
 	var rows: Array[String] = []
 	if error != "":
 		return _write(persona, game, rows, "Kurulum hatası: " + error)
@@ -244,6 +244,8 @@ func _write(persona: Dictionary, game, rows: Array[String], error: String) -> St
 	for skill in BossState.SKILLS:
 		skill_text.append("%s %d" % [skill, int(persona["skills"].get(skill, 0))])
 	lines.append("**Yetkinlikler:** " + ", ".join(skill_text))
+	lines.append("")
+	lines.append("**Diploma:** %s (tavanı aşan puanlar kırpılır; ayrıntı olay geçmişinde)" % BossState.DIPLOMAS.get(String(persona.get("diploma", "")), {"title": "?"})["title"])
 	lines.append("")
 	lines.append("**Başlangıç:** para %s, makineler %s, politika `%s`" % [str(persona.get("cash")), JSON.stringify(persona.get("machines", {})), JSON.stringify(persona.get("policy", {}))])
 	lines.append("")

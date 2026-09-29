@@ -22,6 +22,9 @@ var setup_budget := 600
 var setup_cash := 400.0
 var setup_persona := "Manuel"
 var setup_seed := -1
+var setup_diploma := "ikisi"
+var setup_persona_index := 0
+var setup_note := ""
 var total_label: Label
 var start_button: Button
 var machine_counts := {"A": 2, "B": 0, "C": 0}
@@ -155,7 +158,8 @@ func _save_note(text: String) -> void:
 func _show_setup() -> void:
 	var intro := _card("PATRONU OLUŞTUR")
 	_append_card(body, intro)
-	intro.add_child(_label("Kariyer bölümünü atlıyoruz: yetkinlik puanlarını doğrudan dağıt. Her alan 0–100; T eşikleri 30/50/70/90/100. Puan, o alanda hangi derinliğe kadar sorun görebileceğini belirler.", 15, MUTED))
+	intro.add_child(_label("Kariyer bölümünü atlıyoruz: yetkinlik puanlarını doğrudan dağıt. Her alan 0–100; T eşikleri 30/50/70/90/100. Puan, o alanda hangi derinliğe kadar sorun görebileceğini belirler. Eşiğin altındaki her puan Düzelt şansından %4 düşürür (en az %5).", 15, MUTED))
+	intro.add_child(_label("Diplomasız tavan: saha alanları 70 (T3), Planlama / Satın Alma / İnsan Yönetimi 50 (T2), Finans / Yatırım / Ar-Ge 30 (T1). İlgili diploma tavanı kaldırır.", 14, GOLD))
 	var presets := HBoxContainer.new()
 	presets.add_theme_constant_override("separation", 10)
 	intro.add_child(presets)
@@ -164,8 +168,19 @@ func _show_setup() -> void:
 	option.add_item("Kendi dağılımım")
 	for persona in personas:
 		option.add_item("%s (%s)" % [persona["name"], persona.get("author", "?")])
+	option.select(setup_persona_index)
 	option.item_selected.connect(_apply_persona)
 	presets.add_child(option)
+	presets.add_child(_label("Diploma:", 15, TEXT, false))
+	var diploma_option := OptionButton.new()
+	var ids: Array = BossState.DIPLOMAS.keys()
+	for id in ids:
+		diploma_option.add_item(BossState.DIPLOMAS[id]["title"])
+	diploma_option.select(ids.find(setup_diploma))
+	diploma_option.item_selected.connect(func(index): _set_diploma(ids[index]))
+	presets.add_child(diploma_option)
+	if setup_note != "":
+		intro.add_child(_label(setup_note, 13, GOLD))
 
 	var grid := GridContainer.new()
 	grid.columns = 4
@@ -173,10 +188,11 @@ func _show_setup() -> void:
 	grid.add_theme_constant_override("v_separation", 8)
 	intro.add_child(grid)
 	for skill in BossState.SKILLS:
-		grid.add_child(_label(skill, 16, TEXT, false))
+		var cap := BossState.field_cap(skill, setup_diploma)
+		grid.add_child(_label(skill + ("" if cap == 100 else "  (tavan %d)" % cap), 16, TEXT, false))
 		var spin := SpinBox.new()
 		spin.min_value = 0
-		spin.max_value = 100
+		spin.max_value = cap
 		spin.value = setup_values[skill]
 		spin.custom_minimum_size.x = 110
 		spin.value_changed.connect(_set_skill.bind(skill))
@@ -209,6 +225,7 @@ func _show_setup() -> void:
 	_update_total()
 
 func _apply_persona(index: int) -> void:
+	setup_persona_index = index
 	if index == 0:
 		setup_persona = "Manuel"
 		setup_seed = -1
@@ -220,10 +237,26 @@ func _apply_persona(index: int) -> void:
 	setup_cash = float(persona.get("cash", 400))
 	setup_persona = persona["name"]
 	setup_seed = int(persona.get("seed", -1))
+	setup_diploma = String(persona.get("diploma", ""))
+	_clamp_setup()
 	var counts: Dictionary = persona.get("machines", {})
 	for type in machine_counts:
 		machine_counts[type] = int(counts.get(type, 0))
 	_refresh()
+
+func _set_diploma(id: String) -> void:
+	setup_diploma = id
+	_clamp_setup()
+	_refresh()
+
+func _clamp_setup() -> void:
+	var clamped: Array[String] = []
+	for skill in BossState.SKILLS:
+		var cap := BossState.field_cap(skill, setup_diploma)
+		if int(setup_values[skill]) > cap:
+			clamped.append("%s %d→%d" % [skill, setup_values[skill], cap])
+			setup_values[skill] = cap
+	setup_note = "Diploma tavanına kırpıldı: " + ", ".join(clamped) if not clamped.is_empty() else ""
 
 func _set_skill(value: float, skill: String) -> void:
 	setup_values[skill] = int(value)
@@ -239,7 +272,7 @@ func _update_total() -> void:
 	start_button.disabled = over
 
 func _start() -> void:
-	var error: String = game.configure(setup_values, setup_budget, setup_cash, setup_persona, setup_seed)
+	var error: String = game.configure(setup_values, setup_budget, setup_cash, setup_persona, setup_seed, setup_diploma)
 	if error != "":
 		game.notice = error
 	_refresh()
@@ -393,11 +426,13 @@ func _department_card(department: String, rows: Array[Dictionary]) -> Control:
 	var patron: int = game.skills[department]
 	var effective: int = game.effective_skill(department)
 	var reach: int = game.reach(department)
-	var head := "%s · patron %d%s → T%d'ye kadar okur" % [department.to_upper(), patron, (" · danışmanla %d" % effective) if effective > patron else "", reach]
+	var cap: int = BossState.field_cap(department, game.diploma)
+	var head := "%s · patron %d%s%s → T%d'ye kadar okur" % [department.to_upper(), patron, (" (diplomasız tavan)" if patron >= cap and cap < 100 else ""), (" · danışmanla %d" % effective) if effective > patron else "", reach]
 	box.add_child(_label(head, 14, ACCENT))
 	for row in rows:
 		var slot_name: String = ("T%d" % row["tier"]) if row["visible"] else "Derinlik bilinmiyor"
-		box.add_child(_label("%s · %.0f kayıp · şans %s" % [slot_name, row["loss"], row["chance"]], 15, TEXT if row["visible"] else GOLD))
+		var growth: String = " (büyüyor)" if row["loss"] > row["base_loss"] + 0.05 else ""
+		box.add_child(_label("%s · %.1f kayıp%s · şans %s" % [slot_name, row["loss"], growth, row["chance"]], 15, TEXT if row["visible"] else GOLD))
 		var text: String = "Bu ay denendi" if row["attempted"] else "Düzelt · tahmin %.0f / en fazla %.0f · %d–%d sa" % [row["estimate"], row["upper"], row["estimate_hours"], row["upper_hours"]]
 		var button := _button(text, func(): _act_fix(row["id"]))
 		button.disabled = row["attempted"] or row["blocked"] != ""

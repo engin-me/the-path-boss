@@ -4,97 +4,94 @@ Yazan: Claude · Persona dosyası: `04_insan_yoneticisi.json` · Tohum: 44.0 · 
 
 > Takım liderliğinden gelen; İnsan Yönetimi 100. Sorunların doğmadan önlenmesine güvenir, temkinli iş alır.
 
-**Yetkinlikler:** Üretim 60, Planlama 80, Depo & Sevkiyat 60, Bakım 50, Kalite 60, Satın Alma 50, Finans 50, Ar-Ge / Ür-Ge 40, Yatırım 50, İnsan Yönetimi 100
+**Yetkinlikler:** Üretim 60, Planlama 80, Depo & Sevkiyat 60, Bakım 50, Kalite 60, Satın Alma 50, Finans 50, Ar-Ge / Ür-Ge 30, Yatırım 50, İnsan Yönetimi 100
+
+**Diploma:** İşletme / İktisat (tavanı aşan puanlar kırpılır; ayrıntı olay geçmişinde)
 
 **Başlangıç:** para 400.0, makineler {"A":2.0}, politika `{"buy":[],"credit_when_cash_below":60.0,"fix":"visible_only","hire_when_hidden_loss":5.0,"jobs":"safe","min_chance":"Orta"}`
 
 ## Aylar
 
-| Ay | Çıktı | Kayıp | Gelir | Sorun satırları | Düzelt başarı/deneme | Danışman | Önlenen | Ay sonu kasa | Açık / eşik |
+| Ay | Çıktı | Kayıp | Gelir | Düzelt öncesi sorun satırları | Düzelt başarı/deneme | Danışman | Önlenen | Ay sonu kasa | Açık / eşik |
 | --- | --- | ---: | ---: | --- | --- | --- | ---: | ---: | --- |
-| 1 | 43/50 | 7 | 60 | 0 görünür / 1 gizli | 1/1 (engel 0) | — | 0 | 214 | 0 / 297 |
-| 2 | 9/20 | 11 | 14 | 0 görünür / 1 gizli | 2/2 (engel 0) | — | 0 | 147 | 0 / 273 |
-| 3 | 21/25 | 4 | 26 | 0 görünür / 1 gizli | 0/0 (engel 0) | — | 1 | 110 | 0 / 255 |
-| 4 | 31/40 | 9 | 40 | 0 görünür / 1 gizli | 1/1 (engel 0) | — | 1 | 51 | 0 / 231 |
-| 5 | 36/40 | 4 | 54 | 0 görünür / 1 gizli | 0/0 (engel 0) | — | 1 | 139 | 0 / 241 |
-| 6 | 29/35 | 6 | 39 | 0 görünür / 1 gizli | 1/1 (engel 0) | — | 1 | 106 | 0 / 250 |
-| 7 | 33/40 | 7 | 51 | 0 görünür / 2 gizli | 0/0 (engel 0) | — | 1 | 89 | 11 / 253 |
-| 8 | 42/60 | 18 | 65 | 1 görünür / 3 gizli | 0/0 (engel 1) | — | 0 | 76 | 24 / 239 |
-| 9 | 27/50 | 23 | 37 | 2 görünür / 3 gizli | 0/0 (engel 2) | — | 0 | 39 | 61 / 246 |
-| 10 | 4/15 | 10 | 7 | 2 görünür / 3 gizli | 0/0 (engel 2) | — | 1 | -14 | 114 / 213 |
-| 11 | 13/40 | 27 | 16 | 4 görünür / 3 gizli | 0/0 (engel 4) | — | 0 | -68 | 168 / 241 |
-| 12 | 23/60 | 37 | 36 | 5 görünür / 3 gizli | 0/0 (engel 5) | — | 0 | -112 | 212 / 240 |
+| 1 | 43/50 | 7 | 60 | 1 görünür / 1 gizli | 1/1 (engel 0) | — | 0 | 214 | 0 / 288 |
+| 2 | 34/50 | 15 | 53 | 2 görünür / 1 gizli | 2/2 (engel 0) | — | 0 | 158 | 0 / 297 |
+| 3 | 20/35 | 14 | 31 | 1 görünür / 2 gizli | 1/1 (engel 0) | — | 0 | 108 | 0 / 275 |
+| 4 | 38/50 | 12 | 48 | 1 görünür / 2 gizli | 1/1 (engel 0) | — | 0 | 68 | 0 / 265 |
+| 5 | 39/55 | 15 | 61 | 1 görünür / 2 gizli | 0/0 (engel 1) | — | 0 | 54 | 0 / 223 |
+| 6 | 18/40 | 21 | 24 | 2 görünür / 2 gizli | 3/3 (engel 0) | Aday 6-3 | 1 | 38 | 62 / 240 |
+| 7 | 0/0 | 0 | 0 | 0 görünür / 1 gizli | 0/0 (engel 0) | Aday 6-3 | 1 | -17 | 117 / 189 |
+| 8 | 13/20 | 7 | 17 | 1 görünür / 1 gizli | 0/0 (engel 1) | Aday 6-3 | 1 | -64 | 164 / 201 |
+| 9 | 15/25 | 10 | 20 | 2 görünür / 1 gizli | 0/0 (engel 2) | — | 0 | -110 | 210 / 200 |
 
 ## Sonuç
 
-- Fabrika test süresince ayakta kaldı. Son kasa -112, borç 100.
-- Bu sefer Ar-Ge / Ür-Ge bilgisini 70'ye taşımadan fabrika kurmayacağım. (Sende 40, bu alanın görülmeyen kaybı 66.)
-- Bu sefer Satın Alma bilgisini 70'ye taşımadan fabrika kurmayacağım. (Sende 50, bu alanın görülmeyen kaybı 25.)
-- İnsan Yönetimi 6 kişi kaynaklı olayı daha doğmadan önledi.
+- Zorunlu kapanış ve iflas. Son kasa -110, borç 100.
+- Bu sefer Yatırım bilgisini 70'ye taşımadan fabrika kurmayacağım. (Sende 50, bu alanın görülmeyen kaybı 41.)
+- Bu sefer Ar-Ge / Ür-Ge bilgisini 50'ye taşımadan fabrika kurmayacağım. (Sende 30, bu alanın görülmeyen kaybı 27.) Bunun için önce ilgili diploma gerekir; diplomasız tavan 30.
+- İnsan Yönetimi 3 kişi kaynaklı olayı daha doğmadan önledi.
 
 ## Kapanış raporu
 
-- Ar-Ge / Ür-Ge T2 · toplam kayıp 48 · görülmedi · sürüyor · kesin çözüm için 50 (patron 40)
-- Üretim T2 · toplam kayıp 30 · görüldü · sürüyor · kesin çözüm için 50 (patron 60)
-- Satın Alma T3 · toplam kayıp 25 · görülmedi · sürüyor · kesin çözüm için 70 (patron 50)
-- Yatırım T2 · toplam kayıp 20 · görüldü · sürüyor · kesin çözüm için 50 (patron 50)
-- Ar-Ge / Ür-Ge T3 · toplam kayıp 18 · görülmedi · sürüyor · kesin çözüm için 70 (patron 40)
-- Bakım T2 · toplam kayıp 12 · görüldü · sürüyor · kesin çözüm için 50 (patron 50)
-- Planlama T1 · toplam kayıp 12 · görüldü · sürüyor · kesin çözüm için 30 (patron 80)
-- Üretim T1 · toplam kayıp 5 · görüldü · çözüldü · kesin çözüm için 30 (patron 60)
-- İnsan Yönetimi T3 · toplam kayıp 5 · görüldü · çözüldü · kesin çözüm için 70 (patron 100)
+- Yatırım T3 · toplam kayıp 41 · görülmedi · sürüyor · kesin çözüm için 70 (patron 50)
+- Ar-Ge / Ür-Ge T2 · toplam kayıp 27 · görülmedi · çözüldü · kesin çözüm için 50 (patron 30)
+- Planlama T3 · toplam kayıp 10 · görüldü · çözüldü · kesin çözüm için 70 (patron 80)
+- İnsan Yönetimi T2 · toplam kayıp 6 · görüldü · sürüyor · kesin çözüm için 50 (patron 100)
+- Planlama T3 · toplam kayıp 6 · görüldü · çözüldü · kesin çözüm için 70 (patron 80)
+- Kalite T1 · toplam kayıp 5 · görüldü · çözüldü · kesin çözüm için 30 (patron 60)
+- Finans T2 · toplam kayıp 5 · görüldü · çözüldü · kesin çözüm için 50 (patron 50)
+- Finans T1 · toplam kayıp 5 · görüldü · çözüldü · kesin çözüm için 30 (patron 50)
+- İnsan Yönetimi T1 · toplam kayıp 5 · görüldü · sürüyor · kesin çözüm için 30 (patron 100)
 - Depo & Sevkiyat T2 · toplam kayıp 3 · görüldü · çözüldü · kesin çözüm için 50 (patron 60)
-- Depo & Sevkiyat T2 · toplam kayıp 3 · görüldü · çözüldü · kesin çözüm için 50 (patron 60)
-- Ar-Ge / Ür-Ge T1 · toplam kayıp 2 · görüldü · çözüldü · kesin çözüm için 30 (patron 40)
-- Bakım T1 · toplam kayıp 2 · görüldü · sürüyor · kesin çözüm için 30 (patron 50)
+- Depo & Sevkiyat T2 · toplam kayıp 2 · görüldü · çözüldü · kesin çözüm için 50 (patron 60)
 
 ## Otomatik bulgular
 
 - Ay 1: kayıplar yüzünden 1 iş tam teslim edilemedi; ayrı ceza yok (FRZ-004).
 - Ay 2: kayıplar yüzünden 1 iş tam teslim edilemedi; ayrı ceza yok (FRZ-004).
-- Ay 2: departman kayıp tavanı (%20) devreye girdi.
 - Ay 3: kayıplar yüzünden 1 iş tam teslim edilemedi; ayrı ceza yok (FRZ-004).
 - Ay 4: kayıplar yüzünden 1 iş tam teslim edilemedi; ayrı ceza yok (FRZ-004).
-- Ay 5: kayıplar yüzünden 1 iş tam teslim edilemedi; ayrı ceza yok (FRZ-004).
+- Ay 5: ay başı kasa (68) giderleri (75) karşılamıyor; oyuncu satış gelirine güvenerek çalışıyor.
+- Ay 5: Düzelt denendi ama nakit güvencesi hiçbir müdahaleye izin vermedi.
+- Ay 5: kayıplar yüzünden 2 iş tam teslim edilemedi; ayrı ceza yok (FRZ-004).
 - Ay 6: kayıplar yüzünden 1 iş tam teslim edilemedi; ayrı ceza yok (FRZ-004).
-- Ay 7: kayıplar yüzünden 1 iş tam teslim edilemedi; ayrı ceza yok (FRZ-004).
+- Ay 7: hiç iş alınmadı; bütün kapasite boş kaldı.
+- Ay 7: ay başı kasa (38) giderleri (54) karşılamıyor; oyuncu satış gelirine güvenerek çalışıyor.
+- Ay 7: departman kayıp tavanı (%20) devreye girdi.
+- Ay 8: ay başı kasa (-17) giderleri (62) karşılamıyor; oyuncu satış gelirine güvenerek çalışıyor.
 - Ay 8: Düzelt denendi ama nakit güvencesi hiçbir müdahaleye izin vermedi.
 - Ay 8: kayıplar yüzünden 1 iş tam teslim edilemedi; ayrı ceza yok (FRZ-004).
+- Ay 8: departman kayıp tavanı (%20) devreye girdi.
+- Ay 9: ay başı kasa (-64) giderleri (63) karşılamıyor; oyuncu satış gelirine güvenerek çalışıyor.
 - Ay 9: Düzelt denendi ama nakit güvencesi hiçbir müdahaleye izin vermedi.
 - Ay 9: kayıplar yüzünden 1 iş tam teslim edilemedi; ayrı ceza yok (FRZ-004).
-- Ay 10: ay başı kasa (39) giderleri (59) karşılamıyor; oyuncu satış gelirine güvenerek çalışıyor.
-- Ay 10: Düzelt denendi ama nakit güvencesi hiçbir müdahaleye izin vermedi.
-- Ay 10: kayıplar yüzünden 1 iş tam teslim edilemedi; ayrı ceza yok (FRZ-004).
-- Ay 10: departman kayıp tavanı (%20) devreye girdi.
-- Ay 11: ay başı kasa (-14) giderleri (68) karşılamıyor; oyuncu satış gelirine güvenerek çalışıyor.
-- Ay 11: Düzelt denendi ama nakit güvencesi hiçbir müdahaleye izin vermedi.
-- Ay 11: kayıplar yüzünden 1 iş tam teslim edilemedi; ayrı ceza yok (FRZ-004).
-- Ay 12: ay başı kasa (-68) giderleri (77) karşılamıyor; oyuncu satış gelirine güvenerek çalışıyor.
-- Ay 12: Düzelt denendi ama nakit güvencesi hiçbir müdahaleye izin vermedi.
-- Ay 12: kayıplar yüzünden 2 iş tam teslim edilemedi; ayrı ceza yok (FRZ-004).
+- Ay 9: departman kayıp tavanı (%20) devreye girdi.
 
 ## Olay geçmişi
 
-- Patron: İnsan Yöneticisi · toplam yetkinlik 600/600 · başlangıç parası 400
+- Patron: İnsan Yöneticisi · İşletme / İktisat · toplam yetkinlik 590/600 · başlangıç parası 400
 - Fabrika açıldı: 2 makine, ölçek Küçük, kasa 240
 - Ay 1: Düzelt Depo & Sevkiyat T2 → başarılı (15 para, 4 sa)
 - Ay 1: 43/50 çıktı, gelir 60, kasa 214, borç açığı 0 / eşik 265
-- Ay 2: Düzelt Üretim T1 → başarılı (7 para, 3 sa)
-- Ay 2: Düzelt Depo & Sevkiyat T2 → başarılı (13 para, 4 sa)
-- Ay 2: 9/20 çıktı, gelir 14, kasa 147, borç açığı 0 / eşik 296
-- Ay 3: 21/25 çıktı, gelir 26, kasa 110, borç açığı 0 / eşik 272
-- Ay 4: Düzelt İnsan Yönetimi T3 → başarılı (30 para, 7 sa)
-- Ay 4: 31/40 çıktı, gelir 40, kasa 51, borç açığı 0 / eşik 253
-- Ay 5: kriz kredisi 100 alındı; borç açığı değişmedi.
-- Ay 5: 36/40 çıktı, gelir 54, kasa 139, borç açığı 0 / eşik 230
-- Ay 6: Düzelt Ar-Ge / Ür-Ge T1 → başarılı (6 para, 2 sa)
-- Ay 6: 29/35 çıktı, gelir 39, kasa 106, borç açığı 0 / eşik 240
-- Ay 7: 33/40 çıktı, gelir 51, kasa 89, borç açığı 11 / eşik 249
-- Ay 8: 42/60 çıktı, gelir 65, kasa 76, borç açığı 24 / eşik 251
-- Ay 9: 27/50 çıktı, gelir 37, kasa 39, borç açığı 61 / eşik 238
-- Ay 10: 5/15 çıktı, gelir 7, kasa -14, borç açığı 114 / eşik 245
-- Ay 11: 13/40 çıktı, gelir 16, kasa -68, borç açığı 168 / eşik 212
-- Ay 12: 23/60 çıktı, gelir 36, kasa -112, borç açığı 212 / eşik 240
+- Ay 2: Düzelt Planlama T3 → başarılı (29 para, 6 sa)
+- Ay 2: Düzelt Kalite T1 → başarılı (9 para, 3 sa)
+- Ay 2: 35/50 çıktı, gelir 53, kasa 158, borç açığı 0 / eşik 287
+- Ay 3: Düzelt Finans T2 → başarılı (16 para, 3 sa)
+- Ay 3: 21/35 çıktı, gelir 31, kasa 108, borç açığı 0 / eşik 296
+- Ay 4: Düzelt Depo & Sevkiyat T2 → başarılı (15 para, 3 sa)
+- Ay 4: 38/50 çıktı, gelir 48, kasa 68, borç açığı 0 / eşik 274
+- Ay 5: 40/55 çıktı, gelir 61, kasa 54, borç açığı 0 / eşik 264
+- Ay 6: kriz kredisi 100 alındı; borç açığı değişmedi.
+- Ay 6: Aday 6-3 3 ay için tutuldu (18).
+- Ay 6: Düzelt Planlama T3 → başarılı (32 para, 5 sa)
+- Ay 6: Düzelt Ar-Ge / Ür-Ge T2 → başarılı (15 para, 2 sa)
+- Ay 6: Düzelt Finans T1 → başarılı (8 para, 3 sa)
+- Ay 6: 19/40 çıktı, gelir 24, kasa 38, borç açığı 62 / eşik 222
+- Ay 7: 0/0 çıktı, gelir 0, kasa -17, borç açığı 117 / eşik 239
+- Ay 8: Aday 6-3 sözleşmesi bitti; bilgisi fabrikada kalmadı.
+- Ay 8: 13/20 çıktı, gelir 17, kasa -64, borç açığı 164 / eşik 188
+- Ay 9: 15/25 çıktı, gelir 20, kasa -110, borç açığı 210 / eşik 200
+- 9. ay kapandı. Kasa -110. Borç açığı 210, kurtarma eşiği 200. Eksi net pozisyon için 3 finansman gideri işledi. Borç açığı eşiği aştı: zorunlu kapanış. Tasfiye sonrası 140 açık kaldı; iflas.
 
 ## Test eden yorumu
 

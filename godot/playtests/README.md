@@ -1,6 +1,6 @@
 # Patron testi — nasıl oynanır, nasıl not düşülür
 
-Bu klasör **yalnızca patron bölümünün** oyun testleri içindir. Kariyer atlanır: yetkinlikler doğrudan dağıtılır, cebe para konur, makine alınır, iş alınır, sorunlar yönetilir. Kurallar `docs/freeze/` altındaki CURRENT FREEZE'lere göre çalışır; bütün sayılar **test girdisidir**, denge kararı değildir.
+Bu klasör **yalnızca patron bölümünün** oyun testleri içindir. Patron testi, CURRENT FREEZE'lere ek olarak onaylanmış ama henüz FREEZE olmayan **taslak kuralları** da uygular: diploma tavanları (IDEA-009 / FRZ-007 v2), puan başına %4 şans eğrisi (FRZ-001 v2), sorun büyümesi (IDEA-010). Ayrıntı: `claude_bulgular.md`, Tur 2. Kariyer atlanır: yetkinlikler doğrudan dağıtılır, cebe para konur, makine alınır, iş alınır, sorunlar yönetilir. Kurallar `docs/freeze/` altındaki CURRENT FREEZE'lere göre çalışır; bütün sayılar **test girdisidir**, denge kararı değildir.
 
 Üç test eden aynı oyunu oynar:
 
@@ -46,6 +46,7 @@ Notlar `godot/playtests/notes/notes.md` dosyasına eklenir (Godot editöründen 
   "seed": 77,
   "budget": 600,
   "cash": 400,
+  "diploma": "isletme",               // "" (yok) · "muhendislik" · "isletme" · "ikisi"
   "months": 12,
   "skills": {"Üretim": 60, "Planlama": 60, "Depo & Sevkiyat": 60, "Bakım": 60, "Kalite": 60,
              "Satın Alma": 60, "Finans": 60, "Ar-Ge / Ür-Ge": 60, "Yatırım": 60, "İnsan Yönetimi": 60},

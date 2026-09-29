@@ -5,6 +5,7 @@
   "seed": 22,
   "budget": 600,
   "cash": 400,
+  "diploma": "ikisi",
   "months": 12,
   "skills": {
     "Üretim": 60,

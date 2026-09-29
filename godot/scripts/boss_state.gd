@@ -1,15 +1,36 @@
 extends RefCounted
 
 # Boss-only playtest mode. Structure follows the CURRENT FREEZE files in
-# docs/freeze/; every number below is an illustrative test input, not balance.
+# docs/freeze/ plus the DRAFT decisions under test (IDEA-009 / FRZ-007 v2
+# diploma caps, FRZ-001 v2 per-point chance, IDEA-010 problem growth).
+# Every number below is an illustrative test input, not balance.
 
 const SKILLS := ["Üretim", "Planlama", "Depo & Sevkiyat", "Bakım", "Kalite", "Satın Alma", "Finans", "Ar-Ge / Ür-Ge", "Yatırım", "İnsan Yönetimi"]
 const HR_SKILL := "İnsan Yönetimi"
 
-# FRZ-001: Tier thresholds and below-threshold chance by missing Tier steps.
+# FRZ-001: Tier thresholds decide visibility and certain fixes.
 const TIER_THRESHOLDS := [30, 50, 70, 90, 100]
-const GAP_CHANCES := {1: 0.80, 2: 0.40, 3: 0.15}
+# FRZ-001 v2 DRAFT: below the root threshold each missing point costs 4%.
+const CHANCE_PER_POINT := 0.04
 const FLOOR_CHANCE := 0.05
+
+# FRZ-007 v2 DRAFT: without the matching diploma learning stops at the Tier start.
+const FIELD_CAPS := {
+	"Üretim": 70, "Depo & Sevkiyat": 70, "Bakım": 70, "Kalite": 70,
+	"Planlama": 50, "Satın Alma": 50, "İnsan Yönetimi": 50,
+	"Finans": 30, "Yatırım": 30, "Ar-Ge / Ür-Ge": 30
+}
+const DIPLOMAS := {
+	"": {"title": "Diploma yok", "fields": []},
+	"muhendislik": {"title": "Mühendislik", "fields": ["Üretim", "Bakım", "Kalite", "Ar-Ge / Ür-Ge", "Planlama", "Depo & Sevkiyat"]},
+	"isletme": {"title": "İşletme / İktisat", "fields": ["Finans", "Yatırım", "Satın Alma", "İnsan Yönetimi", "Planlama", "Depo & Sevkiyat"]},
+	"ikisi": {"title": "Mühendislik + İşletme", "fields": ["Üretim", "Bakım", "Kalite", "Ar-Ge / Ür-Ge", "Planlama", "Depo & Sevkiyat", "Finans", "Yatırım", "Satın Alma", "İnsan Yönetimi"]}
+}
+
+# IDEA-010 DRAFT: an unsolved problem's monthly loss grows at the same rate
+# for every Tier (so the amount does not reveal depth), up to a cap.
+const GROWTH_RATE := 0.05
+const GROWTH_CAP := 2.0
 
 # FRZ-004: machine type sets capacity and the jobs it qualifies for.
 const MACHINES := {
@@ -54,6 +75,7 @@ var phase := "setup"
 var persona := "Manuel"
 var budget := 600
 var skills: Dictionary = {}
+var diploma := ""
 var start_cash := 400.0
 var cash := 0.0
 var debt := 0.0
@@ -93,10 +115,15 @@ static func reached_tier(skill: int) -> int:
 			tier = index + 1
 	return tier
 
-static func chance_for_gap(gap: int) -> float:
-	if gap <= 0:
+static func chance_for_points(skill: int, threshold: int) -> float:
+	if skill >= threshold:
 		return 1.0
-	return float(GAP_CHANCES.get(gap, FLOOR_CHANCE))
+	return maxf(FLOOR_CHANCE, 1.0 - CHANCE_PER_POINT * (threshold - skill))
+
+static func field_cap(field: String, diploma_id: String) -> int:
+	if DIPLOMAS[diploma_id]["fields"].has(field):
+		return 100
+	return int(FIELD_CAPS[field])
 
 static func chance_label(chance: float) -> String:
 	if chance >= 1.0:
@@ -155,19 +182,31 @@ func available_cash() -> float:
 
 # ---------------------------------------------------------------- setup
 
-func configure(new_skills: Dictionary, new_budget: int, new_cash: float, persona_name: String = "Manuel", rng_seed: int = -1) -> String:
+func configure(new_skills: Dictionary, new_budget: int, new_cash: float, persona_name: String = "Manuel", rng_seed: int = -1, diploma_id: String = "", clamp_to_caps := false) -> String:
 	if phase != "setup":
 		return "Kurulum yalnızca başta yapılır."
+	if not DIPLOMAS.has(diploma_id):
+		return "Bilinmeyen diploma: %s" % diploma_id
+	var values := {}
+	var clamped: Array[String] = []
 	var total := 0
 	for skill in SKILLS:
 		var value := int(new_skills.get(skill, 0))
 		if value < 0 or value > 100:
 			return "%s 0–100 arasında olmalı." % skill
+		var cap := field_cap(skill, diploma_id)
+		if value > cap:
+			if not clamp_to_caps:
+				return "%s diplomasız en fazla %d olabilir (%s)." % [skill, cap, DIPLOMAS[diploma_id]["title"]]
+			clamped.append("%s %d→%d" % [skill, value, cap])
+			value = cap
+		values[skill] = value
 		total += value
 	if total > new_budget:
 		return "Toplam %d puan bütçeyi (%d) aşıyor." % [total, new_budget]
 	for skill in SKILLS:
-		skills[skill] = int(new_skills.get(skill, 0))
+		skills[skill] = values[skill]
+	diploma = diploma_id
 	budget = new_budget
 	start_cash = new_cash
 	cash = new_cash
@@ -176,7 +215,9 @@ func configure(new_skills: Dictionary, new_budget: int, new_cash: float, persona
 		rng.seed = rng_seed
 	phase = "invest"
 	notice = "Cebinde %.0f para var. Makinelerini seç; kuruluştan sonra ilk ayın giderleri ve gizli sorun güvencesi kadar nakit kalmalı." % cash
-	history.append("Patron: %s · toplam yetkinlik %d/%d · başlangıç parası %.0f" % [persona, total, budget, cash])
+	history.append("Patron: %s · %s · toplam yetkinlik %d/%d · başlangıç parası %.0f" % [persona, DIPLOMAS[diploma]["title"], total, budget, cash])
+	if not clamped.is_empty():
+		history.append("Diploma tavanına kırpıldı: " + ", ".join(clamped))
 	return ""
 
 func opening_requirement(counts: Dictionary) -> Dictionary:
@@ -400,7 +441,7 @@ func _generate_problems(events: int) -> void:
 		var band: Array = MONEY_BANDS[tier]
 		var hour_band: Array = HOUR_BANDS[tier]
 		problems["k%d" % next_id] = {
-			"department": department, "tier": tier, "loss": loss, "active": true, "attempted": 0,
+			"department": department, "tier": tier, "loss": loss, "base_loss": loss, "active": true, "attempted": 0,
 			"scale_tier": int(current["max_tier"]), "factor": float(current["factor"]),
 			"actual_money": roundf(rng.randf_range(band[0], band[1]) * current["factor"]),
 			"actual_hours": rng.randi_range(hour_band[0], hour_band[1]),
@@ -440,7 +481,7 @@ func possible_hidden_tiers(root: Dictionary) -> int:
 	return maxi(0, int(root["scale_tier"]) - reach(root["department"]))
 
 func chance_for(root: Dictionary) -> float:
-	return chance_for_gap(root["tier"] - reach(root["department"]))
+	return chance_for_points(effective_skill(root["department"]), TIER_THRESHOLDS[root["tier"] - 1])
 
 func chance_text(root: Dictionary) -> String:
 	if is_visible(root) or possible_hidden_tiers(root) == 1:
@@ -523,7 +564,7 @@ func active_rows(department: String) -> Array[Dictionary]:
 		if root["active"] and root["department"] == department:
 			var quote := quote_for(root)
 			var row := quote.duplicate()
-			row.merge({"id": root_id, "tier": root["tier"], "loss": root["loss"], "visible": is_visible(root),
+			row.merge({"id": root_id, "tier": root["tier"], "loss": root["loss"], "base_loss": root["base_loss"], "visible": is_visible(root),
 				"chance": chance_text(root), "attempted": root["attempted"] == month, "blocked": fix_block_reason(root_id)})
 			rows.append(row)
 	rows.sort_custom(func(a, b): return a["tier"] < b["tier"] if a["visible"] and b["visible"] else a["visible"] and not b["visible"])
@@ -539,7 +580,13 @@ func _generate_candidates() -> void:
 	for i in 3:
 		var areas := rng.randi_range(2, 5)
 		var pool: Array = SKILLS.duplicate()
-		pool.shuffle()
+		# Seeded shuffle: Array.shuffle() uses the global generator and made
+		# persona runs irreproducible for the same seed.
+		for index in range(pool.size() - 1, 0, -1):
+			var other := rng.randi_range(0, index)
+			var held = pool[index]
+			pool[index] = pool[other]
+			pool[other] = held
 		# Targeting uses only visible information: the patron's weak fields.
 		var focus: String = weakest[rng.randi_range(0, 3)]
 		pool.erase(focus)
@@ -558,7 +605,9 @@ func _generate_candidates() -> void:
 		var values: Array = scores.values()
 		values.sort()
 		values.reverse()
-		var fee: float = roundf(4.0 + (values[0] + values[1]) / 12.0)
+		# Calibrated in the boss test: a 3-month contract ≈ 1–2 months of one
+		# department's hidden loss (IDEA-010 draft, balance input).
+		var fee: float = roundf(2.0 + (values[0] + values[1]) / 30.0)
 		candidates.append({"name": "Aday %d-%d" % [month, i + 1], "scores": scores, "monthly": fee, "total": fee * CONSULTANT_MONTHS})
 
 func hire_block_reason(index: int) -> String:
@@ -627,6 +676,7 @@ func finish_month() -> String:
 		else:
 			history.append("Ay %d: %s sözleşmesi bitti; bilgisi fabrikada kalmadı." % [month, consultant["name"]])
 	consultants = still_active
+	_grow_problems()
 	var status := solvency()
 	history.append("Ay %d: %.0f/%d çıktı, gelir %.0f, kasa %.0f, borç açığı %.0f / eşik %.0f" % [month, report["realized"], report["expected"], report["revenue"], cash, status["gap"], status["threshold"]])
 	_check_month()
@@ -648,6 +698,11 @@ func finish_month() -> String:
 	_generate_offers()
 	phase = "offers"
 	return ""
+
+func _grow_problems() -> void:
+	for root in problems.values():
+		if root["active"]:
+			root["loss"] = minf(root["base_loss"] * GROWTH_CAP, snappedf(root["loss"] * (1.0 + GROWTH_RATE), 0.01))
 
 func _close_factory(status: Dictionary) -> void:
 	var proceeds := roundf(investment_value() * FORCED_SALE)
@@ -679,7 +734,7 @@ func closing_rows() -> Array[Dictionary]:
 		var root: Dictionary = problems[root_id]
 		rows.append({"department": root["department"], "tier": root["tier"], "total_loss": root["total_loss"],
 			"seen": root["ever_seen"], "solved": not root["active"], "needed": TIER_THRESHOLDS[root["tier"] - 1],
-			"skill": skills[root["department"]]})
+			"skill": skills[root["department"]], "cap": field_cap(root["department"], diploma)})
 	rows.sort_custom(func(a, b): return a["total_loss"] > b["total_loss"])
 	return rows
 
@@ -695,7 +750,11 @@ func lessons() -> Array[String]:
 	names.sort_custom(func(a, b): return by_department[a]["loss"] > by_department[b]["loss"])
 	var result: Array[String] = []
 	for department in names.slice(0, 2):
-		result.append("Bu sefer %s bilgisini %d'ye taşımadan fabrika kurmayacağım. (Sende %d, bu alanın görülmeyen kaybı %.0f.)" % [department, by_department[department]["needed"], skills[department], by_department[department]["loss"]])
+		var needed: int = by_department[department]["needed"]
+		var line := "Bu sefer %s bilgisini %d'ye taşımadan fabrika kurmayacağım. (Sende %d, bu alanın görülmeyen kaybı %.0f.)" % [department, needed, skills[department], by_department[department]["loss"]]
+		if needed > field_cap(department, diploma):
+			line += " Bunun için önce ilgili diploma gerekir; diplomasız tavan %d." % field_cap(department, diploma)
+		result.append(line)
 	if result.is_empty():
 		result.append("Yetkinliklerin bu fabrikanın sorunlarını görmeye yetti.")
 	if prevented_total > 0:
