@@ -2,6 +2,21 @@
 
 `project.godot` dosyasını Godot 4 ile açıp **F5 / Run Project** ile oyunu başlatın.
 
+## Patron testi (açılış ekranı)
+
+Kariyeri atlayıp yalnız patron bölümünü test etmek için: on yetkinliği bir puan bütçesiyle (varsayılan 600) dağıt, cebine para koy, makine al, her ay iş seç, raporu incele, Düzelt / danışman / kredi / makine alım-satım kararlarını ver. Her ekranda **📝 Not ekle** ile "bu saçma olmuş" notu düşebilirsin. Hazır karakterler, başsız koşucu ve not dosyaları için bkz. [`playtests/README.md`](playtests/README.md).
+
+Kontroller:
+
+```powershell
+& '...\Godot_v4.7.2-stable_win64_console.exe' --headless --path godot --script res://tests/boss_smoke.gd
+& '...\Godot_v4.7.2-stable_win64_console.exe' --headless --path godot --script res://tests/persona_run.gd -- seeds=40
+```
+
+## Eski kariyer dilimi
+
+Patron testi ekranındaki "Eski kariyer dilimini aç" düğmesiyle açılır (`main.tscn`).
+
 Bu sürümde üç kariyer ayı oynanır. Oyuncu iş ve uygun olduğunda kurs veya dinlenme seçer; ardından küçük fabrikayı kurup üç ay iş alır, departman raporlarını inceler ve sorunlara `Düzelt` uygular. Kariyer yetkinliği, sorunun görünmesini ve çözümün kesin olup olmamasını etkiler. Müdahalenin faydası bir sonraki ayın raporunda görülür. Son ekranda başka rota için yeniden başlanabilir.
 
 Oyun, 10 yıl sonraki halinin anlattığı kısa bir rüyayla açılır. İş kartları maaşın yanında hangi patron yetkinliğini geliştirdiğini gösterir; yetkinlik tablosu her alanda hangi Tier'e kadar sorun görebileceğini söyler. Fabrika kartlarında FREEZE kuralları uygulanır:

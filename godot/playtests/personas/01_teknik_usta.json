@@ -1,0 +1,37 @@
+{
+  "name": "Teknik Usta",
+  "author": "Claude",
+  "description": "Üretimden gelen, makineyi bilen ama finans ve yatırımı zayıf patron. İşi doldurur, yalnız gördüğü sorunu düzeltir.",
+  "seed": 11,
+  "budget": 600,
+  "cash": 400,
+  "months": 12,
+  "skills": {
+    "Üretim": 95,
+    "Planlama": 55,
+    "Depo & Sevkiyat": 60,
+    "Bakım": 85,
+    "Kalite": 80,
+    "Satın Alma": 50,
+    "Finans": 30,
+    "Ar-Ge / Ür-Ge": 70,
+    "Yatırım": 40,
+    "İnsan Yönetimi": 35
+  },
+  "machines": {
+    "A": 2
+  },
+  "policy": {
+    "jobs": "greedy",
+    "fix": "visible_only",
+    "min_chance": "Orta",
+    "hire_when_hidden_loss": 8,
+    "credit_when_cash_below": 60,
+    "buy": [
+      {
+        "month": 4,
+        "type": "B"
+      }
+    ]
+  }
+}

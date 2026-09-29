@@ -127,9 +127,6 @@ func accept_offer(offer_id: String) -> bool:
 	if phase != "offer" or not OFFERS.has(offer_id):
 		return false
 	var offer: Dictionary = OFFERS[offer_id]
-	if cash < ORDINARY_EXPENSE + offer["cost"]:
-		notice = "Bilinen aylık giderleri karşılayacak kasa yok."
-		return false
 	if factory_month == 3 and not problems["planning_1"]["active"]:
 		problems["planning_2"] = _new_problem("Planlama", 2, 5.0)
 	selected_offer = offer_id

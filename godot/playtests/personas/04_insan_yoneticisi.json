@@ -1,0 +1,32 @@
+{
+  "name": "İnsan Yöneticisi",
+  "author": "Claude",
+  "description": "Takım liderliğinden gelen; İnsan Yönetimi 100. Sorunların doğmadan önlenmesine güvenir, temkinli iş alır.",
+  "seed": 44,
+  "budget": 600,
+  "cash": 400,
+  "months": 12,
+  "skills": {
+    "Üretim": 60,
+    "Planlama": 80,
+    "Depo & Sevkiyat": 60,
+    "Bakım": 50,
+    "Kalite": 60,
+    "Satın Alma": 50,
+    "Finans": 50,
+    "Ar-Ge / Ür-Ge": 40,
+    "Yatırım": 50,
+    "İnsan Yönetimi": 100
+  },
+  "machines": {
+    "A": 2
+  },
+  "policy": {
+    "jobs": "safe",
+    "fix": "visible_only",
+    "min_chance": "Orta",
+    "hire_when_hidden_loss": 5,
+    "credit_when_cash_below": 60,
+    "buy": []
+  }
+}

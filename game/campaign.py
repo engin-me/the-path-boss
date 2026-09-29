@@ -161,8 +161,8 @@ class FactoryCampaign:
         if offer not in OFFERS:
             raise ValueError("Unknown offer")
         job = OFFERS[offer]
-        if self.factory.cash < self.factory.ordinary_expense + job.known_cost:
-            raise ValueError("Not enough cash to cover known monthly costs")
+        # FRZ-004 reserves job costs from Düzelt money but does not block work;
+        # a cash shortfall is judged by the FRZ-003 v2 threshold at month end.
         if self.factory.month == 3 and not self.factory.problems["planning_1"].active:
             self.factory.add_problem(
                 "planning_2", ProblemRoot("Planlama", (ProblemRow(2, amount(5)),))

@@ -1,0 +1,37 @@
+{
+  "name": "Finansçı Kumarbaz",
+  "author": "Claude",
+  "description": "Parayı ve yatırımı bilir, üretimi bilmez. Kör denemekten çekinmez, danışman tutmaz, hızlı büyür.",
+  "seed": 33,
+  "budget": 600,
+  "cash": 450,
+  "months": 12,
+  "skills": {
+    "Üretim": 40,
+    "Planlama": 70,
+    "Depo & Sevkiyat": 40,
+    "Bakım": 40,
+    "Kalite": 40,
+    "Satın Alma": 80,
+    "Finans": 90,
+    "Ar-Ge / Ür-Ge": 50,
+    "Yatırım": 90,
+    "İnsan Yönetimi": 60
+  },
+  "machines": {
+    "B": 1
+  },
+  "policy": {
+    "jobs": "greedy",
+    "fix": "all",
+    "min_chance": "Belirsiz",
+    "hire_when_hidden_loss": 0,
+    "credit_when_cash_below": 80,
+    "buy": [
+      {
+        "month": 2,
+        "type": "C"
+      }
+    ]
+  }
+}

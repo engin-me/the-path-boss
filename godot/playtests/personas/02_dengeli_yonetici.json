@@ -1,0 +1,33 @@
+{
+  "name": "Dengeli Yönetici",
+  "author": "Claude",
+  "description": "Her alanda orta bilgili; kapasitenin bir kısmını boş bırakır, riski ölçülü alır, bilmediği yerde danışman tutar.",
+  "seed": 22,
+  "budget": 600,
+  "cash": 400,
+  "months": 12,
+  "skills": {
+    "Üretim": 60,
+    "Planlama": 60,
+    "Depo & Sevkiyat": 60,
+    "Bakım": 60,
+    "Kalite": 60,
+    "Satın Alma": 60,
+    "Finans": 60,
+    "Ar-Ge / Ür-Ge": 60,
+    "Yatırım": 60,
+    "İnsan Yönetimi": 60
+  },
+  "machines": {
+    "A": 1,
+    "B": 1
+  },
+  "policy": {
+    "jobs": "safe",
+    "fix": "all",
+    "min_chance": "Orta",
+    "hire_when_hidden_loss": 6,
+    "credit_when_cash_below": 60,
+    "buy": []
+  }
+}
