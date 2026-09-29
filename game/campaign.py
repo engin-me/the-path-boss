@@ -21,6 +21,19 @@ SKILLS = (
     "Satın Alma", "Finans", "Ar-Ge / Ür-Ge", "Yatırım", "İnsan Yönetimi",
 )
 THRESHOLDS = {1: 30, 2: 50}
+TIER_THRESHOLDS = (30, 50, 70, 90, 100)
+# FRZ-001: below-threshold chance falls with each missing Tier step.
+GAP_CHANCES = {1: amount("0.80"), 2: amount("0.40"), 3: amount("0.15")}
+FLOOR_CHANCE = amount("0.05")
+SCALE_MAX_TIER = 2  # fixture small scale
+
+
+def reached_tier(skill: int) -> int:
+    return sum(1 for threshold in TIER_THRESHOLDS if skill >= threshold)
+
+
+def chance_for_gap(gap: int) -> Decimal:
+    return Decimal(1) if gap <= 0 else GAP_CHANCES.get(gap, FLOOR_CHANCE)
 
 
 @dataclass(frozen=True)
@@ -159,6 +172,17 @@ class FactoryCampaign:
         self.pending_report = self.factory.report()
         return self.pending_report
 
+    def quote_for(self, root: ProblemRoot) -> FixQuote:
+        """Hidden rows share the shallowest unreachable estimate and the scale upper guarantee."""
+        reached = reached_tier(self.career.skills[root.department])
+        real = QUOTES[root.deepest_tier]
+        if reached >= root.deepest_tier:
+            return real
+        shallow = QUOTES[reached + 1]
+        deepest = QUOTES[SCALE_MAX_TIER]
+        return FixQuote(shallow.estimated_money, real.actual_money, deepest.upper_money,
+                        shallow.estimated_hours, real.actual_hours, deepest.upper_hours)
+
     def problem_choices(self) -> list[tuple[str, str, Decimal, Decimal]]:
         if self.pending_report is None:
             raise ValueError("Accept a job first")
@@ -168,7 +192,7 @@ class FactoryCampaign:
                 continue
             visible = self.career.skills[root.department] >= THRESHOLDS[root.deepest_tier]
             label = f"{root.department} T{root.deepest_tier}" if visible else f"{root.department}: derinlik bilinmiyor"
-            choices.append((root_id, label, root.total_loss, QUOTES[root.deepest_tier].upper_money))
+            choices.append((root_id, label, root.total_loss, self.quote_for(root).upper_money))
         return choices
 
     def fix(self, root_id: str, roll: Decimal) -> FixResult:
@@ -181,8 +205,10 @@ class FactoryCampaign:
         result = self.factory.attempt_fix(
             root_id, patron_skill=self.career.skills[root.department],
             advisor_skills=(), thresholds=THRESHOLDS,
-            quote=QUOTES[root.deepest_tier], patron_hours=remaining_hours,
-            success_chance_below_threshold=amount("0.40"), roll=roll,
+            quote=self.quote_for(root), patron_hours=remaining_hours,
+            success_chance_below_threshold=chance_for_gap(
+                root.deepest_tier - reached_tier(self.career.skills[root.department])
+            ), roll=roll,
         )
         self.pending_fixes.append((root_id, result))
         return result

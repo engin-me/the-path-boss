@@ -4,7 +4,7 @@ import io
 import unittest
 from unittest.mock import patch
 
-from game.campaign import Career, FactoryCampaign, autoplay
+from game.campaign import Career, FactoryCampaign, autoplay, chance_for_gap
 from game.play_campaign import play_interactive
 from game.simulation import amount
 
@@ -73,6 +73,18 @@ class CareerToFactory(unittest.TestCase):
         self.assertEqual(len(completed.fixes), 2)
         self.assertEqual(completed.report.realized, amount(80))
         self.assertFalse(game.factory.problems["production"].active)
+
+    def test_hidden_rows_share_quote_and_chance_follows_tier_gap(self) -> None:
+        career = Career()
+        for _ in range(3):
+            career.work_month("cnc", "rest")
+        game = FactoryCampaign(career, career.found_small_factory())
+        career.skills["Planlama"] = 20  # reaches no Tier: T1 and T2 both hidden
+        quote = game.quote_for(game.factory.problems["planning_1"])
+        self.assertEqual((quote.estimated_money, quote.upper_money), (amount(2), amount(20)))
+        self.assertEqual(chance_for_gap(1), amount("0.80"))
+        self.assertEqual(chance_for_gap(2), amount("0.40"))
+        self.assertEqual(chance_for_gap(4), amount("0.05"))
 
     def test_terminal_can_finish_six_months_without_random_fix(self) -> None:
         answers = ["1", "r", "1", "r", "1", "r", "2", "0", "2", "0", "2", "0"]
