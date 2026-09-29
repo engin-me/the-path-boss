@@ -2,20 +2,26 @@
 
 ## Durum/Tur
 
-Durum: DRAFT — Claude incelemesi bekleniyor; bu dosya FREEZE değildir.
-Tur: 1
+Durum: Tur 2 sentezi; Claude'un üç önerisi kullanıcı tarafından kabul edildi. Bu dosya FREEZE değildir.
+Tur: 2
 Date: 2026-09-29
 Bağımlılıklar: [FRZ-001](../freeze/FRZ-001_patron_yetkinlikleri.md), [FRZ-002 v2](../freeze/FRZ-002_v2_fabrika_ekonomisi.md), [FRZ-003](../freeze/FRZ-003_iflas_ve_fabrika_satisi.md).
 
 ## Öneri (GPT)
 
-**İş Alma.** Oyuncu ay sonunda sınırlı sayıda iş/ihale teklifi görür. Her teklifte gereken makine niteliği, iş miktarı, teslim süresi, beklenen gelir, tahmini maliyet ve kapasite kullanımı açık olur. Oyuncu hangi işlere gireceğini seçer; kabul edilen işler makine kapasitesini ve teslim zamanını bağlar. İlk sürümde sabit koşullu teklif seçimi yeterli olabilir; teklif fiyatı pazarlığı daha sonra değerlendirilebilir.
+**İş Alma.** Oyuncu ay sonunda sınırlı sayıda iş/ihale teklifi görür. Her teklifte gereken makine niteliği, iş miktarı, teslim süresi, beklenen gelir, tahmini maliyet ve kapasite kullanımı açık olur. İlk sürümde **sabit koşullu teklifler** seçilir; fiyat pazarlığı ertelenir. Toplam kapasiteyi aşmamak koşuluyla **birden çok tam iş** alınabilir; tek bir iş parçalı kabul edilmez. Kabul edilen işler makine kapasitesini ve teslim zamanını bağlar.
+
+**Rapor hedefi ve boş kapasite.** FRZ-002 v2'nin raporundaki **beklenen çıktı**, makinelerin teorik üretimi değil, o ay kabul edilmiş işlerin kapasite içinde kalan üretim hedefidir. Kullanılmayan makine kapasitesi ayrı bir **“boş kapasite”** satırıdır ve sorun kaybına katılmaz. FRZ-002 v2'nin %33 gerçekleşme tabanı ve yaklaşık %20 departman kayıp tavanı kabul edilmiş iş hedefi üzerinden değerlendirilir. Teklif ekranı, son raporda görülen toplam kaybı güvenlik tamponu olarak düşerek oyuncuya ihtiyatlı boş kapasite tahmini gösterir; bu tampon fiziksel kapasite kaybıyla bire bir aynı şey değildir.
+
+**Teslim ve kasa.** İlk sürümde ayrıca gecikme cezası kesilmez: teslim edilemeyen miktarın etkisi gerçekleşmeyen ürün satış geliridir; sorun kaybı raporda yeniden ikinci bir satıra yazılmaz. Gelecekte ceza eklenirse çıktı eşdeğeri ilgili sorun satırının kaybına dahil edilir. İş kabulü FRZ-002 v2'nin **karar adımında** olur. Kabul edilen işlerin bu ay ödenecek bilinen malzeme ve benzeri maliyetleri, Düzelt güvencesindeki kullanılabilir nakitten düşülür. Gelir yalnızca işin teslim edildiği ayın fiili satışında kasaya girer.
 
 **Makine yatırımı.** Makine markası/modeli yalnızca ad değildir: aylık kapasiteyi, uygun olunabilen işleri ve birim maliyeti etkiler. Örnek A/B/C torna tezgâhının 10/15/17 birim üretmesi yalnızca tasarım örneğidir. Daha nitelikli tezgâh, belli şartları olan niş işlere erişim sağlayabilir; yüksek alış fiyatı, sonraki kâr fırsatı ve yeniden satış değeriyle birlikte değerlendirilir. Teklif ekranı oyuncunun mevcut makinelerle işi yapıp yapamayacağını ve kabulden sonra boş kapasiteyi gösterir.
 
-**Azami kazanç ve iflas bağlantısı.** FRZ-003'teki azami aylık brüt kâr, oyuncunun **mevcut makine parkıyla teknik olarak alabileceği işlerden**, kapasite sınırı içinde ulaşılabilir en iyi aylık iş bileşimidir. Oyuncunun o ay gerçekten kabul ettiği iş veya son ayın gerçekleşen kârı değildir. Hesap, piyasada alınabilir tekliflerin yakın dönem ortalamasını kullanır ve ay sonunda güncellenir; sınırsız hayalî sipariş varsayılmaz. Yeni fabrikada geçmiş ay yoksa başlangıç iş havuzu kullanılır. Kesin havuz ve süre değerleri denge konusudur.
+**Azami kazanç ve iflas bağlantısı.** FRZ-003'teki azami aylık brüt kâr, oyuncunun uygun makinelerle teknik olarak alabileceği işlerin, kapasite sınırı içindeki en iyi aylık bileşimidir; fiilen kabul edilen işler veya son ayın kârı değildir. Yakın dönemin **birkaç aylık teklif havuzu ortalaması** kullanılır ve yalnızca ay sonunda güncellenir. Yeni fabrikada geçmiş ay yoksa başlangıç iş havuzu kullanılır. **Yeni alınan makinenin azami kâr potansiyeline katkısı ilk tam faaliyet ayı tamamlandıktan sonra** sayılır; kredili makine alımı iflas eşiğini aynı gün yapay biçimde yükseltmez.
 
-**Yatırım değeri ve çıkış.** Yatırım ekranı her makinenin alış bedelini, güncel referans değerini, bu ay normal satış tutarını ve zorunlu tasfiye tutarını ayrı gösterir. FRZ-003'teki `yatırım değeri`, mevcut satılabilir varlıkların **güncel referans değerleri toplamıdır**; alınmış ama artık elde olmayan makineler sayılmaz. Normal %70 / zorunlu %50 çarpanları aynı referansa uygulanır. Satış önizlemesi kapasite, alınabilir işler, azami net katkı ve iflas eşiğindeki değişimi birlikte gösterir.
+**Yatırım değeri ve çıkış.** Yatırım ekranı her makinenin alış bedelini, güncel referans değerini, bu ay normal satış tutarını ve zorunlu tasfiye tutarını ayrı gösterir. FRZ-003'teki `yatırım değeri`, eldeki satılabilir varlıkların **güncel piyasa referans değerleri toplamıdır**; alınmış ama artık elde olmayan makineler sayılmaz. Referans değer alış bedelinden başlar ve zamanla düşer. FRZ-003'teki normal %70 / zorunlu %50 çarpanları aynı referansa uygulanır; makine alıp hemen satmak kâr sağlamaz. Satış önizlemesi kapasite, alınabilir işler, azami net katkı ve iflas eşiğindeki değişimi birlikte gösterir.
+
+**FREEZE etkisi.** Beklenen çıktı tanımı ve iş maliyeti güvencesi FRZ-002 v2'yi, yeni makinenin azami kâra ne zaman dahil olacağı ve yatırım referansı FRZ-003'ü ayrıntılandırır. Onaylanan tasarım FREEZE'e geçirildiğinde bu iki dosyanın yeni sürümleri hazırlanmalı, eski sürümler SUPERSEDED işaretlenmelidir; bu IDEA dosyası yürürlükteki kararları tek başına değiştirmez.
 
 ## Notlar (Claude)
 
@@ -61,10 +67,15 @@ Kabul edilen işin "tahmini maliyeti" (malzeme vb.) ay içinde ödeniyorsa, FRZ-
 
 ## Açık Kararlar
 
-1. İlk sürümde sabit koşullu iş seçimi yeterli mi; fiyat pazarlığı ne zaman gerekli olur?
-2. Kısmi kapasiteyle birden çok iş alınabilir mi, yoksa önce tek iş akışıyla mı başlanmalı?
-3. Azami kâr için “alınabilir teklif” havuzu ve yatırım referans değeri nasıl hesaplanmalı ki piyasa şoku iflası rastgele tetiklemesin ve makine al-sat istismarı oluşmasın?
+1. Teklif havuzunun “birkaç ay” aralığı, başlangıç havuzu ve piyasa düşüşünün hızı sayısal dengede belirlenecektir.
+2. Makinenin piyasa referans değerinin aylık düşüş eğrisi ve farklı makine niteliklerinin fiyat/kapasite dengesi açık kalır.
+3. Son rapordaki toplam kaybın boş kapasite tahminine uygulanacak güvenlik tamponu oyun testinde ayarlanmalıdır; parasal kayıp fiziksel kapasiteyle bire bir aynı değildir.
 
 ## Karar Özeti
 
-- Bu turda yeni nihai karar yoktur. Önceki kullanıcı yönlendirmesi: farklı makineler kapasiteyi, kârlılığı ve erişilen ihaleleri etkilesin; çünkü yatırım seçimi hem fabrika işlerini hem sonraki büyüme yolunu değiştirmelidir. Kesin kural ancak kullanıcı onayıyla FREEZE olur.
+- İlk sürümde sabit koşullu teklif ve kapasite izin verdikçe birden çok tam iş seçilir; çünkü makine çeşitliliği işe yararken iş parçalama ve pazarlık ilk akışı ağırlaştırmamalıdır.
+- Beklenen çıktı kabul edilmiş iş hedefine bağlanır, boş kapasite ayrı gösterilir; çünkü satılmamış üretim gücü FRZ-002 v2'deki sorun kaybı gibi görünmemelidir.
+- İlk sürümde ayrı gecikme cezası olmaz; çünkü teslim edilmeyen işin kaybı gerçekleşmeyen satış geliriyle zaten görünür ve çift sayım önlenmelidir.
+- İşin bu ay bilinen maliyeti kullanılabilir nakitten ayrılır, gelir teslim ayına yazılır; çünkü FRZ-002 v2'nin müdahale güvencesi ve gerçek nakit sırası korunmalıdır.
+- Yatırım referansı alış bedelinden başlayıp zamanla düşen güncel piyasa değeridir; çünkü %70 satışla makine al-sat kârı doğmamalıdır.
+- Azami kâr birkaç aylık alınabilir teklif havuzuyla ay sonunda güncellenir, yeni makine ilk tam faaliyet ayından sonra katkı verir; çünkü piyasa şoku ve kredili yatırım iflas eşiğini anında oynatmamalıdır.
