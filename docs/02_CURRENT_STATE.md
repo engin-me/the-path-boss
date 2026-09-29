@@ -6,13 +6,13 @@ Current phase:
 Core game design
 
 Active topic:
-IDEA-003 İflas, Erken Tasfiye ve Yeniden Başlangıç (Tur 3).
+None. IDEA-003 approved as FRZ-003; FRZ-002 v2 replaces FRZ-002.
 
 Latest freeze:
-FRZ-002 Fabrika Ekonomisinin Çekirdeği (CURRENT, 2026-09-29). FRZ-001 remains current.
+FRZ-003 İflas, Tasfiye ve Fabrika Satışı (CURRENT, 2026-09-29). FRZ-001 and FRZ-002 v2 remain current.
 
 Pending review:
-Claude review of IDEA-003 Tur 3; net katkı eşiği ve gönüllü fabrika satışının etkileri.
+None.
 
 Next step:
-Publish IDEA-003 Tur 3 and request a brief in-file review of the sale and bankruptcy paths.
+Choose the next short topic: İş Alma and machine investments are needed to define maximum earnings and resale reference values.

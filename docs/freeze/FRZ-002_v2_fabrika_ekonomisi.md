@@ -1,9 +1,9 @@
-# FRZ-002 — Fabrika Ekonomisinin Çekirdeği
+# FRZ-002 v2 — Fabrika Ekonomisinin Çekirdeği ve Kasa Olayları
 
-Status: SUPERSEDED by [FRZ-002 v2](FRZ-002_v2_fabrika_ekonomisi.md) on 2026-09-29. Historical decision; no longer authoritative.
+Status: CURRENT — supersedes [FRZ-002](FRZ-002_fabrika_ekonomisi.md) on 2026-09-29.
 Date: 2026-09-29
-Source: [IDEA-002](../ideas/IDEA-002_fabrika_ekonomisi.md), Tur 2 ve kullanıcının Claude önerilerini kabulü.
-Depends on: [FRZ-001](FRZ-001_patron_yetkinlikleri.md).
+Source: [FRZ-002](FRZ-002_fabrika_ekonomisi.md) ve [IDEA-003](../ideas/IDEA-003_iflas_ve_yeniden_baslangic.md), Tur 4.
+Depends on: [FRZ-001](FRZ-001_patron_yetkinlikleri.md). Companion decision: [FRZ-003](FRZ-003_iflas_ve_fabrika_satisi.md).
 
 ## Onaylanan Kararlar
 
@@ -21,11 +21,15 @@ Depends on: [FRZ-001](FRZ-001_patron_yetkinlikleri.md).
 
 ### 3. Ay akışı ve kullanılabilir nakit
 
-**Ne:** Sıra **rapor → danışman ve Düzelt kararları → ayın satışları ile olağan giderleri → sonraki rapor** şeklindedir. FRZ-001'in güvence kontrolündeki kullanılabilir oyun parası, **mevcut nakit eksi bu ayın henüz ödenmemiş bilinen olağan giderleridir**; gerçekleşmemiş satış geliri eklenmez. Danışman ve Düzelt bedelleri FRZ-001'e göre karar anında ödenir. Ay sonu kasa, önceki kasa + fiili satış geliri − fiili olağan giderler − danışman sözleşmeleri − Düzelt bedelleriyle açıklanır.
+**Ne:** Sıra **rapor → danışman ve Düzelt kararları ile yatırım/finansman/çıkış kararları → ayın satışları ile giderleri → sonraki rapor veya kapanış** şeklindedir. FRZ-001'in güvence kontrolündeki kullanılabilir oyun parası, **mevcut kasa eksi bu ayın henüz ödenmemiş bilinen olağan giderleri ve vadesi gelmiş bilinen finansman yükümlülükleridir**; gerçekleşmemiş ürün veya varlık satış geliri eklenmez. Danışman ve Düzelt bedelleri FRZ-001'e göre karar anında ödenir.
+
+**Ne:** Devam eden fabrikada ay sonu kasa, **önceki kasa + fiili ürün satış geliri + gerçekten alınan şirket kredisi + gerçekleşen varlık satış geliri − fiili olağan giderler − danışman sözleşmeleri − Düzelt bedelleri − varlık/makine alım bedelleri − ödenen kredi anaparası − finansman giderleri** ile açıklanır. Henüz onaylanmamış teklif, gelecekteki ihale geliri veya satılmamış makinenin değeri kasaya yazılmaz. Fabrikanın tümünün devri veya tasfiyesi bu aylık faaliyet hesabına eklenip ikinci kez sayılmaz; ayrı kapanış hesabında varlık/fabrika satış bedeli, eldeki kasa ve kalan şirket yükümlülükleri mahsuplaştırılır.
+
+**Ne:** Şirket kredisi kasaya girince aynı tutarda kredi bakiyesi oluşur. İflas hesabındaki **net pozisyon = kasa − ödenmemiş şirket kredisi bakiyesi**; kredi çekmek bu pozisyonu tek başına iyileştirmez. Borçlu şirkete uygulanan görünür finansman gideri şirket hesabına yazılır; iflas sonrası kişisel borca uygulanmaz. Şirketten karaktere kişisel para aktarımı yalnızca borçlar kapatılmış gönüllü tasfiye/devir kapanışında mümkündür.
 
 **Ne:** Gerçek satış geliri fiziksel olarak satılan üründen hesaplanır. Nakit kaybının çıktı eşdeğerine çevrilmesi **yalnızca rapor ölçüsüdür**; aynı gerçek gider kasa hesabından ikinci kez düşülmez.
 
-**Neden:** Oyuncu ay sonu zorunlu giderleri müdahaleye harcayamamalı, henüz kazanmadığı satış gelirine dayanarak karar vermemeli ve rapor dönüşümü nakit kaybını iki kez yazmamalıdır.
+**Neden:** Oyuncu ay sonu zorunlu giderleri müdahaleye harcayamamalı, henüz kazanmadığı satış gelirine dayanarak karar vermemeli ve rapor dönüşümü nakit kaybını iki kez yazmamalıdır. Kredi ve varlık satışları gerçek nakit hareketleri olarak görünmeli; kredi geliri borcu gizlememeli, fabrika devri ve makine satışı iki kez sayılmamalıdır.
 
 ### 4. Müdahale faydası ve erken erişim
 
@@ -43,6 +47,7 @@ Depends on: [FRZ-001](FRZ-001_patron_yetkinlikleri.md).
 ## Bağımlılıklar ve Kapsam Dışı Konular
 
 - Çıktı eşdeğerine çevirme değeri, para/saat tutarları, kuruluş sonrası kasa miktarı ve yaklaşık %20 departman sınırının kesin dengesi testle belirlenecektir.
-- Beklenmeyen giderler, tek kötü ay sonrası toparlanma ve iflas tetikleyicisi ayrı ekonomi/iflas tasarımına aittir; bilinen giderleri ayırma kuralı tüm belirsizlikleri ortadan kaldırmaz.
+- İflas tetikleyicisi [FRZ-003](FRZ-003_iflas_ve_fabrika_satisi.md) ile tanımlanır; beklenmeyen giderlerin kesin dengesi açık kalır. Bilinen giderleri ayırma kuralı tüm belirsizlikleri ortadan kaldırmaz.
+- Finansman giderinin kesin oranı, yatırım referans değerinin hesabı, kredi tutarı ve ödeme vadesi sonraki denge/İş Alma tasarımına aittir.
 - Ar-Ge ve Yatırım'ın gerçek uzun vadeli etkileri ayrıca tasarlanır; ilk sürümde aylık çıktı eşdeğeriyle raporlanabilir.
 - Danışman kartlarının fiyatları ve gerçek para seçenekleri bu FREEZE kapsamında değildir.
