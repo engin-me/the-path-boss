@@ -2,20 +2,23 @@
 
 ## Durum/Tur
 
-Durum: DRAFT — GPT kısa önerisi, Claude incelemesi bekleniyor
-Tur: 1
+Durum: FRZ-002 çekirdek kapsamı kullanıcı tarafından onaylandı; kesin denge konuları açık
+Tur: 2
 Date: 2026-09-29
 Bağımlılık: [FRZ-001](../freeze/FRZ-001_patron_yetkinlikleri.md). Bu dosya FREEZE değildir.
+Onaylı çekirdek: [FRZ-002](../freeze/FRZ-002_fabrika_ekonomisi.md). Yürürlükteki kurallar bu FREEZE dosyasındadır.
 
 ## Öneri (GPT)
 
-Ay sonu raporu üç ana sayı göstersin: **beklenen çıktı, gerçekleşen çıktı, çıktı kaybı**. Beklenen çıktı makine kapasitesi, ürün ve talebe göre belirlenir. **Çıktıyı etkileyen** sorun satırlarının kayıpları kendi departman toplamını; bu toplamlar da fabrikanın çıktı kaybını açıklar. Nakit veya gelecekteki fırsatı etkileyen sorunların kaybı kendi birimiyle gösterilir. Aynı kayıp iki kez sayılmaz. İlk sürümde çıktı kayıpları toplanır; çarpımsal hesap kullanılmaz.
+**Tek rapor birimi.** Ay sonu raporu **beklenen, gerçekleşen ve kaybedilen çıktı eşdeğeri birimi** göstersin. Makine kapasitesi, ürün ve talep beklenen değerin temelidir. Bütün on alanın kaybı aynı birime çevrilir; fiziksel üretim kaybı, fazla maliyet ve ilk sürümde gelecek fırsatı kaybı raporda karşılaştırılabilir olur. Her kayıp birimi **tek bir sorun satırına** ve kökün bulunduğu **tek departmana** aittir. Ortak köke bağlı farklı satırların kayıpları ayrı ayrı toplanır; başarılı müdahale hepsini kapatır. Departman kayıpları fabrikada toplanır, çarpımsal etki yoktur.
 
-Oyuncunun nakit hesabı açık olsun: **önceki nakit + satış geliri − olağan işletme giderleri − danışman sözleşmeleri − Düzelt bedelleri = yeni nakit**. Satış geliri gerçekleşen çıktıya bağlıdır. Tam gider listesi ve tutarları bu fikrin parçası değil, sonraki denge işidir.
+**Sınırlar.** Raporun gerçekleşen çıktı eşdeğeri, beklenenin en az **%33'ü** olur. Tek departmanın kaybı beklenenin en fazla yaklaşık **%20'si** olur; tavana ulaşmış departmanda yeni kayıp sorunu doğmaz. Departman ağırlığı tablosu kullanılmaz. %20 değeri ilk denge hedefidir; oyun testinde ayarlanabilir.
 
-“Düzelt” sonucu anında belli olur; **çıktıdaki iyileşme bir sonraki ayın raporuna** yansısın. Böylece oyuncu müdahalenin parasını bu ay öder, faydasını sonraki ay görür. Rapor geçmiş ayı yeniden yazmaz.
+**Nakit ve zaman sırası.** Akış **rapor → danışman/Düzelt kararları → ayın satış ve olağan giderleri → yeni rapor** şeklindedir. Güvence kontrolünde kullanılabilir nakit, **mevcut nakit − bu ayın henüz ödenmemiş bilinen olağan giderleri** olarak hesaplanır; henüz gerçekleşmemiş satış gelirine güvenilmez. Kararların bedeli [FRZ-001](../freeze/FRZ-001_patron_yetkinlikleri.md) uyarınca anında ödenir. Ay sonu nakit hesabı: **önceki nakit + fiili satış geliri − fiili olağan giderler − danışman sözleşmeleri − Düzelt bedelleri**. Fiziksel satış geliri gerçekten satılan üründen hesaplanır. Rapor için çıktı eşdeğerine çevrilen nakit kaybı, bu formülden **ikinci kez** düşülmez; gerçek gideri zaten nakit hesabındadır.
 
-İlk ekonomi dengesi, [FRZ-001](../freeze/FRZ-001_patron_yetkinlikleri.md)'deki kabul testini geçmeli: ilk üç ayda gizli sorun varsa oyuncu her ay en az birini oyun parası ve patron zamanıyla, danışmansız deneyebilmeli. Tek kötü ay doğrudan kaçınılmaz iflas yaratmamalı.
+**Müdahalenin etkisi.** “Düzelt”in başarı/başarısızlığı anında belli olur ve bedeli aynı ay ödenir. Başarıyla kaldırılan kayıp **sonraki ayın raporuna** yansır; geçmiş rapor değişmez.
+
+**Ölçeğe uygun denge.** Tier fiyat bantları fabrikanın aylık birim değeriyle orantılı olsun. Fabrika kurulduktan sonraki kasa en az **bir aylık bilinen olağan gider + küçük ölçekte oluşabilecek en derin Tier'in üst bedeli** kadar olsun. Bu alt sınır ilk ayın güvencesini mümkün kılar; [FRZ-001](../freeze/FRZ-001_patron_yetkinlikleri.md)'deki ilk üç ay testi ayrıca sınanır. Tek kötü ayın kaçınılmaz iflasa yol açmaması hedefi korunur; kesin iflas tetikleyicisi ayrı tasarım konusudur.
 
 ## Notlar (Claude)
 
@@ -73,10 +76,22 @@ Kullanıcının karar vermesi önerilen üç konu:
 
 ## Açık Kararlar
 
-1. On yetkinlik alanının hangileri **bu ayın üretim çıktısını**, hangileri **nakit veya gelecek fırsatlarını** etkiler?
-2. Departmanların kayıp birimlerine katkısı nasıl sınırlandırılır? Önceki taslaktaki **%33 departman performans tabanı** korunacaksa fabrika birimlerine nasıl çevrilir?
-3. Ekonomi testinde başlangıç parası, aylık gelir/gider ve Tier fiyat bantlarının sayıları ne olmalı? Bunlar ilke onayından sonra denge çalışmasında belirlensin.
+### Onaylanan FREEZE kapsamı
+
+- [FRZ-002](../freeze/FRZ-002_fabrika_ekonomisi.md): Tek çıktı eşdeğeri rapor birimi, kaybın tek satır/departmanda sayılması, %33 fabrika tabanı ve yaklaşık %20 departman tavanı, ay içi nakit sırası ve gider sonrası güvence, müdahale faydasının sonraki raporda görünmesi, ölçeğe bağlı fiyat bantları ve kuruluş sonrası kasa alt sınırı.
+- Kesin çevirme değeri, para/saat tutarları, beklenmeyen giderler ve iflas tetikleyicisi bu FREEZE'in dışında kalır.
+
+- Kesin para/saat tutarları, çıktı eşdeğerine çevirme değeri ve başlangıç nakdi oyun testinde belirlenir; **%20 departman tavanı** ilk denge hedefidir.
+- Beklenmeyen giderler ve iflas tetikleyicisi ayrı ekonomi/iflas tasarımında kararlaştırılır. Bilinen giderleri ayırmak, henüz bilinmeyen her riski ortadan kaldırmaz.
+- Ar-Ge ve Yatırım'ın gerçek gelecek etkileri ilk sürümün aylık çıktı eşdeğerinden sonra ayrı tasarlanır.
 
 ## Karar Özeti
 
-IDEA-002 için henüz kullanıcı tarafından onaylanmış karar yok. Yukarıdaki model inceleme önerisidir; FRZ-001 kuralları geçerlidir.
+Kullanıcının Tur 1 Claude önerilerini kabul ettiği kararların yürürlükteki kapsamı [FRZ-002](../freeze/FRZ-002_fabrika_ekonomisi.md) dosyasındadır:
+
+- On alanın kayıpları raporda tek **çıktı eşdeğeri birimle** gösterilir; çünkü farklı kayıp birimleri gizli Tier'i ele verebilir ve toplamı okunmaz kılar.
+- Her kayıp birimi tek sorun satırına ve tek departmana aittir; ortak köke bağlı satırların ayrı kayıpları toplanır, çünkü aynı etkinin departmanlar arasında iki kez sayılması önlenmeli.
+- Raporun gerçekleşen eşdeğer değeri beklenenin en az **%33'ü**, tek departman kaybı beklenenin en fazla yaklaşık **%20'si** olur; çünkü oyun anlaşılır bir taban ve departman sınırı ister, ayrıntılı ağırlık tablosu gerektirmemeli.
+- Düzelt güvencesi yalnızca nakitten henüz ödenmemiş **bilinen olağan giderler** düşüldükten sonra kontrol edilir, gelecek satış sayılmaz; çünkü zorunlu gider için gereken para karar anında harcanmamalı.
+- Düzelt sonucu ve bedeli hemen, kapatılan kaybın rapor etkisi sonraki ay görünür; çünkü kararın sonucu anlaşılır olmalı ve geçmiş ay raporu yeniden yazılmamalı.
+- Tier fiyat bantları fabrikanın aylık birim değeriyle orantılı tutulur ve kuruluş sonrası kasa en az ilk ay bilinen giderler ile küçük ölçeğin üst güvencesini karşılar; çünkü erken fabrika için danışmansız müdahale yolu açık kalmalı.

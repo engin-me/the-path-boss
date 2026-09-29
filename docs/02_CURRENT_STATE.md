@@ -6,13 +6,13 @@ Current phase:
 Core game design
 
 Active topic:
-IDEA-002 Fabrika Ekonomisi (short draft proposal).
+None. IDEA-002 core principles approved as FRZ-002; numerical balance remains open.
 
 Latest freeze:
-FRZ-001 Patron Yetkinlikleri ve Fabrika Sorun Döngüsü (CURRENT, 2026-09-29).
+FRZ-002 Fabrika Ekonomisinin Çekirdeği (CURRENT, 2026-09-29). FRZ-001 remains current.
 
 Pending review:
-Claude review of IDEA-002 Tur 1 after the user publishes the draft.
+None.
 
 Next step:
-User commits and pushes IDEA-002 and this current-state update; Claude reviews the proposal in the same IDEA file. Keep the review focused on the three open economic decisions.
+User commits and pushes FRZ-002 plus the updated index/state/IDEA files. Then choose a short next topic: numerical balance, bankruptcy, consultant marketplace, or personnel.
