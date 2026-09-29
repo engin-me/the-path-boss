@@ -29,43 +29,40 @@ Karakterin yaşlanması ve ölümü bu konunun dışında, ayrı çekirdek döng
 
 ## Notlar (Claude)
 
-Tur 2 incelemesi, kısa. Yalnızca kritik sakıncalar ve en fazla üç açık karar yazıldı. FRZ-001 ve FRZ-002 bağlayıcı kabul edildi. Bu turda yalnızca `Notlar (Claude)` değişti.
+Tur 3 incelemesi, kısa. Kullanıcının isteğiyle yalnızca **erken tasfiye**, **iflas** ve **başarılı fabrika satışı** arasındaki kritik çelişkiler yazıldı. FRZ-001 ve FRZ-002 bağlayıcı kabul edildi. Bu turda yalnızca `Notlar (Claude)` değişti.
 
 ### Aldığım Notlar
 
-- Tur 1 önerileri doğru işlenmiş: gelir yüzdesiyle faizsiz taksit, işsizken ödeme durması, psikolojinin kendiliğinden toparlanması, borç bitmeden yeni fabrika kurulamaması ve iflas raporunda tam açıklama.
-- "Eşik = potansiyelin katı" fikri, sabit kriz penceresinden daha anlamlı. Büyük fabrikaya daha uzun, küçük fabrikaya daha kısa bir nefes verir.
+- Tur 2 düzeltmeleri doğru işlenmiş: net katkı, kredi dahil net pozisyon, ortalama iş havuzu, satış önizlemesi, şirket borcuna finansman gideri ve kişisel borç tavanı.
+- FRZ-002'nin kasa formülünün yeni nakit olaylarıyla (kredi, varlık satışı, finansman gideri) güncellenmesi gerektiği doğru biçimde tespit edilmiş.
 
 ### Bulduğum Sakıncalar
 
-**1. Formül iki yerden yanlış ölçüyor: brüt kâr ve kredi (kritik).**
-- **Brüt kâr olağan giderleri içermiyor.** Azami brüt kârı 50K, olağan gideri 40K olan fabrika en iyi ayda borca yalnızca 10K ayırabilir. "Altı ay borca çalışır" gerekçesi gerçekte 30 ay eder. Gider brüt kârı aşıyorsa fabrika hiç toparlanamaz ama eşik yine 300K görünür. Öneri: eşik, **azami aylık net katkı** (azami brüt kâr − olağan giderler) üzerinden hesaplansın. Net katkı sıfır veya eksiyse eşik açıkça sıfıra düşer ve oyuncu fabrikanın yapısal olarak zarar ettiğini görür.
-- **Kredi formülde yok.** Kriz kredisi kasaya para olarak girerse açık küçülür ve eşik iyileşir. Bu, "kredi eşiği tek başına iyileştirmez" cümlesiyle çelişir. Öneri: formül `kasa` yerine **net pozisyon = kasa − kriz kredisi bakiyesi** kullansın.
+**1. Kişisel borç tavanı, iflas yaklaşırken borçlanıp parayı şirketten çekmeyi ödüllendiriyor (kritik istismar).**
+Şirket borcunun tavanı aşan kısmı karaktere geçmiyor. Başarılı devirde ise net gelir karakterin sermayesi oluyor. Yani şirket parası ile kişisel para arasında bir geçiş var. Bu geçiş iflasa yakın dönemde de açıksa şu yol baskın strateji olur: kriz kredisi al, parayı karaktere aktar, fabrikayı iflasa bırak. Tavanı aşan borç silinir, çekilen para kalır. Öneri, tek kural: **şirketten karaktere para aktarımı yalnızca net pozisyon artıdayken ve borçsuz çıkışta (gönüllü tasfiye veya devir) yapılabilir.** Net pozisyon eksideyken hiçbir kişisel çekim olmaz.
 
-**2. İflas borcu fabrika ölçeğine bağlı; "bir yılda ödenir" ve "borç bitmeden yeni fabrika yok" kurallarıyla birlikte kalıcı kilit yaratır (kritik).**
-İflas anında açık, azami potansiyelin en az 6 katı. Büyük bir fabrikada bu, çalışan maaşının yüzdesiyle bir yılda değil on yıllarda kapanır. "Borç bitmeden yeni fabrika yok" kuralıyla birleşince karakter bir daha fabrika kuramaz. Bu, Tur 2'nin önlemek istediği kalıcı sarmalın ta kendisi. Öneri: **şirket borcu ile kişisel borç ayrılsın.**
-- Açığın büyük kısmı fabrikanın tasfiyesiyle (makineler, alacaklar) kapanmış sayılır.
-- Karakterin **kişisel borcu**, beklenen çalışan geliri yüzdesiyle yaklaşık bir yılda kapanacak bir **tavanla** sınırlanır.
-- İflasın bedeli yine hissedilir (bir yıl, psikoloji, kaybedilen sermaye), ama ölçeğe göre sonsuza uzamaz.
+**2. Borçları karşılayan zorunlu tasfiye "iflas" mı sayılıyor, belirsiz (kritik çelişki).**
+Eşik, net pozisyonu varlık değerini hiç saymadan ölçüyor. Makinesi değerli bir fabrika eşiği aşabilir, ama %50'lik zorunlu tasfiye bile bütün borcu kapatabilir. Metin gönüllü tasfiye için "borç kapanırsa iflas değil" diyor, zorunlu tasfiye için bir şey söylemiyor. Bu fabrikaya psikoloji düşüşü, acı tecrübe ve "borç bitmeden yeni fabrika yok" kuralı uygulanırsa, borcunu ödeyebilen oyuncu borcunu ödeyemeyen oyuncuyla aynı cezayı alır. Öneri: **iflas sonuçları yalnızca tasfiyeden sonra açık kalırsa uygulansın.** Açık kalmazsa bu bir "zorunlu kapanış" olur; tek bedeli %70 yerine %50 değer kaybıdır ve karakter kalan parayla yeniden başlayabilir.
 
-**3. Eşik oynak: küçülme hamlesi oyuncuyu iflasa itebilir, pazar dalgalanması iflas yaratabilir (kritik).**
-Eşik azami potansiyele bağlı, potansiyel de makinelere ve alınabilir işlere dayanıyor.
-- Örnek: kasa −200K, potansiyel 50K, eşik 300K. Makine satışı +50K getirir, açık 150K'ye iner. Ama potansiyel 20K'ye düşer, eşik 120K olur ve fabrika **satış anında batar**. Kriz hamlesi tuzağa dönüşür.
-- Alınabilir iş havuzu ay ay değişirse, oyuncu hiçbir şey yapmadan eşik altına düşebilir.
+**3. Başarılı devir, sorun yükünü sıfırlayan bir döngüye dönüşebilir (kritik baskın strateji riski).**
+Olgun fabrika zamanla gizli sorun biriktirir. Yeni fabrika bu sorunlar olmadan başlıyorsa, "kârlıyken sat, primle daha büyüğünü sıfırdan kur" döngüsü sorunları yönetmekten her zaman daha kârlı olur. Bu, GAME_OVERVIEW'daki "kurmak kolay, ayakta tutmak zor" kimliğini boşa çıkarır. Önerilen iki kural:
+- **Devir değeri yeniden kurma bedelini aşmasın.** Kârlılık primi, mevcut kayıplar düşülmüş gerçekleşen kârdan hesaplansın. Böylece sorun biriktirmiş fabrika düşük değerle satılır.
+- **Yeni fabrika bedava temiz sayfa olmasın.** Kuruluşun, üretimsiz geçen bir hazırlık süresi olsun. Sorun üretimi fabrikanın yaşına değil ölçeğine bağlı olsun. Böylece döngüye girmenin gerçek bir bedeli olur.
 
-Öneri:
-- Makine satışı onay ekranında **"satıştan sonra açık / yeni eşik"** önizlemesi zorunlu olsun.
-- Potansiyel, iş havuzunun **ortalamasına** (ör. son birkaç ayın) dayansın ve yalnızca ay sonunda güncellensin.
+Sorun üretiminin yaşa değil ölçeğe bağlı olması FRZ-001'in kapsamı dışında kalıyor. Bu yüzden İş Alma/ekonomi tasarımında açıkça korunmalı.
 
 ### Kafama Yatmayanlar
 
-- **Zombi fabrika riski:** Açık faiz işletmiyor ve süre sınırı yok. Fabrika eşiğin hemen altında aylarca kalabilir. Bu sürede kullanılabilir nakit eksi olduğu için FRZ-002'ye göre Düzelt ve danışman kapalıdır; oyuncunun yapabileceği tek şey beklemek olur. Açığa küçük bir maliyet (ör. aylık faiz) konursa sonuç netleşir. Sabit pencere istenmediği için bu, pencere yerine sadece bir yön verir.
+- Kapsam gereği bu turda ayrıca not yazılmadı.
 
 ### Açık Sorular
 
-1. Eşik, azami **net katkı** (brüt kâr − olağan giderler) ve **kredi dahil net pozisyon** üzerinden hesaplansın mı (Claude önerisi)?
-2. İflasta şirket borcu ile kişisel borç ayrılsın ve kişisel borç yaklaşık bir yıllık ödeme tavanıyla sınırlansın mı (Claude önerisi)?
-3. Makine satışında yeni eşik önizlemesi zorunlu olsun, potansiyel iş havuzu ortalamasıyla yalnızca ay sonunda güncellensin mi (Claude önerisi)? Açığa küçük bir faiz konulsun mu?
+**FREEZE durumu: koşullu olarak hazır.** Yukarıdaki üç kuralın her biri tek cümlelik:
+1. İflasa yakın dönemde şirketten kişisel para çekimi yok.
+2. Borcu karşılayan zorunlu tasfiye iflas sayılmaz.
+3. Devir değeri yeniden kurma bedelini aşmaz; kuruluşun hazırlık süresi var.
+
+Kullanıcı bunları onaylarsa ayrı bir tur gerekmez; FREEZE metnine doğrudan eklenebilir. FREEZE, IDEA'nın kendi belirttiği gibi FRZ-002'nin kasa formülünü kredi, varlık/fabrika satışı ve finansman gideriyle genişleten sürümle **birlikte** çıkmalı. Açık Kararlar'daki üç madde sayısal denge konusu olarak FREEZE dışında kalabilir.
 
 ## Açık Kararlar
 
