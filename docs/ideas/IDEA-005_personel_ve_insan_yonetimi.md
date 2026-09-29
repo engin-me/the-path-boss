@@ -2,18 +2,20 @@
 
 ## Durum/Tur
 
-Durum: DRAFT — Claude incelemesi bekleniyor; bu dosya FREEZE değildir.
-Tur: 1
+Durum: Tur 2 sentezi; Claude'un önerileri kullanıcı tarafından kabul edildi. Bu dosya henüz FREEZE değildir.
+Tur: 2
 Date: 2026-09-29
 Bağımlılıklar: [FRZ-001](../freeze/FRZ-001_patron_yetkinlikleri.md), [FRZ-002 v3](../freeze/FRZ-002_v3_fabrika_ekonomisi.md).
 
 ## Öneri (GPT)
 
-**Kapsam.** Ayrı bir müdür karakteri, müdür yetkinliği veya işe al/kov eylem zinciri tanımlanmaz. Personelden kaynaklanan olaylar mevcut departman sorun döngüsünde kök neden olarak görünür. “Düzelt” başarılı olursa gereken konuşma, yaptırım, eğitim veya işten çıkarma çözümün içinde gerçekleşir; sonuç metni ne olduğunu anlatır. FRZ-001'in tek buton, Tier, para/zaman ve başarı kuralları aynen işler.
+**Kapsam.** Ayrı bir müdür karakteri, müdür yetkinliği veya işe al/kov eylem zinciri tanımlanmaz. Personelden kaynaklanan olaylar mevcut departman sorun döngüsünde kök neden olarak görünür. “Düzelt” başarılı olursa gereken konuşma, yaptırım, eğitim veya işten çıkarma çözümün içinde gerçekleşir; sonuç metni **yapılan personel işlemini adıyla** anlatır. FRZ-001'in tek buton, Tier, para/zaman ve başarı kuralları aynen işler.
 
-**İnsan Yönetimi'nin katkısı.** Patronun **kalıcı İnsan Yönetimi puanı**, yeni kişi kaynaklı sorunların çıkma olasılığını bütün departmanlarda azaltır. Danışmanın geçici İnsan Yönetimi puanı bu genel sıklığı azaltmaz; kendi alanındaki mevcut sorunu görme ve Düzelt'te FRZ-001'e göre işe yarar. Yüksek puan mevcut sorunu otomatik silmez ve kişi kaynaklı sorunları sıfıra indirmez. İlk denge hedefi, en yüksek puanda yaklaşık **%80 daha az kişi kaynaklı yeni sorun**; kişi kaynaklı köklerin başlangıçta toplam sorunların yaklaşık **%30–40'ı** olmasıdır. Kesin eğri testle belirlenecektir.
+**İnsan Yönetimi'nin katkısı.** Patronun **kalıcı İnsan Yönetimi puanı**, yeni kişi kaynaklı sorunların oluşma olasılığını bütün departmanlarda azaltır. Danışmanın geçici İnsan Yönetimi puanı bu genel sıklığı azaltmaz; ilgili mevcut sorunu görme ve Düzelt'te FRZ-001'e göre işe yarar. Sorun üretiminde önce kökün kaynak türü belirlenir; kişi kaynaklı oluşum İnsan Yönetimi etkisiyle önlenirse olay **iptal edilir, yerine süreç sorunu üretilmez**. Mevcut sorun kendiliğinden kapanmaz. Kişi kaynaklı köklerin payı **her departmanda ve her Tier'de aynı hedef oranla** dağıtılır; derin Tier'lerde yoğunlaştırılmaz. Böylece İnsan Yönetimi başka alanlardaki derin bilgiyi gereksizleştirmez.
 
-**Rapor ve maliyet.** Kişi kaynaklı sorun, kökün ait olduğu tek departmanın Tier satırında FRZ-001'e göre kayıp üretir; başka departmanda ikinci kez yazılmaz. İnsan Yönetimi alanının kendine özgü sorunları da bulunur. Azalan sorun sıklığı sonraki aylık performans raporlarına yansır. Olağan personel giderleri FRZ-002 v3'ün bilinen gider/kasa sırasındadır; Düzelt bedeli mevcut FRZ-001 kuralıyla ayrıca ödenir.
+**Denge hedefi.** En yüksek puanda kişi kaynaklı **yeni** sorunların yaklaşık **%80'i** önlensin; başlangıçta kişi kaynaklı köklerin toplam sorun payı yaklaşık **%30** olsun. Bu birleşim toplam sorun oluşumunu yaklaşık **%24 azaltır**; kesin eğri ve oran oyun testinde ayarlanır. Kabul ölçütü: İnsan Yönetimi 100 olan patron, aynı toplam yetkinlik puanını başka alanlara dağıtmış patronu sistematik olarak geçmemeli. İnsan Yönetimi etkisi güçlü kalır ama diğer alanların yerini tutmaz.
+
+**Rapor ve maliyet.** Kişi kaynaklı sorun, kökün ait olduğu tek departmanın Tier satırında FRZ-001'e göre kayıp üretir; başka departmanda ikinci kez yazılmaz. İnsan Yönetimi alanının kendine özgü sorunları da bulunur. Mevcut **gizli** satırda “kişi kaynaklı” etiketi veya sayısı gösterilmez; kök türü ancak ilgili satır görünür olduğunda ya da Düzelt sonucunda açıklanır. İnsan Yönetimi'nin faydası, mevcut satırlardan bağımsız **“bu ay önlenen kişi kaynaklı olay”** sayısıyla aylık raporda gösterilir. Önlenen olay hiç oluşmadığı için gizli kök nedeni sızdırmaz. Olağan personel giderleri FRZ-002 v3'ün bilinen gider/kasa sırasındadır; Düzelt bedeli FRZ-001 kuralıyla ayrıca ödenir.
 
 **Vizyon bağı.** [GAME_OVERVIEW](../03_GAME_OVERVIEW.md) §10 ve §19 adlı müdürler ile işe alma kararlarını daha ayrıntılı anlatır. Kullanıcının önceki sadeleştirme yönü bu taslakta önceliklidir. Bu konu FREEZE olursa overview'daki ayrıntılı müdür kurgusu yürürlükteki tasarımla uyumlu hale getirilmelidir; bugünkü metin sessizce onaylı kural sayılmaz.
 
@@ -57,10 +59,14 @@ Rapor, İnsan Yönetimi'nin etkisini göstermek için mevcut satırlarda "kişi 
 
 ## Açık Kararlar
 
-1. İnsan Yönetimi yalnızca **yeni** kişi kaynaklı sorunların oluşma ihtimalini mi düşürsün? Bu taslakta mevcut sorun kendiliğinden kapanmaz.
-2. Yaklaşık %80 azaltma ve %30–40 başlangıç payı, İnsan Yönetimi'ni değerli kılarken diğer yetkinlikleri gölgelemiyor mu?
-3. Müdür ve personel bilgisi, ayrı karakter ekranı olmadan Düzelt sonucu ile departman raporunda oyuncuya yeterince anlaşılır mı?
+1. Yaklaşık %80 azaltma, %30 başlangıç payı ve eşit Tier/departman dağılımının kesin değerleri denge testinde belirlenecektir.
+2. Önlenen olay sayısının raporda sunumu ve personel işlemi sonuç metinleri içerik/arayüz testinde sınanacaktır.
+3. FREEZE sonrasında GAME_OVERVIEW §10 ve §19'daki ayrıntılı müdür/aday anlatımı yürürlükteki sade personel tasarımıyla uyumlu hale getirilmelidir.
 
 ## Karar Özeti
 
-- Bu turda yeni nihai karar yoktur. Önceki kullanıcı yönlendirmesi: ayrı müdür yetkinliği açmadan İnsan Yönetimi personel kaynaklı sorunları azaltsın ve Düzelt gereken personel işlemini kapsasın; çünkü yönetim bilgisi rapor sonuçlarında etkili olmalı, her sorun ayrı personel menüsüne dönüşmemelidir. Bu IDEA henüz FREEZE değildir.
+- Ayrı müdür karakteri veya müdür yetkinliği açılmaz; gerekli personel işlemi Düzelt sonucu olarak adıyla anlatılır, çünkü yönetim sorunu tek eylem akışında anlaşılır kalmalıdır.
+- Patronun kalıcı İnsan Yönetimi puanı yalnızca **yeni** kişi kaynaklı oluşumu önler ve önlenen olay yerine başka sorun doğmaz; çünkü yetkinlik toplam sorun sayısını gerçekten azaltmalı ama mevcut sorunları bedelsiz çözmemelidir.
+- Kişi kaynaklı pay bütün Tier ve departmanlarda eşit hedeflenir; çünkü İnsan Yönetimi diğer alanların derin sorunlarını topluca devre dışı bırakmamalıdır.
+- Yaklaşık %80 önleme ve yaklaşık %30 başlangıç payı ilk hedeftir; çünkü İnsan Yönetimi güçlü olmalı ama eşit toplam puanlı diğer kariyer rotalarını sistematik olarak geçmemelidir.
+- Gizli satırın kişi kaynaklı olduğu açıklanmaz, fayda ayrı “önlenen olay” sayısıyla gösterilir; çünkü kök nedeni sızdırmadan oyuncu yetkinliğin işe yaradığını görmelidir.
