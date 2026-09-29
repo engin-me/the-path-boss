@@ -180,73 +180,69 @@ Bilmediği işi kime bırakacağını bilir.
 
 ## Notlar (Claude)
 
-Tarihçe: Tur 1 inceleme [REV-001](../reviews/REV-001_claude_patron_yetkinlikleri.md) ve bu dosyanın Git geçmişi. Aşağıdakiler Tur 11 `Öneri (GPT)` metninin incelemesidir. Kullanıcının isteğiyle özellikle **farklı Tier satırlarının ortak kökü** ve **gizli sorunların bağlantı kuralı** ele alındı. `Karar Özeti` tartışmaya açılmamış; notlar kararların içindeki açıkları ve uygulanma biçimini hedefler. Bu turda yalnızca `Notlar (Claude)` değişti.
+Tarihçe: Tur 1 inceleme [REV-001](../reviews/REV-001_claude_patron_yetkinlikleri.md) ve bu dosyanın Git geçmişi. Aşağıdakiler Tur 12 `Öneri (GPT)` metninin incelemesidir. Kullanıcının isteğiyle özellikle **kök düzeyinde aylık tekrar kilidi**, **tahmini/gerçek maliyet** ve **beş satırlı gizli sorun gösterimi** ele alındı. `Karar Özeti` tartışmaya açılmamış; notlar kararların içindeki açıkları ve uygulanma biçimini hedefler. Bu turda yalnızca `Notlar (Claude)` değişti.
 
 ### Aldığım Notlar
 
-- Tur 10 notlarındaki kullanıcı yönlendirmeleri doğru işlenmiş: fabrika geneli tek müdahale sınırı kaldırıldı ve "aynı soruna ayda bir deneme" kuralı geldi; 40 saatlik zaman bütçesi, firma ölçeğine bağlı danışman gücü, %33 taban, birim modeli, sözleşmenin ilk yarısında uzatma ve rutin/stratejik ayrımın ayrı kapsam olarak saklanması öneriye girdi.
-- Ayrı "Görüş Seviyesi" kavramının kaldırılması ve tek yetkinlik puanının doğrudan Tier eşiğiyle karşılaştırılması sadeleştirdi; terim sorusu kapandı.
-- Beş satırlı departman kartı okunur bir yapı. Departmanda her Tier'de en fazla bir sorun olması içerik ve arayüz yükünü sınırlıyor: departman başına en fazla 5, fabrikada en fazla 50 satır.
-- Codex, ortak kök ile gizli sorun kuralı arasındaki gerilimi doğru tespit edip açık bırakmış.
+- Tur 11'in ana önerileri doğru işlenmiş: kökün derinliği bağlı satırların en derini, bağlantı aynı departmanda ve en fazla iki kademe aralıkta, "gizli satır görünür satırla bağlanmaz" yasağı kalktı. Başarı ve maliyet kökten hesaplanıyor.
+- Tutarlı örnek düzeltildi: Planlama'nın 10 birimlik kaybı 2 + 5 + 3 olarak satırlara dağıtılıyor. Tur 11'deki "Planlama 100 birim" çelişkisi kapandı.
+- "Satırın eşiği → belirti görünür; kökün eşiği → bağlantı ve kesin sonuç" ayrımı açık ve tek kurala dayanıyor.
+- Satın Alma örneği beş satırlı kart ve "Derinlik bilinmiyor" diline uyarlandı.
 
 ### Bulduğum Sakıncalar
 
-**1. Ortak kök için önerilen tek kural: kökün derinliği, bağlı satırların en derini (ana öneri).**
-Beş satırlı kartta aynı departmanda aynı Tier'de ikinci satır olamıyor. Bu yüzden departman içindeki her bağlantı zorunlu olarak farklı Tier'ler arasında kuruluyor; kullanıcının "farklı Tier satırları bağlanabilir" teyidi bu yapıda kaçınılmaz. Tur 10'daki "bağlı satırlar aynı Sorun Derinliğini paylaşır" önerim bu yapıda geçersiz; geri çekiyorum. Önerilen kural:
-- Her kökün tek bir derinliği vardır: bağlı satırlarının en derin Tier'i.
-- Bir satırın kendi belirtisi, patronun puanı o satırın Tier eşiğine ulaşıyorsa görünür. Bugünkü kural değişmez.
-- Hangi satırdan basılırsa basılsın "Düzelt" kökü hedefler. Başarı kökün derinliğine göre hesaplanır; süre ve para kökün işidir. Başarı halinde bağlı satırların hepsi kapanır.
-- Örnek (Tur 11 kartı, Planlama yetkinliği 60 olan patron): T2 (20 birim) ile T4 (30 birim) aynı köke bağlıysa kökün derinliği T4 olur. Patron T2'nin belirtisini görür, ama T2'ye bastığında şans "kesin" değil, T4'e göre "orta" (≈ %40) çıkar. Başarılı olursa 50 birim birden geri gelir.
-- Bu kural kullanıcının önceki iki isteğinin amacını korur: gizli derin problem, görünür kolay bir satıra basarak ucuza aşılamaz, çünkü şans ve maliyet kökün derinliğiyle hesaplanır. Bu durumda "gizli sorun, görünür düşük Tier'le ortak kök taşımaz" yasağına gerek kalmaz; yasak kaldırılabilir.
-- Tematik kazancı da var: patronun gördüğü bir satırda şansın beklenenden düşük çıkması, GAME_OVERVIEW §9'daki "burada benim anlayamadığım bir problem var" hissinin ta kendisi. Bilgi modeliyle uyumlu bir sezgi sinyali.
+**1. Gizli satırdaki şans etiketi, adsız gösterime rağmen derinliği çoğu durumda tam olarak ele veriyor (kritik).**
+Şans yalnızca kademe farkına bağlı ve gizli satırlar tam olarak patronun erişemediği Tier'ler. Bu yüzden etiket, adsız satırın Tier'ini doğrudan söylüyor. Örnek, Planlama yetkinliği 60 (T2'ye erişiyor) olan patron:
+- Gizli T3 → 1 kademe → "yüksek"; gizli T4 → 2 kademe → "orta"; gizli T5 → 3 kademe → "düşük".
+- Üç gizli yuvanın üç etiketi de birbirinden farklı. Oyuncu "yüksek" yazan adsız satırın T3, "orta" yazanın T4 olduğunu kesin olarak çıkarır.
+- Aynı durum patron T3 veya T4'e eriştiğinde de geçerli. Yalnızca T1'e bile erişemeyen ya da yalnızca T1'e erişen patronda "düşük" etiketi birkaç derinliği birleştirip kısmen gizliyor.
+- Sonuç: Karar Özeti'ndeki "gizli sorunun tam Tier'i ifşa edilmemeli" gerekçesi gerçekleşmiyor; adsız gösterim fiilen işlevsiz kalıyor. Öneri metnindeki "üç etiket … derinliği tam ifşa etmez" cümlesi bu yüzden doğru değil.
 
-**2. "T1 ile T5 aynı köke bağlanmaz" kuralını genelleştirin: bir kökün satırları en fazla 2 kademe aralıkta olsun.**
-Kök derinliği kuralıyla T1–T5 bağlantısı bir istismar değil, ama oyuncuyu sinirlendirir: herkesin gördüğü T1 satırına basan patron %5 şansla karşılaşır ve nedenini anlamaz. Öneri: bir kökün satırları en fazla 2 kademe aralıkta olsun (T1–T3, T2–T4, T3–T5).
-- Bu kural kullanıcının "T1–T5 olmaz" kuralını kapsar.
-- Faydalı bir sonucu var: görünür bir satırda patron zaten o satırın Tier'ine ulaşmıştır ve kök en fazla 2 kademe daha derindedir. Bu yüzden görünür satırda şans hiçbir zaman "düşük"e inmez, en kötü "orta" olur.
-- Gerçekçi de kalır: Satın Alma örneğinde T1 (yüksek fiyat) T3'ten (tek tedarikçi), T2 (kötü termin) T4'ten (kayırma) doğabilir.
+Bu bir tasarım hatası değil, iki hedefin matematiksel olarak bağdaşmaması: şans yalnızca derinliğe bağlıysa, şansı göstermek derinliği gösterir. Kullanıcının seçmesi gereken üç yol:
+- **(a) Gizli satırda şans gösterilmesin ("belirsiz") (Claude önerisi):** Patron sorunun var olduğunu ve kaybını bilir, ne kadar zor olduğunu bilmez. "Neyi bilmediğini bilir" ilkesine en uygun ve en sade yol. Görünür satırlar etiketlerini korur.
+- **(b) Gizli satırda patronun tahmini gösterilsin:** Etiket gerçek şansı değil, patronun yanılabilen tahminini gösterir; yetkinlik düştükçe tahmin bir kademe şaşabilir. Kaba risk bilgisini korur, derinliği kesinleştirmez, ama yeni bir gürültü kuralı ekler.
+- **(c) Derinliğin sezilmesi bilinçli kabul edilsin:** Adsız gösterim yalnızca kozmetik kalır; Karar Özeti'ndeki gerekçe "neden gizli, zorluk sezilebilir" olarak güncellenir.
 
-**3. "Aynı soruna ayda bir deneme" kuralında "sorun" kök olmalı; başarısız deneme bağlantıyı ele verir ve bu bir özellik olsun.**
-Kural satır düzeyinde uygulanırsa oyuncu aynı kökü üç satırdan üç kez dener: %40 şansla üç deneme ≈ %78 eder ve bu baskın strateji olur. Bu yüzden kilit kök düzeyinde olmalı. Ancak kök kilitlenince bağlı satırlar da kilitlenir ve oyuncu bağlantıyı öğrenir. Öneri: bunu bilinçli bir özellik yapın. Başarısız denemeden sonra şu mesaj görünsün: "Bu sorunla aynı kökten geldiği anlaşılan T4 satırı da bu ay denenemez." Başarısızlık bilgi üretir; bu, "başarısızlık öğretmeli" ilkesiyle uyumlu. Öneri metnindeki "bu satırın aynı ay yeniden denenemeyeceği" ifadesi "bu kökün" olarak düzeltilmeli.
+Ek not: İçerik üretiminde derin sorunların kaybı sistematik olarak daha büyük olursa, kayıp miktarı da derinliği ele verir. Kayıp büyüklüğü Tier'den bağımsız dağıtılmalı.
 
-**4. Tahmini maliyet ile kökün maliyeti arasındaki fark bağlantıyı ödemeden önce ele verebilir.**
-Tur 10'da kabul edilen "tahsilat her zaman kökün gerçek maliyeti" kuralı, farklı derinlikteki köklerde ödeme ekranında sızıntı yapar. Örnek: T2 satırının tahmini bedeli 50.000; kök T4 olduğu için onay ekranında 250.000 görünürse oyuncu bağlantıyı ödemeden önce anlar. Öneri:
-- Onayda satırın tahmini bedeli tahsil edilir.
-- Müdahale başarılı olursa kökün gerçek maliyetiyle arasındaki fark sonradan, "kök daha derindeymiş" açıklamasıyla faturalanır. Başarı halinde toplam bedel her zaman kökün maliyeti olur, bu yüzden "en ucuz satırı seç" istismarı kapalı kalır.
-- Başarısızlıkta yalnızca tahmin yanar. Sürpriz ek maliyet yalnızca iyi haberle, yani birden fazla satırın kapanmasıyla birlikte gelir.
-- Patron zamanı için sadelik amacıyla yalnızca satırın kendi süresi harcansın; ek fark yalnızca para için olsun.
+**2. Kök düzeyinde aylık kilit: her kilit biçimi bağlantıyı ilk etkileşimde ortaya çıkarır; bunu açık bir kural yapın.**
+Seçenekler ve sonuçları:
+- **Yalnızca satır kilidi:** Aynı kök bağlı satırlardan aynı ay birkaç kez denenebilir (T2, T3, T4 üzerinden %40 şansla üç deneme ≈ %78). Aylık tek deneme kuralı fiilen delinir. Bağlantı yine ortaya çıkar: ikinci satırdaki başarı ilk satırı da kapatır.
+- **Görünmez kök kilidi:** Bağlı satır tıklanabilir görünür ama deneme reddedilir ya da sessizce başarısız sayılır. Reddetmek bağlantıyı yine gösterir; sessizce başarısız saymak ise oyuncuyu aldatan bir ceza olur. Kabul edilemez.
+- **Görünür kök kilidi (Claude önerisi):** Başarısız denemeden sonra bağlı satırlar da kilitlenir ve mesajla açıklanır: "Bu sorunla aynı kökten geldiği anlaşılan 1 satır daha bu ay denenemez."
 
-**5. Beş satırlı kart gizli sorunların derinliğini tamamen gösteriyor (kritik; önceki kararların gerekçesiyle çelişki).**
-Satırlar T1–T5 diye adlandırıldığı için gizli bir satırın derinliği de yazılı (ör. "T4: 30 birim"). Tur 7–9'daki üç sözel etiket kararı "kesin yüzde gizli Tier'ı ele vermemeli" gerekçesiyle alınmıştı. Şimdi Tier zaten satırın adında: oyuncu "patron 60, satır T4, iki kademe, %40" hesabını kendisi yapar ve etiketin gizleme işlevi kalmaz. Karar Özeti'nde bununla çelişen iki gerekçe var: "Statlar … gizli sorunlarda şans kaba aralıkla gösterilir; çünkü … kesin yüzde gizli Tier'ı ele vermemeli" ve "üç etiket gizli nedeni tam açıklamamalı". Öneri 1 ile birlikte bir etkisi daha var: görünür satırda şans düşük çıkarsa ve derin satırlardan biri doluysa, oyuncu bağlantıyı neredeyse kesin olarak çıkarır. İki yol var:
-- **(a) Derinliği göster, nedeni gizle:** Patron "neyi bilmediğini tam olarak bilir". En basit yol; danışman seçimi de rasyonel hale gelir. Bu durumda üç etiket kararının gerekçesi "sadelik" olarak güncellenmeli; istenirse kesin yüzde de gösterilebilir.
-- **(b) Patronun erişemediği satırları adsız göster:** Kart, patronun ulaştığı Tier'e kadar T1…Tk satırlarını adlarıyla gösterir; bunun üstündekiler "Açıklanamayan kayıp — derinlik bilinmiyor" başlığı altında sırasız satırlar olarak durur. Her gizli satırın kendi "Düzelt"i ve kaba şans etiketi kalır. Önceki kararların gerekçesi korunur ve GAME_OVERVIEW §9'a daha yakın olur.
-- Claude önerisi: (b). Yeni bir mekanik eklemiyor, yalnızca satır başlıklarını değiştiriyor. Kullanıcı sadeliği tercih ederse (a) da tutarlı, ama o zaman Karar Özeti'ndeki gerekçeler güncellenmeli.
+Sonuç: bağlantı, kök üzerinde ilk deneme yapıldığı anda ortaya çıkar. Başarıda satırlar birlikte kapandığı için, başarısızlıkta da kilit mesajıyla. Bu kaçınılmaz ve tematik olarak doğru: müdahale bilgi üretir, başarısızlık öğretir. Kilit mesajı bağlantıyı gösterir ama kökün derinliğini ve nedenini göstermez; gizli satırlar adsız kalır. Öneri metnindeki "aynı satırın o ay yeniden denenemeyeceği" ifadesi "aynı kökün" olarak düzeltilmeli.
 
-**6. Örnek sayılar birbiriyle ve %33 tabanıyla çelişiyor.**
-Tur 11'deki departman kartında Planlama'nın kaybı 100 birim. Fabrika örneğinde ise bütün fabrikanın kapasitesi 100 birim ve Planlama'nın kaybı 10 birim. Tek departmanın 100 birim kaybı fabrika kapasitesinin tamamı demek ve departman başına %33 tabanını da aşıyor. Kart örneği ya departman içi ölçekle yazılmalı ya da birimler fabrika ölçeğine indirilmeli. Örnek: Planlama'nın ağırlığı 30 ise T2 6, T3 8, T4 6, toplam 20 birim olur ve %33 tabanının içinde kalır. Tur 10 notumdaki departman ağırlığı önerisi bu köprüyü kurar; hâlâ açık.
+**3. Tahmini/gerçek maliyet: Tur 11'deki zaman önerimi geri çekiyorum, bir açık yaratıyordu.**
+Tur 11'de "sadelik için yalnızca satırın kendi süresi harcansın" önermiştim. Bu bir istismar açar: kökü T4 olan bağlantıda T2 satırından yapılan başarılı müdahale, kökün 14 saatlik işini T2'nin 6 saatiyle çözmüş olur. Öneriyi geri çekiyorum. Önerilen tam model:
+- **Onay ekranı:** Satırın tahmini parası ve saati gösterilir. Kök maliyeti önceden gösterilmez, çünkü sığ görünen satırda yüksek bedel görünmesi bağlantıyı ödemeden önce ele verir.
+- **Başarısızlık:** Tahmini para ve saat harcanır. Görünür kök kilidi devreye girer ve bağlantı açıklanır.
+- **Başarı:** Bağlı satırlar kapanır. Kökün gerçek maliyetiyle arasındaki fark "kök daha derindeymiş" açıklamasıyla faturalanır: para farkı hemen, saat farkı ise sonraki ayın patron zamanından düşülür. Böylece başarı halinde toplam bedel her zaman kökün bedeli olur.
+- **Bağlantı bilindikten sonra:** Bağlı satırların hepsi kökün tahminini gösterir. Böylece "en ucuz satırdan dene" avantajı yalnızca bağlantı henüz bilinmezken, yani kasıtlı kullanılamazken vardır.
+- **Nakit riski:** Başarıyla gelen büyük bir fark faturası nakdi sıkışık fabrikayı iyi haberle birlikte krize sokabilir. Farka bir üst sınır konmalı (ör. tahminin en fazla 2 katı) ya da fark taksitlendirilmeli.
+- **Karar Özeti notu:** "Tahsil edilen bedel … satırdan bağımsız gerçek çözüm maliyetidir" maddesi bu modelle yalnızca başarı halinde tam doğru olur. Başarısızlıkta satırın tahmini tahsil edilir. Madde buna göre "başarıda toplam bedel satırdan bağımsız olarak kökün maliyetidir" diye güncellenmeli.
 
-**7. Departmanlar arası ortak kök tanımsız.**
-Gerçek bir fabrikada Satın Alma kaynaklı bir kök (ör. tek tedarikçi) Üretim'de malzeme beklemesi olarak görünür. Farklı departmanlardaki satırlar bağlanırsa hangi alanın yetkinliği geçerli olacak? Öneri: IDEA-001'de bağlantı yalnızca aynı departman içinde olsun; departmanlar arası nedensellik ekonomi veya ayrı bir IDEA konusu olarak kalsın.
+**4. Görünür satırda düşük çıkan şans bağlantıyı ve kökün derinliğini sezdirir; bu kabul edilebilir.**
+Planlama yetkinliği 60 olan patron T2'yi görüyor. T2 gizli bir T4'e bağlıysa T2 satırındaki etiket "kesin" değil "orta" çıkar. Oyuncu T2'nin daha derin bir köke bağlı olduğunu anlar, hatta farkın iki kademe olduğunu çıkarabilir. Bu, Tur 11'de önerdiğim "sezgi sinyali" ve GAME_OVERVIEW §9 ile uyumlu. Ancak 1. maddedeki (a) seçilirse bu satırda bilinçli bir istisna oluşur: görünür satır şans gösterir, gizli satır göstermez. İstisnanın gerekçesi yazılmalı: görünür satırda patron belirtiyi tanıyor ve işin beklenenden zor olduğunu sezebiliyor.
 
 ### Kafama Yatmayanlar
 
-- **Ücretli kartlar ve pay-to-win:** Konu Açık Kararlar'a taşınmış ama öneride çözülmemiş. Tur 10 notumdaki "ücretli kartlar aynı bütçeye uysun, avantajları yalnızca hedefleme olsun" önerisi hâlâ yanıt bekliyor.
-- **Eski örneklerin güncellenmesi:** Temel Mantık'taki "Satın Alma yetkinliği 70 olan patron T1–T3'ü görebilir … Açıklanamayan kayıp sinyali görünür kalır" örneği ve Planlama %60 / ERP örneği beş satırlı kart modeline göre yeniden yazılmalı. ERP örneğindeki "aynı Tier'de iki bağlı satır" artık beş satırlı kartta mümkün değil.
-- **Kayıpların ne zaman geri geldiği:** Ortak kök başarıyla çözülünce kapanan satırların kaybı aynı ay mı, sonraki ay mı geri kazanılıyor? Ay sonu raporu modelinde müdahalenin etkisinin zamanı tanımlanmalı. Öneri: etki sonraki ayın raporuna yansısın.
+- **%33 taban ile birim modeli arasındaki köprü hâlâ açık.** Tur 10'da önerdiğim departman ağırlığı veya yalnızca fabrika tabanı seçeneği yanıt bekliyor. Planlama'nın 10 birimlik kaybının %33 tabanına göre izinli olup olmadığı, Planlama'nın fabrikadaki ağırlığı bilinmeden söylenemiyor.
+- **Ücretli kartlar ve pay-to-win** hâlâ açık: ücretli kartların ücretsizlerle aynı puan bütçesine uyması ve avantajın yalnızca hedefleme olması önerisi yanıt bekliyor.
+- **Gizli boş yuvanın gösterimi:** Örnekteki "gizli boş yuva: –" satırı oyuncuya erişemediği Tier'lerden birinin boş olduğunu söylüyor. Bu zararsız, çünkü gizli sorun sayısı zaten görünüyor. Ancak adsız satırlar her ay karışık sırayla gösterilmezse, sabit sıra zamanla Tier'i ima edebilir. Açık Kararlar'da not edilmiş; sıranın her ay rastgele olması önerilir.
 
 ### Açık Sorular
 
-Tur 12'den önce kullanıcının karar vermesi önerilen üç konu:
+Tur 13'ten önce kullanıcının karar vermesi önerilen üç konu:
 
-1. **Ortak kök kuralı:** Kökün derinliği bağlı satırların en derini olsun; "Düzelt" hangi satırdan basılırsa basılsın kökü hedeflesin, şans ve maliyet kökün derinliğine göre hesaplansın. Bu kuralla "gizli sorun görünür satırla bağlanmaz" yasağı kaldırılsın mı (Claude önerisi)?
-2. **Bağlantı sınırı:** Bir kökün satırları en fazla 2 kademe aralıkta olsun mu? Bu, T1–T5 yasağını kapsar ve görünür satırda şansın "düşük"e inmesini önler. Bağlantı yalnızca aynı departman içinde mi olsun?
-3. **Gizli satırların derinliği:** Beş satırlı kartta gizli satırların Tier'i görünsün mü (a), yoksa patronun erişemediği satırlar "derinlik bilinmiyor" başlığı altında mı toplansın (b, Claude önerisi)?
+1. **Gizli satırlarda şans etiketi:** (a) "belirsiz" gösterilsin (Claude önerisi), (b) patronun yanılabilen tahmini gösterilsin, (c) derinliğin etiketten sezilmesi bilinçli kabul edilsin. Hangisi?
+2. **Kök kilidi:** Başarısız denemeden sonra bağlı satırlar görünür biçimde kilitlensin ve bağlantı mesajla açıklansın mı (Claude önerisi)?
+3. **Maliyet modeli:** Onayda satırın tahmini parası ve saati; başarıda kök farkı (para hemen, saat sonraki aydan); bağlantı bilinince tüm bağlı satırlarda kökün tahmini; fark için üst sınır ya da taksit. Bu model kabul edilsin mi?
 
 Diğerleri:
 
-- Aylık tek deneme kilidi kök düzeyinde olsun ve başarısız denemenin bağlı satırları da kilitleyip bağlantıyı göstermesi bilinçli bir özellik olarak kabul edilsin mi?
-- Onayda satırın tahmini bedeli, başarı halinde kökün maliyetiyle fark tahsili modeli kabul edilsin mi?
-- Kart örneğindeki birimler fabrika ölçeğine göre düzeltilsin mi?
+- %33 taban için departman ağırlığı mı, yalnızca fabrika tabanı mı?
+- Adsız gizli satırların sırası her ay rastgele olsun mu? Kayıp büyüklüğü Tier'den bağımsız dağıtılsın mı?
 
 ## Açık Kararlar
 
