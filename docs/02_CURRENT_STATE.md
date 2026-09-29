@@ -15,4 +15,4 @@ Pending review:
 None. Kullanıcının aktardığı Claude incelemesi IDEA-007 ve IDEA-008 içinde kaydedildi.
 
 Next step:
-Arayüzsüz Python prototipi game/simulation.py ve game/scenarios.py içinde dört kabul senaryosunu çalıştırıyor. `python -B -m game.run_simulation` ile örnek akış, `python -B -m unittest discover -s tests -v` ile kabul testleri çalışır. Sonraki iş, prototipten çıkan açık denge girdilerini ve oynanabilir arayüz kapsamını belirlemektir.
+Üç kariyer ve üç fabrika ayını seçerek oynatan terminal dilimi game/play_campaign.py içinde hazır. `python -B -m game.play_campaign` ile oynanır, `--auto` ile iki rota ve dört eski kabul senaryosu çalışır. Kapsam/sınırlar docs/05_PLAYABLE_PROTOTYPE.md içinde; sonraki iş oynanış geri bildirimi ve açık denge girdileridir.
