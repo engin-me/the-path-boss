@@ -245,8 +245,10 @@ Asıl işlevi:
 - T1 → fiyatlar yüksek
 - T2 → termin performansı kötü
 - T3 → tek tedarikçiye bağımlılık
-- T4 → müdür belirli tedarikçiyi bilinçli kayırıyor
-- T5 → müdür tedarikçiden kişisel ödeme alıyor
+- T4 → satın alma sorumlusu belirli tedarikçiyi bilinçli kayırıyor
+- T5 → satın alma sorumlusu tedarikçiden kişisel ödeme alıyor
+
+Bu satırlar olası kök neden örnekleridir; kişi kaynaklı sorunların gerçek havuzdaki payı her Tier ve departmanda dengelenir.
 
 Satın Alma yetkinliği 70 olan patron T1-T3 seviyesini anlayabilir.
 
@@ -276,37 +278,17 @@ diye düşünür.
 
 ---
 
-# 10. Müdür Sistemi
+# 10. Personel ve Yönetim Sorunları
 
 Fabrika sahibi bütün işleri kendisi yapmaz.
 
-Departmanların başında müdürler bulunabilir.
+Ayrı müdür karakteri veya müdür yetkinliği tanımlanmaz. Personelden doğan sorunlar, ilgili departmanın mevcut sorun satırlarında görünür; patronun o alanı ne kadar bildiği teşhis ve Düzelt başarısını belirler.
 
-Müdürün uzmanlığı, kendi seviyesine kadar olan rutin problemleri patrona ulaşmadan çözmesini sağlar.
+Başarılı **Düzelt**, konuşma, eğitim, yaptırım veya işten çıkarma gibi gereken personel işlemini de kapsar. Sonuç metni yapılan işlemi söyler. Patron ayrıca müdür kovma ve yenisini alışma süreciyle izleme zinciri yönetmez.
 
-Temel kombinasyonlar:
+Patronun kalıcı İnsan Yönetimi yetkinliği, yeni kişi kaynaklı sorunların oluşma sıklığını azaltır. Önlenen olay yerine başka sorun gelmez; önceden doğmuş sorun kendiliğinden çözülmez. Böylece iyi yönetim patronun operasyonel müdahale yükünü azaltır, ancak her departmandaki uzmanlık ihtiyacını ortadan kaldırmaz.
 
-### İyi Müdür + Bilgili Patron
-İdeal yapı.
-
-### Kötü Müdür + Bilgili Patron
-Patron problemleri fark eder ama sürekli müdahale etmek zorunda kalır.
-
-Bu:
-
-- zaman,
-- para,
-- yönetim kapasitesi
-
-kaybettirir.
-
-### İyi Müdür + Bilgisiz Patron
-Departman uzun süre iyi çalışabilir.
-
-Ancak müdürün çözemediği derin bir problem çıktığında patron ne olduğunu anlayamayabilir.
-
-### Kötü Müdür + Bilgisiz Patron
-En riskli kombinasyon.
+Kesin kurallar için [FRZ-001](freeze/FRZ-001_patron_yetkinlikleri.md) ve [FRZ-005](freeze/FRZ-005_personel_ve_insan_yonetimi.md) geçerlidir.
 
 ---
 
@@ -564,34 +546,9 @@ yapısında olabilir.
 
 İnsan Yönetimi önemli patron yetkinliklerinden biridir.
 
-Oyuncu:
+Patronun çalışanlık kariyerinde edindiği **kalıcı** İnsan Yönetimi bilgisi, bütün departmanlarda yeni kişi kaynaklı sorunların çıkma ihtimalini azaltır. Danışmanın geçici puanı bu genel sıklığı düşürmez; ilgili mevcut sorunu teşhis ve Düzelt'te yardımcı olabilir.
 
-- kimi işe alacağını,
-- kimi terfi ettireceğini,
-- kime yetki vereceğini,
-- kime güveneceğini
-
-belirler.
-
-Adayların yalnızca teknik değerleri değil:
-
-- güvenilirlik,
-- sadakat,
-- ekip yönetimi,
-- hırs,
-- iş değiştirme eğilimi,
-- gizli karakter özellikleri
-
-gibi özellikleri olabilir.
-
-İnsan Yönetimi yetkinliği yükseldikçe oyuncu insanları sihirli şekilde tamamen çözmez.
-
-Bunun yerine:
-
-- daha iyi sorular sorabilir,
-- referans kontrolü yapabilir,
-- daha fazla ipucu görebilir,
-- riskleri daha iyi değerlendirebilir.
+İnsan Yönetimi, oluşmuş problemi otomatik çözmez veya her personel riskini ortadan kaldırmaz. Kişi kaynaklı olayın önlenmesi aylık raporda ayrı gösterilir; gizli sorun satırlarının kök türü açıklanmaz. Bu yetkinlik diğer alanlardaki derin bilgiyi değersizleştirmemelidir.
 
 ---
 
@@ -682,9 +639,9 @@ Patron:
 
 Sorunların çözümü zaman ve para harcatabilir.
 
-Kötü personel seçimi patronun sürekli operasyonel problemlere müdahale etmesine neden olabilir.
+Kişi kaynaklı sorunlar patronun sık sık operasyonel problemlere müdahale etmesine neden olabilir.
 
-Ama iyi ekip:
+Yüksek İnsan Yönetimi daha az yeni kişi kaynaklı sorun yaratarak:
 
 > patronun zamanını operasyon yerine büyüme ve stratejiye ayırmasını sağlar.
 
@@ -708,7 +665,7 @@ Ana sorunlar:
 
 - Planlama zayıflığı
 - Satın Alma'da görülmeyen kritik problem
-- Yanlış müdür seçimi
+- Tekrarlanan personel kaynaklı sorunlar
 - Nakit akışı problemi
 
 Bu rapor sonraki kariyer için bilgi üretir.
