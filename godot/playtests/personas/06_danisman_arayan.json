@@ -1,0 +1,18 @@
+{
+  "name": "Danışman Arayan",
+  "author": "ChatGPT",
+  "description": "Bilgi açığını danışmanla kapatmayı deneyen patron. Aynı yetkinlik, makine ve parayla Kör Tamirciye karşılaştırma sağlar.",
+  "seed": 77,
+  "budget": 600,
+  "cash": 400,
+  "months": 12,
+  "skills": {
+    "Üretim": 60, "Planlama": 35, "Depo & Sevkiyat": 40, "Bakım": 50, "Kalite": 40,
+    "Satın Alma": 35, "Finans": 60, "Ar-Ge / Ür-Ge": 45, "Yatırım": 40, "İnsan Yönetimi": 55
+  },
+  "machines": {"A": 1, "B": 1},
+  "policy": {
+    "jobs": "greedy", "fix": "visible_only", "min_chance": "Orta",
+    "hire_when_hidden_loss": 3, "credit_when_cash_below": 60, "buy": []
+  }
+}

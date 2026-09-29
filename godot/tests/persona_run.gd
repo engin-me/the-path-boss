@@ -16,6 +16,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var only := ""
+	var author_filter := ""
 	var months := 0
 	var seeds := 0
 	for arg in OS.get_cmdline_user_args():
@@ -26,7 +27,9 @@ func _run() -> void:
 			machine_override = {}
 			for part in arg.trim_prefix("machines=").split(","):
 				machine_override[part.get_slice(":", 0)] = int(part.get_slice(":", 1))
-		if arg.begins_with("persona="):
+		if arg.begins_with("author="):
+			author_filter = arg.trim_prefix("author=")
+		elif arg.begins_with("persona="):
 			only = arg.trim_prefix("persona=")
 		elif arg.begins_with("months="):
 			months = int(arg.trim_prefix("months="))
@@ -40,6 +43,8 @@ func _run() -> void:
 	for persona in personas:
 		if only != "" and persona["file"] != only:
 			continue
+		if author_filter != "" and persona.get("author", "") != author_filter:
+			continue
 		var summary := play(persona, months)
 		print(summary)
 		ran += 1
@@ -49,6 +54,8 @@ func _run() -> void:
 		if not machine_override.is_empty():
 			summary_lines.insert(3, "Bütün karakterlere aynı makine parkı verildi: %s. Kendi makine seçimleri ve alım planları yok sayılmadı (planlı alımlar sürer)." % JSON.stringify(machine_override))
 		var summary_name := "_ozet.md" if machine_override.is_empty() else "_ozet_ayni_makine.md"
+		if author_filter != "":
+			summary_name = "_ozet_%s.md" % author_filter.to_lower() if machine_override.is_empty() else "_ozet_%s_ayni_makine.md" % author_filter.to_lower()
 		print(Log.write_report(summary_name, "\n".join(summary_lines) + "\n"))
 	if ran == 0:
 		printerr("Persona bulunamadı: " + only)
@@ -135,6 +142,14 @@ func _play_month(game, policy: Dictionary) -> String:
 		game.phase = "end"
 		game.closure = {"type": "stuck"}
 		return "| %d | — | — | — | — | — | — | — | %.0f | oyun kilitlendi: %s |" % [month, game.cash, error]
+	var hidden := 0
+	var visible := 0
+	for department in BossState.SKILLS:
+		for row in game.active_rows(department):
+			if row["visible"]:
+				visible += 1
+			else:
+				hidden += 1
 	_hire(game, policy)
 	var tries := 0
 	var successes := 0
@@ -147,14 +162,6 @@ func _play_month(game, policy: Dictionary) -> String:
 		else:
 			blocked += 1
 	var report: Dictionary = game.report
-	var hidden := 0
-	var visible := 0
-	for department in BossState.SKILLS:
-		for row in game.active_rows(department):
-			if row["visible"]:
-				visible += 1
-			else:
-				hidden += 1
 	var consultants: Array[String] = []
 	for consultant in game.consultants:
 		consultants.append(consultant["name"])
@@ -245,7 +252,7 @@ func _write(persona: Dictionary, game, rows: Array[String], error: String) -> St
 	else:
 		lines.append("## Aylar")
 		lines.append("")
-		lines.append("| Ay | Çıktı | Kayıp | Gelir | Sorun satırları | Düzelt başarı/deneme | Danışman | Önlenen | Ay sonu kasa | Açık / eşik |")
+		lines.append("| Ay | Çıktı | Kayıp | Gelir | Düzelt öncesi sorun satırları | Düzelt başarı/deneme | Danışman | Önlenen | Ay sonu kasa | Açık / eşik |")
 		lines.append("| --- | --- | ---: | ---: | --- | --- | --- | ---: | ---: | --- |")
 		lines.append_array(rows)
 		lines.append("")

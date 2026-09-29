@@ -28,6 +28,8 @@ Notlar `godot/playtests/notes/notes.md` dosyasına eklenir (Godot editöründen 
 ... --script res://tests/persona_run.gd -- persona=01_teknik_usta.json
 # 40 farklı tohumla özet (reports/_ozet.md)
 ... --script res://tests/persona_run.gd -- seeds=40
+# Yalnız ChatGPT karakterleri; Claude raporlarına dokunmaz
+... --script res://tests/persona_run.gd -- author=ChatGPT seeds=40
 # Herkese aynı makine parkı (makine etkisini ayıklamak için; reports/_ozet_ayni_makine.md)
 ... --script res://tests/persona_run.gd -- seeds=40 machines=A:1,B:1
 ```
