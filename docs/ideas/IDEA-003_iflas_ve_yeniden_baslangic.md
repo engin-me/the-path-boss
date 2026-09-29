@@ -9,7 +9,7 @@ Bağımlılıklar: [FRZ-001](../freeze/FRZ-001_patron_yetkinlikleri.md), [FRZ-00
 
 ## Öneri (GPT)
 
-**İflas eşiği.** Kullanıcının yönü: **altı aylık azami aylık brüt kâr potansiyeli, kasadaki açığı karşılamıyorsa fabrika batar.** Formül: `6 × azami aylık brüt kâr < max(0, −kasa)`. Kasa ay sonunda FRZ-002 sırasıyla hesaplanır. Geçici zarar tek başına iflas sayılmaz; eşik yaklaşırken açık uyarı gösterilir. “Azami” değer gerçekleşen son ayın kârı değildir; makine sayısının belirlediği kapasiteye, makine niteliğinin belirlediği kârlılığa ve fabrikanın alabileceği işlere dayanır. Örnek: A/B/C marka torna tezgâhları farklı üretim ve iş yeterlilikleri sağlar; bazı ihaleler belirli tezgâh niteliği ister. Makine yatırımı ve **İş Alma** ayrı IDEA'da tasarlanır. Bu dosya onların sayılarını, marka listesini veya ihale kuralını dondurmaz.
+**İflas eşiği.** Kullanıcının kararı: **kasa eksideyse ve açık, fabrikanın azami aylık brüt kârının altı katına eşit veya daha büyükse fabrika batar.** Formül: `kasa < 0 ve −kasa ≥ 6 × azami aylık brüt kâr`. Örneğin en iyi performansta aylık **50K brüt kâr** üretebilen fabrika, kasa **−300K** olduğunda batar: en iyi durumda bile altı ay yalnızca borca çalışması gerekecektir. Kasa ay sonunda FRZ-002 sırasıyla hesaplanır. Geçici zarar tek başına iflas sayılmaz; eşik yaklaşırken açık uyarı gösterilir. “Azami” değer gerçekleşen son ayın kârı değildir; makine sayısının belirlediği kapasiteye, makine niteliğinin belirlediği kârlılığa ve fabrikanın alabileceği işlere dayanır. Örnek: A/B/C marka torna tezgâhları farklı üretim ve iş yeterlilikleri sağlar; bazı ihaleler belirli tezgâh niteliği ister. Makine yatırımı ve **İş Alma** ayrı IDEA'da tasarlanır. Bu dosya onların sayılarını, marka listesini veya ihale kuralını dondurmaz.
 
 **Kriz hamlesi.** Eşik aşılmadan önce oyuncu kapasiteyi ve nakdi etkileyen makine satışı/küçülme ya da tek seferlik kriz kredisi gibi yolları değerlendirebilir. Satışın kasaya katkısı ile kapasite kaybı aynı hesapta görünmelidir. Kredi borcu artırır; sadece süre kazandırır, iflas eşiğini tek başına iyileştirmez. FRZ-002'nin Düzelt için kullanılabilir nakit güvencesi değişmez. Ayrı sabit “iki aylık kriz penceresi” önerilmez; oyuncunun toparlanma şansı borç/potansiyel eşik oranından gelir.
 
@@ -66,13 +66,12 @@ FRZ-002 §4 kuruluş kasası için bir alt sınır koyuyor. Borçlu karakterin b
 
 ## Açık Kararlar
 
-1. `50K × 6 = 300K` ve kasa `−300K` örneğinde iflas olsun mu? Yazılan `<` eşitsizliğinde **olmaz**; örnekte iflas isteniyorsa sınır `≤` olarak yazılmalıdır.
-2. Eşikteki “azami brüt kâr” mı, “azami gelir” mi esas alınacak? Maliyetler yüzünden farklıdır. İş Alma tasarımı gelene kadar potansiyelin hangi iş havuzundan hesaplanacağı da açık kalır.
-3. Kriz kredisinin hangi koşulda işe yaradığı ve makine satışının borç/kapasite hesabı, İş Alma ve yatırım sistemi tasarlanırken sınanmalıdır.
+1. “Azami brüt kâr” potansiyelinin hangi ulaşılabilir iş havuzundan hesaplanacağı, İş Alma sistemi tasarlanırken netleşmelidir.
+2. Kriz kredisinin hangi koşulda işe yaradığı ve makine satışının borç/kapasite hesabı, İş Alma ve yatırım sistemi tasarlanırken sınanmalıdır.
 
 ## Karar Özeti
 
-- Altı aylık üretim/kâr potansiyeli kasa açığını karşılayamıyorsa iflas yönü seçildi; çünkü fabrikanın borcu kurtarma kapasitesiyle ölçülmeli, tek kötü ay otomatik son olmamalıdır. Eşitlik ve gelir/kâr terimi açıktır.
+- Kasa açığı azami **aylık brüt kârın altı katına eşit veya daha büyükse** fabrika batar; çünkü en iyi performansta bile altı ay yalnızca borca çalışmak gerekecek ve tek kötü ay otomatik son olmayacaktır.
 - İflas sonrası aynı karakterin borcu gelir yüzdesiyle, işsizken faizsiz/ödemesiz kapatması ve psikolojisinin kendiliğinden toparlanması benimsendi; çünkü oyuncu borç ve performans sarmalına kilitlenmemelidir.
 - İflas borcu bitmeden yeni fabrika kurulmaması benimsendi; çünkü tekrar iflaslarla borçların üst üste binmesi engellenmelidir.
 - Gizli köklerin iflas raporunda tam açıklanması benimsendi; çünkü başarısızlık sonraki kariyere somut öğrenme hedefi bırakmalıdır.
