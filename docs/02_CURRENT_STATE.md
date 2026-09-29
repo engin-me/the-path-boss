@@ -3,7 +3,7 @@
 Project: the Path - Boss
 
 Current phase:
-Core game design
+Prototype validation
 
 Active topic:
 None. IDEA-007 çekirdek kararları FRZ-007'ye, tutarlılık düzeltmeleri FRZ-005 v2 ve FRZ-006 v2'ye aktarıldı.
@@ -15,4 +15,4 @@ Pending review:
 None. Kullanıcının aktardığı Claude incelemesi IDEA-007 ve IDEA-008 içinde kaydedildi.
 
 Next step:
-Claude'un kabul senaryoları incelemesindeki beş bulgu docs/04_ACCEPTANCE_SCENARIOS.md içinde giderildi. Sırada sayısal denge girdileri ve küçük oynanabilir prototipin kapsamı var.
+Arayüzsüz Python prototipi game/simulation.py ve game/scenarios.py içinde dört kabul senaryosunu çalıştırıyor. `python -B -m game.run_simulation` ile örnek akış, `python -B -m unittest discover -s tests -v` ile kabul testleri çalışır. Sonraki iş, prototipten çıkan açık denge girdilerini ve oynanabilir arayüz kapsamını belirlemektir.
