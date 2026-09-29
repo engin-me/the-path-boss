@@ -1,8 +1,8 @@
-# FRZ-005 — Personel ve İnsan Yönetimi
+# FRZ-005 v2 — Personel ve İnsan Yönetimi
 
-Status: SUPERSEDED by [FRZ-005 v2](FRZ-005_v2_personel_ve_insan_yonetimi.md). Historical version.
+Status: CURRENT
 Date: 2026-09-29
-Source: [IDEA-005](../ideas/IDEA-005_personel_ve_insan_yonetimi.md), Tur 2; Claude Tur 1 incelemesi ve kullanıcının önerileri kabulü.
+Source: [IDEA-005](../ideas/IDEA-005_personel_ve_insan_yonetimi.md), Tur 2 ve [IDEA-008](../ideas/IDEA-008_tasarim_tutarliligi.md); kullanıcının aktardığı Claude tutarlılık incelemesi ve kapatma kararı. Supersedes FRZ-005.
 Depends on: [FRZ-001](FRZ-001_patron_yetkinlikleri.md), [FRZ-002 v3](FRZ-002_v3_fabrika_ekonomisi.md).
 
 ## Onaylanan Kararlar
@@ -21,9 +21,9 @@ Depends on: [FRZ-001](FRZ-001_patron_yetkinlikleri.md), [FRZ-002 v3](FRZ-002_v3_
 
 ### 3. Tier ve departman dengesi
 
-**Ne:** Kişi kaynaklı aday köklerin hedef payı **her Tier'de ve her departmanda aynı** tutulur; derin Tier'lerde yoğunlaştırılmaz. İlk denge hedefi, İnsan Yönetimi en yüksekken yeni kişi olaylarının yaklaşık **%80'inin önlenmesi** ve başlangıçta kişi kaynaklı adayların toplamın yaklaşık **%30'u** olmasıdır. Böylece toplam yeni sorun oluşumunda yaklaşık **%24 azalma** beklenir; oranlar testle ayarlanır. Kabul ölçütü: İnsan Yönetimi 100 olan patron, aynı toplam yetkinliği başka alanlara dağıtan patronu sistematik olarak geçmemelidir. İnsan Yönetimi alanının kendi sorunları da bulunur.
+**Ne:** Kişi kaynaklı aday köklerin hedef payı **her Tier'de ve her departmanda aynı** tutulur; derin Tier'lerde yoğunlaştırılmaz. İlk denge hedefi, İnsan Yönetimi en yüksekken yeni kişi olaylarının yaklaşık **%80'inin önlenmesi** ve başlangıçta kişi kaynaklı adayların toplamın yaklaşık **%30'u** olmasıdır. Böylece toplam yeni sorun oluşumunda yaklaşık **%24 azalma** beklenir; oranlar testle ayarlanır. Kabul ölçütü: İnsan Yönetimi 100 olan patron, aynı toplam yetkinliği başka alanlara dağıtan patronu sistematik olarak geçmemelidir. İnsan Yönetimi alanının kendi sorunları da bulunur: burada da kişi kaynaklı olaylar ile süreç/organizasyon kaynaklı olaylar birlikte tasarlanır ve yaklaşık %30 kişi payı hedefi geçerlidir. Patronun kalıcı İnsan Yönetimi puanı bu alanda da yalnızca yeni kişi olaylarını önler; mevcut sorunları otomatik kapatmaz.
 
-**Neden:** Yatay personel faydası değerli olmalı ama farklı alanlardaki derin sorunları teşhis etmek için gereken kariyer bilgisinin yerini almamalıdır.
+**Neden:** Yatay personel faydası değerli olmalı ama farklı alanlardaki derin sorunları teşhis etmek için gereken kariyer bilgisinin yerini almamalıdır. İnsan Yönetimi departmanının bütün sorunları kişi kaynaklı sayılsaydı, aynı alanda önleme ve teşhis birleşerek bu dengeyi bozardı.
 
 ### 4. Rapor, gizli bilgi ve maliyet
 

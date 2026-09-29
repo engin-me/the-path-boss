@@ -1,8 +1,8 @@
-# FRZ-006 — Danışman Pazarı ve Sözleşmeler
+# FRZ-006 v2 — Danışman Pazarı ve Sözleşmeler
 
-Status: SUPERSEDED by [FRZ-006 v2](FRZ-006_v2_danisman_pazari.md). Historical version.
+Status: CURRENT
 Date: 2026-09-29
-Source: [IDEA-001](../ideas/IDEA-001_patron_yetkinlikleri.md) içindeki önceki kullanıcı kararları ve [IDEA-006](../ideas/IDEA-006_danisman_pazari.md). Bu konu için kullanıcı tercihiyle yeni Claude turu yapılmadı.
+Source: [IDEA-001](../ideas/IDEA-001_patron_yetkinlikleri.md), [IDEA-006](../ideas/IDEA-006_danisman_pazari.md) ve [IDEA-008](../ideas/IDEA-008_tasarim_tutarliligi.md); kullanıcının aktardığı Claude tutarlılık incelemesi ve kapatma kararı. Supersedes FRZ-006.
 Depends on: [FRZ-001](FRZ-001_patron_yetkinlikleri.md), [FRZ-002 v3](FRZ-002_v3_fabrika_ekonomisi.md).
 
 ## Onaylanan Kararlar
@@ -13,17 +13,29 @@ Depends on: [FRZ-001](FRZ-001_patron_yetkinlikleri.md), [FRZ-002 v3](FRZ-002_v3_
 
 **Neden:** Danışmanlar farklı bilgi açıklarını kapatmalı; çok güçlü ve geniş profiller ucuz, sürekli kullanılan bir kariyer ikamesine dönüşmemelidir. Kart bütçesi en yüksek puanı ve kapsamı birlikte sınırlar.
 
+**Ne:** Ölçeğin izin verdiği en derin sorun Tier'ine kesin teşhis/çözüm eşiğiyle ulaşabilen en az bir profil türü, o ölçekte **her departman için** aday havuzunda bulunur. Bu profilin her ay teklif edilmesi veya oyuncunun onu karşılayabilmesi garanti değildir. İki alanlı 55+70 ve 75+65 örnekleri sırasıyla 125 ve 140 puanla iki alanın 120 puanlık bütçesini aşar ve geçersizdir; iki adet 100 puan ancak yeterli alan sayısı ve toplam bütçe içinde mümkündür.
+
+**Neden:** Ölçek mümkün kıldığı bir sorunu danışmanla kesin çözme yolunu sistemsel olarak kapatmamalıdır. Eski sayısal örnekler onaylı kart kuralını sessizce genişletmemelidir.
+
 ### 2. Ay sonu adayları ve ücretli çekim sınırı
 
 **Ne:** Ay sonu raporundan sonra **üç ücretsiz aday** gösterilir. Oyuncu rastgele bir **dördüncü kartı** oyun parası **veya** gerçek paradan biriyle açabilir. İkinci ücretli çekim **beşinci kartı getirir ve dördüncü kartın yerini alır**; ayda en fazla iki ücretli çekim olur. Dördüncü kartın oyuncunun görünen bilgi açığını kapatan bir alan taşıma olasılığı, normal çekime göre **10 yüzde puan daha yüksektir**. Aday seçiminde patronun puanları, oyuncuya görünen departman kayıpları ve fabrika ölçeği kullanılabilir; **gizli kök neden kullanılmaz**. Aynı profil sonraki aylarda tekrar görünebilir, fakat hâlen çalışan danışman aday havuzuna girmez.
 
 **Neden:** Raporu gören oyuncu sınırlı ve anlamlı seçeneklerden danışman seçebilmeli; ücretli çekim küçük bir uygunluk avantajı verebilir ama sınırsız yeniden çevirme veya gizli sorun bilgisini karttan öğrenme yolu olmamalıdır.
 
+**Ne:** Dördüncü ve beşinci kartın aday havuzu, olasılıkları ve görünür bilgiye dayalı hedeflemesi, **oyun parası veya gerçek para** seçimine göre değişmez. Oyun parasıyla çekim ve aynı danışmanla sözleşme, normal oynanışta makul erişilebilirlikte tutulur; gerçek para tek kesin çözüm yolu olamaz. Kartın +10 yüzde puan uygunluk avantajı ödeme türünden değil, dördüncü çekim olmasından kaynaklanır.
+
+**Neden:** Bilgi açığı için yapay bir gerçek para baskısı yaratılmamalı; ödenen para birimi gizlice daha güçlü kart üretmemelidir. Kesin fiyat ve sunum ayrıca sınanır.
+
 ### 3. Sözleşme ve aktif danışman sayısı
 
 **Ne:** Aynı anda **en fazla iki danışman** çalışır. Sözleşme imzalandığı anda başlar; profilin bütün alan puanları süresi boyunca aktiftir. Ödenen ücret erken ayrılmada iade edilmez. Sözleşme yalnızca **ilk yarısında** uzatılabilir; uzatma aylık aday çekiminden ayrıdır. Süresi biten profilin yeniden bulunması garanti değildir. Danışmanın bütün etkileri bitişte sona erer.
 
 **Neden:** Oyuncu rapordan sonra acil bilgi açığını hemen kapatabilmeli, fakat süreli ve pahalı danışman kararı bağlayıcı olmalıdır. İki kart ve ilk yarıdaki uzatma sınırı sürekli sınırsız uzman erişimini önler.
+
+**Ne:** Bir aylık sözleşme seçeneği uygulanırsa uzatılamaz; aylık karar ritminde imzadan sonra sözleşmenin ilk yarısında yeni karar anı yoktur. Daha uzun sözleşmelerde ilk yarı uzatma kuralı geçerlidir.
+
+**Neden:** Uygulanamayacak bir uzatma hakkı kartta vaat edilmemelidir.
 
 ### 4. Fabrika sorunlarına etkisi ve ödeme yolu
 
@@ -41,6 +53,6 @@ Depends on: [FRZ-001](FRZ-001_patron_yetkinlikleri.md), [FRZ-002 v3](FRZ-002_v3_
 
 ## Açık denge ve uygulama ayrıntıları
 
-- Profil havuzunun ilk sayısı için **10–15**, sözleşme için **1/3/12 ay** ve ücret için **A/2,75A/10A** önceki örneklerdir; kesin fiyat ve süre değildir. Bir aylık sözleşmenin ilk yarı uzatma kuralıyla nasıl bağdaşacağı ayrıca belirlenir.
+- Profil havuzunun ilk sayısı için **10–15**, sözleşme için **1/3/12 ay** ve ücret için **A/2,75A/10A** önceki örneklerdir; kesin fiyat ve süre değildir. Bir aylık seçenek seçilirse uzatma yapılamayacağı karara bağlanmıştır.
 - +10 yüzde puan uygunluk hesabının ve ölçeğe göre profil seçiminin tam yöntemi, güçlü kartların nadirliği, sözleşme uzatma bedeli ve küçük fabrika kârına göre ücret dengesi test edilir.
 - Gerçek parayla rastgele kart çekiminin sunumu, oyun parasıyla makul erişim ve monetizasyon sınırları ayrı değerlendirilir; bu FREEZE fiyat veya dış platform kuralları hakkında karar vermez.

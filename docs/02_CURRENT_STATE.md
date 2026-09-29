@@ -6,13 +6,13 @@ Current phase:
 Core game design
 
 Active topic:
-IDEA-007 Çalışanlık Kariyeri ve Yetkinlik Kazanımı (DRAFT, Tur 1).
+None. IDEA-007 çekirdek kararları FRZ-007'ye, tutarlılık düzeltmeleri FRZ-005 v2 ve FRZ-006 v2'ye aktarıldı.
 
 Latest freeze:
-FRZ-006 Danışman Pazarı ve Sözleşmeler (CURRENT, 2026-09-29). FRZ-001, FRZ-002 v3, FRZ-003 v2, FRZ-004 and FRZ-005 remain current.
+FRZ-007 Çalışanlık Kariyeri ve Yetkinlik Kazanımı (CURRENT, 2026-09-29). FRZ-001, FRZ-002 v3, FRZ-003 v2, FRZ-004, FRZ-005 v2 ve FRZ-006 v2 de CURRENT.
 
 Pending review:
-IDEA-007 için Claude değerlendirmesi.
+None. Kullanıcının aktardığı Claude incelemesi IDEA-007 ve IDEA-008 içinde kaydedildi.
 
 Next step:
-Claude, IDEA-007 dosyasındaki Notlar (Claude) bölümüne ilk incelemesini yazacak; ardından kullanıcıyla açık kararlar netleştirilecek.
+Sayısal dengeye geçmeden önce çalışanlık ve fabrika dönemini bağlayan kısa oynanabilir akış ve kabul senaryoları tasarlanacak. Kesin fiyat, oran ve monetizasyon sunumu açık kalır.
