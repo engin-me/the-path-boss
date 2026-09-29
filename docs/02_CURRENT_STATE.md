@@ -15,4 +15,4 @@ Pending review:
 None. Kullanıcının aktardığı Claude incelemesi IDEA-007 ve IDEA-008 içinde kaydedildi.
 
 Next step:
-Dört taslak kabul senaryosu docs/04_ACCEPTANCE_SCENARIOS.md içinde hazır. Şimdi bu senaryoların FREEZE kurallarıyla tutarlılığı gözden geçirilecek; ardından sayısal denge/prototip sırası belirlenecek.
+Claude'un kabul senaryoları incelemesindeki beş bulgu docs/04_ACCEPTANCE_SCENARIOS.md içinde giderildi. Sırada sayısal denge girdileri ve küçük oynanabilir prototipin kapsamı var.

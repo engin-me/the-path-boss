@@ -8,34 +8,34 @@ Kısaltmalar: `K` şirket kasası, `B` ödenmemiş şirket kredisi, `V` eldeki s
 
 [GAME_OVERVIEW](03_GAME_OVERVIEW.md) örneğindeki karakterin Üretim 90, Depo & Sevkiyat 80, Planlama 35, Satın Alma 30, İnsan Yönetimi 25 ve Finans 30 yetkinliği vardır. Diğer alanları bu sınama için gerekli değildir. **Test varsayımı:** Küçük ölçekte Planlama T2 eşiği 50, gizli satırın en yüksek para güvencesi 20, her ayın ödenmemiş bilinen olağan/iş gideri toplamı 50, patron zamanı güvenceden fazladır. Bunlar onaylı denge sayıları değildir.
 
-Kuruluş kasası 120 ≥ ilk ayın bilinen gideri 50 + gizli sorun güvencesi 20; kuruluşun nakit şartı sağlanır. Üretim 90 olsa da Planlama 35 ile T2 sorununu teşhis edemez. Test ölçeğinde yalnız T2 gizli kalabiliyorsa çıkarılabilir şans etiketi görünür, kök neden gizli kalır. İlk iki ayın 20 birim kaybı gizli Planlama 10 + görünür Üretim 10; üçüncü ayın 15 birim kaybı yeni gizli Planlama 5 + görünür Üretim 10'dur. Her ay kabul edilmiş işler için beklenen çıktı eşdeğeri 100'dür; teorik ama iş alınmamış kapasite bu sayıya eklenmez.
+Kuruluş kasası 120 ≥ ilk ayın bilinen gideri 50 + gizli sorun güvencesi 20; kuruluşun nakit şartı sağlanır. Üretim 90 olsa da Planlama 35 ile T2 sorununu teşhis edemez. Test ölçeğinde yalnız T2 gizli kalabiliyorsa çıkarılabilir şans etiketi görünür, kök neden gizli kalır. İlk iki ayın 20 birim kaybı gizli Planlama 10 + görünür Üretim 10; üçüncü ayın 15 birim kaybı yeni gizli Planlama 5 + görünür Üretim 10'dur. Her ay kabul edilmiş işler için beklenen çıktı eşdeğeri 100'dür; teorik ama iş alınmamış kapasite bu sayıya eklenmez. **Bu testte** çıktı eşdeğeri fiziksel teslimata bire bir denk gelir, üretilen her birim aynı ay 0,75 para birimine satılır. Böylece üçüncü aydaki beş ek teslim gelirde de görünür.
 
 | Ay raporu | K (karar öncesi) | Ayrılan bilinen gider | Düzelt'e kullanılabilir | Gizli üst güvence | Beklenen / kayıp / gerçekleşen çıktı | Düzelt olayı | Fiili satış − gider − Düzelt | Ay sonu K |
 | --- | ---: | ---: | ---: | ---: | --- | --- | ---: | ---: |
 | 1 | 120 | 50 | 70 | 20 | 100 / 20 / 80 | Gizli Planlama kökü denenir, başarısız; tahmin bedeli 5. Aynı kök bu ay kilitli. | 60 − 50 − 5 | 125 |
 | 2 | 125 | 50 | 75 | 20 | 100 / 20 / 80 | Aynı kök yeniden denenir, başarılı; gerçek bedel 12. | 60 − 50 − 12 | 123 |
-| 3 | 123 | 50 | 73 | 20 | 100 / 15 / 85 | Eski kökün 10 birim kaybı yoktur; yeni bir gizli kök denenir, başarısız; tahmin 5. | 60 − 50 − 5 | 128 |
+| 3 | 123 | 50 | 73 | 20 | 100 / 15 / 85 | Eski kökün 10 birim kaybı yoktur; yeni bir gizli kök denenir, başarısız; tahmin 5. | 63,75 − 50 − 5 | 131,75 |
 
 **Geçme ölçütü:** Üç ayın her birinde danışmansız en az bir gizli satır para ve patron zamanı güvencesiyle denenebilir ([FRZ-001 §6](freeze/FRZ-001_patron_yetkinlikleri.md)). Başarısızlık aynı kökün bağlı satırlarını yalnızca o ay kilitler; ikinci aydaki başarılı Düzelt'in rapor faydası üçüncü ayda görünür. Gizli satırın bedeli Tier'i ifşa etmez, `tahmin ≤ gerçek ≤ üst` korunur. Kayıp departman başına kabul edilmiş hedefin yaklaşık %20 tavanını ve fabrika geneli %33 gerçekleşme tabanını aşmaz ([FRZ-002 v3](freeze/FRZ-002_v3_fabrika_ekonomisi.md)).
 
 ## 2. Kriz: makine satışı, kredi ve kapanış eşiği
 
-**Test varsayımı:** Başlangıçta `K=20`, `B=140`, `V=100`, `N=20`. Satılmak istenen makinenin referans değeri 40'tır; gönüllü satış geliri `0,70 × 40 = 28` olur. Bu makine çıkınca potansiyel aylık net katkı 8'e düşer. Gerçek nakit olayları aşağıdaki örneği izler.
+**Test varsayımı:** Başlangıçta `K=20`, `B=140`, `V=100`, `N=20`. Elde tutulan varlıkların toplam referans değeri her ay sonunda bu örnekte 2 azalır: `100 → 98 → 96 → 94`. Bu, onaylı amortisman oranı değildir. Satılmak istenen makinenin başlangıçtaki referans değeri 40'tır; gönüllü satış geliri `0,70 × 40 = 28` olur. Bu makine çıkınca potansiyel aylık net katkı 8'e düşer. Örnekteki finansman gideri her borçlu ayda 2'dir; oranı onaylı denge değeri değildir. Gerçek nakit olayları aşağıdaki örneği izler.
 
-| An / ay sonu | K | B | V | N | D = max(0, B−K) | H = 0,50V+6N | Sonuç |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| İlk rapor | 20 | 140 | 100 | 20 | 120 | 170 | Açık eşikten küçük; fabrika sürer. |
-| Makine satışı önizlemesi | 48 | 140 | 60 | 8 | 92 | 78 | Nakit artsa da `D > H`; oyuncu satıştan önce bu riski görür ve örnekte satışı iptal eder. |
-| Kriz kredisi alındığında | 50 | 170 | 100 | 20 | 120 | 170 | Kredi K ve B'yi eşit artırır; borç açığını iyileştirmez. |
-| 1. ay sonu, net nakit değişimi −5 | 45 | 170 | 100 | 20 | 125 | 170 | Kapanış yok. |
-| 2. ay sonu, net nakit değişimi −45 | 0 | 170 | 100 | 20 | 170 | 170 | Eşitlik kapanış değildir. |
-| 3. ay sonu, net nakit değişimi −1 | −1 | 170 | 100 | 20 | 171 | 170 | Zorunlu kapanış tetiklenir. |
+| An / ay sonu | Faaliyet / kredi nakit etkisi | Finansman gideri | K | B | V | N | D = max(0, B−K) | H = 0,50V+6N | Sonuç |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| İlk rapor | — | — | 20 | 140 | 100 | 20 | 120 | 170 | Açık eşikten küçük; fabrika sürer. |
+| Makine satışı önizlemesi | +28 (varsayımsal) | — | 48 | 140 | 60 | 8 | 92 | 78 | Nakit artsa da `D > H`; oyuncu satıştan önce bu riski görür ve örnekte satışı iptal eder. |
+| Kriz kredisi alındığında | +30 | — | 50 | 170 | 100 | 20 | 120 | 170 | Kredi K ve B'yi eşit artırır; borç açığını iyileştirmez. |
+| 1. ay sonu | −3 | −2 | 45 | 170 | 98 | 20 | 125 | 169 | Kapanış yok. |
+| 2. ay sonu | −41 | −2 | 2 | 170 | 96 | 20 | 168 | 168 | Eşitlik kapanış değildir. |
+| 3. ay sonu | +1 | −2 | 1 | 170 | 94 | 20 | 169 | 167 | Zorunlu kapanış tetiklenir. |
 
-**Geçme ölçütü:** Satış onayı sonrası borç açığı, kaybolan kapasite ve yeni eşik gösterilir; satış gelirine bakıp güvenli sanılmaz ([FRZ-003 v2 §2](freeze/FRZ-003_v2_iflas_ve_fabrika_satisi.md)). Kredi yalnızca nakdi artırdığı için kurtarma gücü yaratmış sayılmaz. Kapanış eşitlikte değil, yalnızca sıkı `>` durumunda olur. `N` bu tabloda sabit tutulan test girdisidir; gerçek oyunda iş havuzu ve makine etkisi FREEZE'deki ay sonu kuralıyla güncellenir.
+**Geçme ölçütü:** Satış onayı sonrası borç açığı, kaybolan kapasite ve yeni eşik gösterilir; satış gelirine bakıp güvenli sanılmaz ([FRZ-003 v2 §2](freeze/FRZ-003_v2_iflas_ve_fabrika_satisi.md)). Kredi yalnızca nakdi artırdığı için kurtarma gücü yaratmış sayılmaz. Negatif net pozisyonun finansman gideri kasadan ayrı düşülür. V her ay azalırken kapanış eşitlikte değil, yalnızca sıkı `>` durumunda olur. `N` bu tabloda sabit tutulan test girdisidir; gerçek oyunda iş havuzu ve makine etkisi FREEZE'deki ay sonu kuralıyla güncellenir.
 
 ## 3. İflas, çalışanlığa dönüş ve kişisel borç
 
-İkinci senaryonun kapanışını devralır: `K=−1`, `B=170`, `V=100`. Zorunlu tasfiye `0,50 × 100 = 50` getirir; kapanış hesabı `−1 + 50 − 170 = −121` şirket açığı üretir. **Yalnızca bu test için** beklenen çalışan aylık geliri 10, taksit oranı %20 ve yaklaşık bir yıllık kişisel borç tavanı `12 × 10 × 0,20 = 24` alınır. Karaktere geçen borç `min(121, 24) = 24` olur. Hangi maaşın referans alınacağı ve kesin oran henüz kararlaştırılmamıştır.
+İkinci senaryonun kapanışını devralır: `K=1`, `B=170`, `V=94`. Zorunlu tasfiye güncel referansın `0,50 × 94 = 47` tutarını getirir; kapanış hesabı `1 + 47 − 170 = −122` şirket açığı üretir. **Yalnızca bu test için** beklenen çalışan aylık geliri 10, taksit oranı %20 ve yaklaşık bir yıllık kişisel borç tavanı `12 × 10 × 0,20 = 24` alınır. Karaktere geçen borç `min(122, 24) = 24` olur. Hangi maaşın referans alınacağı ve kesin oran henüz kararlaştırılmamıştır.
 
 | Çalışanlık ayı | Aylık gelir | Ödenen kişisel taksit | Kalan kişisel borç | Yeni fabrika uygunluğu |
 | --- | ---: | ---: | ---: | --- |
@@ -57,19 +57,21 @@ Kuruluş kasası 120 ≥ ilk ayın bilinen gideri 50 + gizli sorun güvencesi 20
 
 ## 4. Başarılı devir ve daha güçlü yeni fabrika
 
-**Test varsayımı:** Kârlı eski fabrikada `K=80`, `B=20`, güncel satılabilir yatırım referansı 100'dür. Kanıtlanmış kâra dayalı işletme satış değeri 160, aynı fabrikayı yeniden kurma bedeli 180'dir; `160 ≤ 180`. Yeni fabrikada daha güçlü makine 130, hazırlık gideri 20, ilk faaliyet ayının bilinen gideri 40 ve olası en derin gizli sorun güvencesi 20'dir. Hazırlık süresi olarak bir ay yalnızca test girdisidir.
+**Test varsayımı:** Kârlı eski fabrikada `K=200`, `B=20`, güncel satılabilir yatırım referansı 100'dür. Kanıtlanmış kâra dayalı işletme satış değeri 160, aynı fabrikayı yeniden kurma bedeli 180'dir; `160 ≤ 180`. Yeni fabrikanın daha nitelikli makinesi **230**, hazırlık gideri **20**; toplam yeni kuruluş maliyeti **250 > 180** olur. Makine daha niteliklidir ancak bu testte görünür fabrika ölçeği hâlâ **küçük** sınıftadır. Bu nedenle ilk faaliyet ayının bilinen gideri 40 ve küçük ölçekteki olası en derin gizli sorun güvencesi 20 kullanılır. Hazırlık süresi olarak bir ay yalnızca test girdisidir.
 
 | Ay / adım | Karaktere geçen net satış | Yeni fabrikanın K'sı | Bilinen gelecek gider + gizli üst güvence | Olay ve sonuç |
 | --- | ---: | ---: | ---: | --- |
-| Eski fabrikanın satış kararı | `80 + 160 − 20 = 220` | — | — | Şirket borcu kapanır; iflas sonuçları tetiklenmez. |
-| 1. ay, yeni makine ve hazırlık | 220 | `220 − 130 − 20 = 70` | `40 + 20 = 60` | Hazırlıkta üretim/satış yok; kuruluş kasası şartı yine sağlanır. |
-| 2. ay, ilk faaliyet kararı | — | 70 | 60 | Bilinen giderler ayrılınca Düzelt'e kullanılabilir 30 ≥ güvence 20; kabul edilen işler başlanabilir. |
-| 2. ay sonu örnek gerçekleşme | — | `70 + 50 − 40 − 10 = 70` | — | Fiili satış 50, olağan/iş giderleri 40, Düzelt 10; gelir iki kez sayılmaz. |
+| Eski fabrikanın satış kararı | `200 + 160 − 20 = 340` | — | — | Şirket borcu kapanır; iflas sonuçları tetiklenmez. |
+| 1. ay, yeni makine ve hazırlık | 340 | `340 − 230 − 20 = 90` | `40 + 20 = 60` | Hazırlıkta üretim/satış yok; kuruluş kasası şartı yine sağlanır. |
+| 2. ay, ilk faaliyet kararı | — | 90 | 60 | Bilinen giderler ayrılınca Düzelt'e kullanılabilir 50 ≥ güvence 20; kabul edilen işler başlanabilir. |
+| 2. ay sonu örnek gerçekleşme | — | `90 + 50 − 40 − 10 = 90` | — | Fiili satış 50, olağan/iş giderleri 40, Düzelt 10; gelir iki kez sayılmaz. |
 
-**Geçme ölçütü:** Devir bedeli yeniden kurma tavanını aşmaz, kasadaki para ve satış bedeli ayrı kapanış hesabında borca mahsup edilir, yeni fabrikanın hazırlık süresi atlanmaz ve ilk faaliyet ayında kuruluş nakdi korunur ([FRZ-003 v2 §4](freeze/FRZ-003_v2_iflas_ve_fabrika_satisi.md), [FRZ-002 v3 §4](freeze/FRZ-002_v3_fabrika_ekonomisi.md)). Borçsuz devir psikoloji cezası veya iflasın “acı tecrübe” artışını vermez.
+**Geçme ölçütü:** Devir bedeli yeniden kurma tavanını aşmaz; yeni ve daha nitelikli fabrikanın kurulum bedeli eski satış fiyatından yüksektir. Eski fabrikanın 60 birimlik referans üstü değeri kanıtlanmış faaliyet kârına dayanır; yeni fabrika hazırlıkta veya ilk gününde aynı primi kazanmaz. Kasadaki para ve satış bedeli ayrı kapanış hesabında borca mahsup edilir, hazırlık süresi atlanmaz ve ilk faaliyet ayında kuruluş nakdi korunur ([FRZ-003 v2 §4](freeze/FRZ-003_v2_iflas_ve_fabrika_satisi.md), [FRZ-002 v3 §4](freeze/FRZ-002_v3_fabrika_ekonomisi.md)). Borçsuz devir psikoloji cezası veya iflasın “acı tecrübe” artışını vermez.
 
 ## Senaryoların açığa çıkardığı denge girdileri
 
 - FRZ-006 v2 her alanın en derin erişilebilir Tier'i için havuzda danışman türü gerektirir. 10–15 **sabit profil** örneği ile güçlü kartların nadirliği birlikte sınanmalıdır; profil sayısı veya kart üretim modeli henüz karar değildir.
 - FRZ-003 v2'deki kişisel borç tavanı için “beklenen çalışan geliri”nin hangi maaştan hesaplandığı belirlenmelidir. Üçüncü senaryodaki 10 ve %20 yalnızca test girdisidir.
+- FRZ-002 v3 kuruluş kasası güvencesini küçük ölçek için tanımlar. Büyük ölçekte doğrudan kurulan fabrikaya uygulanacak güvence ayrıca kararlaştırılmalıdır; dördüncü senaryo küçük ölçekte kalır.
+- FRZ-003 v2 satış değerini eski fabrikayı yeniden kurma bedeliyle sınırlar; farklı teknolojili yeni fabrikanın maliyetini karşılaştırma kuralı tanımlamaz. Dördüncü senaryo fiyat istismarını içermez, fakat başka fiyat kombinasyonlarında devir/yeniden kuruluş döngüsü denge testinde ayrıca aranmalıdır.
 - Gerçek parayla rastgele kartın nihai sunumu ve geçerli platform koşulları monetizasyon aşamasında doğrulanmalıdır; bu senaryolar ödeme ekranını onaylamaz.
