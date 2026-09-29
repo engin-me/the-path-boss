@@ -12,7 +12,7 @@ Latest freeze:
 None.
 
 Pending review:
-Claude review of revised IDEA-001 Tur 10 (brainstorm and user decisions).
+Claude review of IDEA-001 Tur 11 after the user publishes the local changes.
 
 Next step:
-After the user publishes, Claude reviews the revised Tur 10 proposal in the shared IDEA-001 file and updates Notlar (Claude).
+User commits and pushes the Tur 11 IDEA-001 synthesis; Claude reviews cross-Tier root links and the remaining open decisions in Notlar (Claude).

@@ -2,12 +2,12 @@
 
 ## Durum/Tur
 
-Durum: DRAFT — Tur 10 Claude incelemesi tamamlandı (kullanıcı yönlendirmeleri ve 2026-09-28 beyin fırtınası belgesiyle)
-Tur: 10
+Durum: DRAFT — Tur 11 GPT sentezi hazır, Claude incelemesi bekleniyor
+Tur: 11
 Son güncelleme: 2026-09-29
 Kaynak: Kullanıcının ilk önerisi, sonraki kararları ve 2026-09-28 tarihli beyin fırtınası notlarından seçilen fikirler.
-Tur 1–10 Claude incelemeleri tamamlandı. `Notlar (Claude)` Tur 10 incelemesidir; kullanıcının Tur 10 sonrası yönlendirmelerini ve beyin fırtınası belgesiyle karşılaştırmayı içerir.
-Sıradaki adım: Codex, `Notlar (Claude)` → `Aldığım Notlar` altındaki kullanıcı yönlendirmelerini ve `Kafama Yatmayanlar` altındaki beyin fırtınası farklarını işleyerek Tur 11 sentezini yapar; `Karar Özeti`'ndeki ilgili maddeler kullanıcı onayıyla düzeltilir. Beyin fırtınasındaki kesinleşmemiş seçenekler karar olarak alınmaz; FREEZE için ayrıca kullanıcı onayı gerekir.
+Tur 1–10 Claude incelemeleri tamamlandı. `Notlar (Claude)` Tur 10 incelemesidir; bu bölüm Claude'un metni olarak korunur. Tur 11'de müdahale sınırı, sözleşme uzatma ve beş Tier satırlı departman kartı işlendi. Ayrı bir patron “Görüş Seviyesi” kaldırıldı; yalnızca ilgili alanın 0–100 yetkinlik puanı ile sorunun Tier eşiği karşılaştırılır. T2=50 taslağı korundu, örnek patron yetkinliği 60 olarak düzeltildi ve farklı Tier satırlarının bağlanabileceği teyit edildi.
+Sıradaki adım: Claude Tur 11 önerisini aynı dosyada inceler; özellikle farklı Tier'lerin ortak kök ve gizli neden kuralları arasındaki gerilimi değerlendirir. Beyin fırtınasındaki kesinleşmemiş seçenekler karar sayılmaz; FREEZE için ayrıca kullanıcı onayı gerekir.
 
 ## Öneri (GPT)
 
@@ -48,7 +48,7 @@ Yetkinlik öncelikle bir **bilgi modelidir**: patronun ilgili departmandaki soru
 - 90 -> Tier 4
 - 100 -> Tier 5
 
-Eşikler taslak değerlerdir; çözüm döngüsü sınanmadan kesinleşmez. Patronun yetkinliği yetersizse yüksek derinlikteki kök neden gizli kalabilir. Buna rağmen departmandaki açıklanamayan kayıp oyuncuya sinyal olarak gösterilir. Patronun yetkinlikle ulaştığı kademe **Görüş Seviyesi**, sorunun eşik kademesi **Sorun Derinliği** olarak adlandırılır; bu terimler yeni mekanik veya tetikleyici getirmez.
+Eşikler taslak değerlerdir; çözüm döngüsü sınanmadan kesinleşmez. Patronun ilgili alandaki **tek bir 0–100 yetkinlik puanı** vardır; ayrıca “Görüş Seviyesi” veya “Yetkinlik Seviyesi” diye ikinci bir puan tutulmaz. Her sorunun T1–T5 arasında kendi Tier'i ve ona karşılık gelen yetkinlik eşiği vardır. Patronun veya aktif danışmanın ilgili alan puanı eşiğe ulaşıyorsa kök neden görünür ve “Düzelt” kesin başarı verir; ulaşmıyorsa Tier satırı ile kayıp görülebilir, neden gizli kalır ve “Düzelt” olasılıkla denenebilir. **T2 eşiği taslaktaki 50 olarak kalır**; sonraki örnekteki 20/50/30 sayıları yetkinlik eşiği değil kayıp birimleridir.
 
 Örnek:
 
@@ -64,23 +64,27 @@ Satın Alma yetkinliği 70 olan patron T1-T3 sorunlarını kendi başına göreb
 
 ### Sorun Çözüm Döngüsü
 
-Önerilen aylık fabrika akışı: **ay sonu raporu → ayrı sorun kartları → gerekirse danışman kartlarını değerlendirme → bir sorun kartında “Düzelt” → para ve patron zamanı harcaması → sonuç**. Her sorunun kendi kartında tek bir “Düzelt” butonu ve sözel çözüm olasılığı bulunur; danışman varken de ikinci bir eylem açılmaz. **Oyuncunun fabrika genelinde ayda yalnızca bir “Düzelt” hakkı vardır.** Başarısız denemede de hak, para ve zaman harcanır; sorun sonraki aya taşınır. Danışman sonradan tutulsa bile o ay ikinci kez basılamaz. Sorun çözümü için mini oyun veya müdahale menüsü yoktur.
+Önerilen aylık fabrika akışı: **ay sonu raporu → her departmanın kartı → gerekirse danışman seçimi → ilgili satırda “Düzelt” → para ve patron zamanı harcaması → sonuç**. Her departman kartı **her zaman tam beş satır** gösterir: T1, T2, T3, T4, T5. Aynı departmanda aynı anda bir Tier için ikinci satır oluşmaz. Sorun yoksa o satırda **“–”** görünür. Sorun varsa satır kayıp miktarını gösterir; yetkinlik yetersizse neden gizli kalır ama “Düzelt” erişilebilir ve sözel başarı ihtimali görünür. Danışman varken ikinci bir eylem açılmaz. **Aynı soruna ayda en fazla bir kez müdahale edilir; fabrika genelinde tek müdahale sınırı yoktur.** Farklı sorunlara müdahale sayısını para ve aylık patron zamanı sınırlar. Başarısız denemede para ve zaman harcanır, aynı sorun sonraki ay yeniden denenebilir. Mini oyun veya ayrı müdahale menüsü yoktur.
 
 Etkin yetkinlik sorunun kök nedeninin eşiğine ulaşıyorsa “Düzelt” kesin sonuç verir; eşiğin altındaysa para ve zaman harcanıp başarı için olasılık hesabı yapılır. Örnek: Planlama puanı 20 olan patron ve Planlama puanı 80 olan aktif danışman için etkin değer **max(20, 80) = 80** olur; 70 eşikli Planlama sorunu kesin çözülür. Danışman tutmak tek başına sorunu ortadan kaldırmaz; oyuncu yine “Düzelt”e basar. Eski **20 + 50 = 70** örneği artık geçerli değildir: max(20, 50) = 50, dolayısıyla o sorunda olasılık hesabı yapılır. Danışman varlığı sorunu gidermek için gereken **oyun parası maliyetini değiştirmez**; danışmanın bedeli sözleşmede ödenir. Danışman, analiz yükünü üstlenerek gereken **patron zamanını azaltır**. Kesin zaman tasarrufu denge parametresidir.
 
-**Aynı görünür kök nedene bağlı birkaç sorun satırı olabilir.** Bunlardan herhangi birinin “Düzelt”i başarıyla uygulanırsa bağlı satırların hepsi kapanır ve kayıpları geri kazanılır. Kök nedenin eşiği ve başarı hesabı tıklanan satıra göre değişmez. **Gizli sorunlar başka sorunlarla ortak kök nedeni paylaşmaz; T1 ile T5 sorunları da aynı köke bağlanmaz.** Bağlantılar oyuncuya doğrudan açıklanmak zorunda değildir; oyuncu ipuçlarından tahmin yürütebilir. Çözümün para maliyetini sorun satırının yüzde kaybı değil, kök nedeni gidermek için yapılacak iş belirler. Sorun kartlarının görünen maliyetleri genel olarak yakın aralıkta ama birebir aynı olmamalıdır; özellikle bağlı satırlarda özdeş fiyat, bağlantıyı ele verir. En ucuz satırı seçmenin baskın stratejiye dönüşme riski Claude incelemesine açıktır.
+Örnek departman kartı: **Planlama toplam kaybı 100 birim**; T1: –, T2: 20, T3: 50, T4: 30, T5: –. Bu beş satır toplam kaybı açıklar. **Planlama yetkinliği 60** olan patron T2'nin 50 eşiğini karşılar ve o sorunu kesin çözebilir; T3'ün 70 ve T4'ün 90 eşiği altında kaldığı için bu satırların nedenlerini göremez, ama “Düzelt” ile şansını deneyebilir. İlgili alanda **90 puanlık** aktif danışman T3 ve T4 nedenlerini görünür kılar; sorunları gidermenin patron zamanı maliyetini düşürür. Patronun kalıcı yetkinliği 60 kalır.
+
+**Farklı Tier satırları aynı kök nedene bağlanabilir.** Böyle bir kök başarıyla düzeltilirse bağlı satırların hepsi kapanır; tıklanan satır kökün gerçek başarı hesabını veya çözüm maliyetini değiştirmez. Önceki kullanıcı yönlendirmesinde gizli sorunların görünür düşük Tier sorunuyla ortak kök taşımaması ve T1 ile T5'in aynı köke bağlanmaması istenmişti. Dinamik görünürlük ve farklı Tier bağlantısını birlikte uygulayacak üretim kuralı henüz kesinleşmedi; özellikle görünür T2'ye basarak gizli T3/T4'ün kendiliğinden kapanması varsayılmaz. Claude'un bu sınırı incelemesi istenir. Satırda belirtiden hareketle tahmini müdahale bedeli görünebilir; tahsil edilen oyun parası kök nedenin gerçek çözüm maliyetine bağlıdır. Tahmin ile tahsilat farkının oyuncuya ne zaman gösterileceği açık karardır.
 
 “Düzelt”, sorunun gerektirdiği işlemin yapılmış olmasıdır; kişi kaynaklı sorunda konuşma, yaptırım veya işten çıkarma gibi sonucu da kapsayabilir. Oyuncu için ayrıca müdür kovma zinciri veya her soruna özel eylem menüsü açılmaz. Hangi işlemin gerçekleştiği sonuç metninde anlatılabilir; buna ayrı bir müdür karakteri veya müdür yetkinliği gerekmez.
 
 Eşik altı olasılığı **kademe farkına** göre düşer. Kabul edilen taslak denge: bir kademe eksik ≈ %80, iki kademe ≈ %40, üç kademe ≈ %15, dört veya daha fazla kademe ≈ %5. Örneğin 60/70 bir kademe farktır ve yaklaşık %80 başarı verir. Rakamlar oyun testleriyle ayarlanabilir; eşiklerin kesin değerleri de henüz FREEZE değildir. Her sorun kartında çözüm olasılığı yüzde yerine **yüksek / orta / düşük** olarak yazılır; dördüncü etiket eklenmez. Tur 8 taslak eşlemesi: ≈ %80 yüksek, ≈ %40 orta, ≈ %15 ve ≈ %5 düşük. Üç etiket yakın bilgi açıkları hakkında kısmi ipucu verir; derin açıkların tam kademesini gizler. Aynı sorunu sonraki ay yeniden denemenin para maliyeti açık denge kararıdır.
 
-Bu akışta yetkinlik, hangi eyleme basılabileceğinden çok **neyin yanlış gittiğini bilme** ve bilinmeyen sorunu çözme şansıyla ilgilidir. Aylık tek hak, kör denemenin teşhis ve danışmanı değersizleştirmesini sınırlamalıdır; etkisi oyun testinde incelenmelidir.
+Bu akışta yetkinlik, hangi eyleme basılabileceğinden çok **neyin yanlış gittiğini bilme** ve bilinmeyen sorunu çözme şansıyla ilgilidir. Aynı soruna aylık tek deneme ile para ve zaman maliyeti, kör müdahaleyi sınırlar; etkisi oyun testinde incelenmelidir.
 
 ### Fabrika Performansı ve Zaman
 
-Kullanıcının tarif ettiği rapor modelinde, departmanın ulaşılabilir performansından sorunların etkileri düşülerek gerçekleşen performansa varılır. Örnek: **Planlama %60** ise dört sorun satırının etkileri **−%5, −%15, −%10, −%10 = −%40** olabilir. ERP kaynaklı ilk iki satır aynı görünür köke bağlıysa başarılı tek müdahalede ikisi de kalkar ve diğer koşullar sabitken performans **%80** olur. Bu örnekte yüzde kayıpları toplamsaldır; hesaplama kuralı ve farklı nedenlerin etkileşimi fabrika ekonomisi tasarımında sınanacaktır. Ulaşılabilir performansın makine, ürün, kapasite ve talep gibi gerçek sınırlarla tanımlanması ayrıca gerekir.
+Kullanıcının Claude'a anlattığı basit birim modelinde fabrika için **beklenen/ulaşılabilir 100 birim**, **gerçekleşen 40 birim**, **kayıp 60 birim** olabilir. Kayıp departmanlara dağıtılır: örnek **Planlama 10 + Satın Alma 20 + Sevkiyat 5 + Finans 5 + Üretim 20 = 60 birim**. Her departman kaybının altında sorun satırları vardır; satırların doğrudan kayıpları kendi departman toplamını açıklar. Bağlı iki satırın kaybı ayrı ayrı sayılır; ortak kökün müdahalesi ikisini birlikte kaldırır. Departmanlar arası çarpımsal hesap bu aşamada önerilmez. **Her departmanın performansı en az %33** olmalıdır; sorun üretimi bu tabanı aşacak kayıp yaratmaz. Departman yüzdesi ile fabrika kayıp biriminin nasıl bağlanacağı henüz açık bir ekonomi kuralıdır. Makine, ürün, kapasite ve talebe göre 100 birimlik beklentinin nasıl belirleneceği de ayrı ekonomi tasarımında kesinleşir.
 
-Patronun aylık yönetim zamanı sınırlıdır; para olsa bile bütün yönetim işleri aynı ay yapılamaz. **Ayda tek “Düzelt”** kuralıyla birlikte bu zaman, diğer yönetim kararları için de fırsat maliyeti yaratır. Aylık saat bakiyesi, çözüm süreleri ve danışmanın zaman tasarrufu henüz sayısal olarak kararlaştırılmadı.
+Önceki Planlama örneği raporun departman içi görünümüdür: **%100 − %5 − %15 − %10 − %10 = %60**. ERP kökünün ürettiği ilk iki satır çözülürse Planlama %80'e çıkar. Bu yüzde örneğiyle fabrika genelindeki kayıp birimlerinin dönüşümü henüz tanımlanmadığından örnekler birbirine matematiksel olarak eşitlenmiş kabul edilmez.
+
+Patronun aylık yönetim zamanı için **40 saatlik başlangıç örneği** vardır; değer testte değişebilir. Fabrika büyüdükçe sorun sayısı artar, bu yüzden para ve patron zamanı hangi sorunlara müdahale edileceğini belirler. Danışman ilgili alanda müdahalenin patron saatini azaltır; saat bakiyesini artırmaz. Müdahalelerin kesin saatleri ve büyüyen fabrikada gelecekteki ekip/personel sisteminin patron yükünü nasıl azaltacağı ayrı denge ve personel kararlarıdır.
 
 ### İnsan Yönetimi ve Personel
 
@@ -130,7 +134,7 @@ Oyuncunun ilk başarısızlığı sonraki kariyerinde hangi alanlarda deneyim ka
 
 ### Bilinmeyen Sorun ve Geri Bildirim
 
-Patron kök nedeni göremese bile ilgili sorun kartı **açıklanamayan kayıp veya belirti** gösterir (`GAME_OVERVIEW` §9). Gizli sorun bağımsız kök nedeni taşır; görünür sorunla aynı kökten gelip onun müdahalesiyle kendiliğinden kapanmaz. Oyuncu o karttaki “Düzelt”i deneyebilir veya danışman çağırabilir; gerçek neden otomatik ifşa edilmez. Başarısız deneme sonrasında harcanan para, zaman, aylık müdahale hakkı ve sorunun sürdüğü açıkça gösterilmelidir. Kaybın büyüklüğünün ve kategori ipuçlarının hangi düzeyde gösterileceği açık karardır.
+Patron kök nedeni göremese bile departman kartındaki ilgili Tier satırı **kaybı veya belirtiyi** gösterir (`GAME_OVERVIEW` §9). Oyuncu satırın “Düzelt”ini deneyebilir veya danışman tutabilir; gerçek neden otomatik ifşa edilmez. Başarısız deneme sonrasında harcanan para ve zaman, **bu satırın aynı ay yeniden denenemeyeceği** ve sorunun sürdüğü açıkça gösterilmelidir. Kategori ipuçlarının düzeyi ve farklı Tier satırları arasında ortak kök bulunup bulunamayacağı açık karardır.
 
 Fabrika battıktan sonra **aynı karakterle devam edilir** ve karakter borç yüküyle yeniden başlar. Borç, toparlanmanın mümkün olduğu ölçekte olmalıdır; **yaklaşık bir oyun yılında toparlanma** kullanıcı tarafından örnek ufuk olarak verildi, kesin süre değildir. Psikoloji, yeni başlayan bir karakterinkinden yaklaşık **%25 düşük** başlayabilir; bu da taslak örnektir, sabit denge değeri değildir. Düşüş kalıcı bir başarısızlık sarmalı yaratmamalıdır.
 
@@ -150,19 +154,19 @@ Danışman bu IDEA'da mekanikleştirilen yoldur. Aşağıdakiler diğer olası y
 - dış kaynak
 - eğitim / sonradan öğrenme
 
-Oyunda önceden tanımlı **10–15 danışman kartı** bulunur. Her danışmanın mevcut patron yetkinliklerinden **2–5 alandaki puanı** vardır. Ay sonu raporu görüldükten sonra **aktif danışmanlar aday havuzundan çıkarılır** ve kalan kartlardan rastgele **3 kart açılır**; oyuncu görünen profiller arasından seçim yapar. Sözleşme uzatma teklifi yoktur. **Dördüncü kartı açmak oyun parası veya gerçek paradan biriyle ödenir**. Dördüncü kart rastgele gelir, fakat oyuncunun eksik yetkinliğini kapatan bir karta denk gelme olasılığı normal çekilişe göre **10 yüzde puan daha yüksektir** (ör. %30 yerine %40). Oyuncu bir kez daha ödeme yapıp **beşinci çekimi** yapabilir; gelen kart dördüncü kartın **yerini alır**, ayrı bir beşinci yer açılmaz. Bir ayda en fazla **iki ücretli çekim** yapılır; daha fazla yeniden çekim yoktur. Beşinci çekimin ağırlığı ve iki çekimin fiyatları ayrıca belirlenecektir. Önceki taslaktaki **Satış** örneği, mevcut on yetkinlik arasında olmadığı için çıkarıldı; satış/talep tasarımı ayrı konu olarak ele alınabilir.
+Danışman kartları **firma büyüklüğüne ve oyuncunun bilgi açığına göre dinamik seçilir**; küçük fabrikaya en güçlü profillerin gelmemesi istenir. Başlangıçta düşünülen 10–15 önceden tanımlı profil ve 2–5 alanlı kart yapısı korunacaksa dinamik seçimin bu havuzdan nasıl yapılacağı açık karardır. Hedefleme gizli kök nedeni ele vermemek için oyuncunun raporda zaten gördüğü departman kayıpları ve görünür sorunlara dayanmalıdır. Ay sonu raporundan sonra **aktif danışmanlar aday havuzundan çıkarılır** ve **3 ücretsiz kart** görünür. Dördüncü kart oyun parası veya gerçek paradan biriyle açılır; bir kez daha ödeme yapılırsa beşinci çekim dördüncü kartın yerini alır, ayrı yer açılmaz. Ayda en fazla iki ücretli çekim vardır. Dördüncü kartın eksik alana uyma olasılığının +10 yüzde puan olması önceki kullanıcı yönlendirmesidir; dinamik seçimin içinde nasıl uygulanacağı açık karardır. Aynı kartın tekrar çıkması, uygun aday kalmaması ve ücretli çekimin olasılığının nasıl gösterileceği de açıktır. **Aktif danışman aylık aday çekilişine girmez; uzatma bu çekilişten ayrı bir sözleşme işlemidir.** Önceki **Satış** örneği, mevcut on yetkinlik arasında olmadığı için çıkarıldı.
 
 Kartın listelediği her alan **en az 25, en fazla 100** puandır. **Kartın toplam puanı ≤ listelenen alan sayısı × 60**. Örnek: beş alanlı kartın bütçesi en fazla 300'dür; iki alan 25'er puansa kalan üç alana toplam 250 puan dağıtılabilir (ör. **25 + 25 + 83 + 83 + 84 = 300**). İki alanlı kartta bütçe 120 olduğu için bir alanın 100 olması, diğer alanın en az 25 olma şartıyla mümkün değildir; iki alanlı üst sınır örneği **95 + 25 = 120**. 100 puanlık uzmanlık en az üç alanlı profilde mümkündür. Bu sonuçlar önerilen üç kuralın matematiksel sonucudur.
 
 Bir kartta **iki alanın 100 olması da mümkündür**: beş alanlı **100 + 100 + 50 + 25 + 25 = 300** kartı bütçe kuralını karşılar. Böyle güçlü profiller çok nadir ve çok pahalı olmalıdır. Kart başına “90+ en fazla bir alan” sınırı konmaz. Havuzda birlikte on alanı kapsayan iki kart bulunması da yasaklanmaz; kapsam, derin sorunların tamamında kesin çözüm anlamına gelmez.
 
-Danışmanların ilgili alan puanı **100'e ulaşabilir**; 90'lık sabit üst sınır yoktur. En güçlü profiller nadir ve pahalı olmalıdır; ücret özellikle kartın **en yüksek iki alan puanına ağırlık vererek** hızla artar. Böylece iki alanı 100 olan kart gerçekten pahalı olur; düşük puanlı dolgu alanlar fiyatı yapay biçimde ucuzlatmaz. Oyuncu kendi kariyerinde öğrenmediği en derin sorunu da danışman aracılığıyla kesin çözebilir, ama bunu sürekli yapmak ağır bir oyun içi maliyet doğurur. Kesin fiyat formülü, güçlü kartların havuzdaki sayısı ve küçük fabrika kârına göre maliyet dengesi açık karardır.
+Danışmanların ilgili alan puanı **100'e ulaşabilir**; 90'lık sabit üst sınır yoktur. En güçlü profiller nadir ve pahalı olmalıdır; ayrıca firma ölçeğine göre aday havuzundan çıkarılabilir. Ücret özellikle kartın **en yüksek iki alan puanına ağırlık vererek** artar. Böylece iki alanı 100 olan kart pahalı olur; dolgu alanlar fiyatı yapay biçimde ucuzlatmaz. Kariyerinde öğrenmediği derin sorunu danışmanla çözme yolu korunur, fakat küçük fabrikanın her uzman profiline anında erişmesi garanti değildir. Güçlü kartlara hangi firma ölçeğinde erişildiği ve küçük fabrika kârına göre maliyet dengesi açık karardır.
 
-Danışman **belirli süreli sözleşmeyle** tutulur ve işe alındığı anda başlar; profilindeki bütün alanlar sözleşme boyunca aktiftir. **Aynı anda en fazla iki danışman** aktif olabilir. Örnek fiyatlama: o danışmanın bir aylık ücreti **A** ise 3 ay **2,75A**, 12 ay **10A**. Süreler ve çarpanlar bağlayıcılık/indirim fikrini gösteren taslak değerlerdir. Ödenen sözleşme ücreti, danışman erken bırakılırsa da iade edilmez. İki danışman aynı anda çalışsa bile ilgili alanda **etkin yetkinlik = max(patronun puanı, aktif danışmanların o alandaki puanları)**; puanlar birbirine eklenmez ve 100'ü aşmaz. Etkin değer sorunun eşiğine ulaşırsa kök neden görünür ve “Düzelt” kesin başarı verir. Danışman ayrılınca patronun kalıcı puanı artmış sayılmaz.
+Danışman **belirli süreli sözleşmeyle** tutulur ve işe alındığı anda başlar; profilindeki bütün alanlar sözleşme boyunca aktiftir. **Aynı anda en fazla iki danışman** aktif olabilir. Sözleşme yalnızca **ilk yarısında** uzatılabilir; ikinci yarısında uzatma yapılamaz. Uzatma, aylık yeni danışman kartı çekilişinden ayrı bir işlem olur. Sözleşme bitince aynı danışmanın yeniden bulunup bulunmayacağı ve uzatma bedeli açık denge kararlarıdır. Örnek ilk fiyatlama: bir aylık ücret **A** ise 3 ay **2,75A**, 12 ay **10A**. Süreler ve çarpanlar bağlayıcılık/indirim fikrini gösteren taslak değerlerdir. Ödenen sözleşme ücreti, danışman erken bırakılırsa da iade edilmez. İki danışman aynı anda çalışsa bile ilgili alanda **etkin yetkinlik = max(patronun puanı, aktif danışmanların o alandaki puanları)**; puanlar birbirine eklenmez ve 100'ü aşmaz. Etkin değer sorunun eşiğine ulaşırsa kök neden görünür ve “Düzelt” kesin başarı verir. Danışman ayrılınca patronun kalıcı puanı artmış sayılmaz.
 
 Danışman sözleşmesi oyun parası **veya** gerçek paradan biriyle ödenebilir; ikisi birden istenmez. Aynı danışman teklifine oyun parasıyla da erişilebilmelidir; gerçek para ödemesi sorunu çözmek için zorunlu hale gelmez. Ay sonu kart açılışı dışında ek bekleme yoktur; danışman hemen göreve başlar. Sürekli danışman tutmanın kariyer deneyimini değersizleştirmemesi için fiyatlar, dördüncü kart açma bedeli ve gelir dengesi sınanmalıdır. Ek kartın gerçek parayla açılması ücretli arama avantajı doğurduğu için monetizasyon incelemesinde özellikle değerlendirilmelidir.
 
-Küçük veya nakdi sıkışık fabrikanın sürekli danışman tutması zor olmalıdır; bunun ne ölçüde doğal nakit akışından doğacağı test edilmelidir. Prestijli danışmanların firma ölçeğine göre aday havuzundan çıkması beyin fırtınası önerisidir, kullanıcı kararı değildir. Danışmanın analiz edip ayrıca uygulanıp uygulanmayacağına karar verilen ikinci bir eylem, sözleşme uzatma ve uyum/güven statı bu sürümün mekaniğine eklenmez.
+Küçük veya nakdi sıkışık fabrikanın sürekli danışman tutması zor olmalıdır; bunun ne ölçüde doğal nakit akışından doğacağı test edilmelidir. **Firma ölçeği danışman kartlarının gücünü sınırlar**; Claude'un aktardığı yeni kullanıcı yönlendirmesi bunu beyin fırtınası önerisi olmaktan çıkarır. Danışmanın analizinden sonra ayrı bir "dinle/dinleme" eylemi ve uyum/güven statı bu sürümün mekaniğine eklenmez; kullanıcı her sorunda tek "Düzelt" butonunu seçti. Rutin sorunlar için tek buton, stratejik olaylar için çoklu müdahale seçeneği beyin fırtınasında geçti, fakat IDEA-001'in onaylı mekaniği değildir; ayrı kapsam kararı olarak açık tutulur. Sözleşmenin ilk yarısında uzatma mümkün olup bitiş sonrası devam garantisi ayrıca kararlaştırılmadı.
 
 ### Tasarım İlkesi
 
@@ -257,8 +261,10 @@ Diğerleri:
 ### FREEZE öncesi kapanması önerilenler (ilke düzeyinde)
 
 - Danışman sözleşmesi ve dördüncü kartın oyun parası / gerçek para fiyat dengesi; aynı teklifin oyun parasıyla erişilebilirliği ve ücretli rastgele dördüncü kartın uygulama/mevzuat incelemesi. Claude notu: gerçek parayla danışman sözleşmesi GAME_OVERVIEW §26 ve §11 ile gerilim yaratıyor. Kullanıcının iki ödeme seçeneği ve rastgele dördüncü kart kararı korunur; oyun parasıyla makul erişim hedefi, gerçek para fiyatlandırması ve iflas dönemi etkisi henüz kapanmadı.
-- Dördüncü kart için eksik yetkinliği kapatma ölçütünün kesin tanımı, +10 yüzde puanlık ağırlığın sabit havuzda nasıl uygulanacağı, beşinci çekimde bu ağırlığın sürüp sürmeyeceği, iki para birimindeki fiyatlar ve aynı kartın tekrar çıkma kuralı. Ayda en fazla iki ücretli çekim vardır; beşinci çekim dördüncü yerin kartını değiştirir. Aktif danışmanlar aylık aday havuzuna girmez; uzatma teklifi yoktur.
-- Her sorun kartında kök neden gizliyken hangi belirti ve kayıp bilgisinin gösterileceği. Görünür bağlı sorunların ortak kökü ipuçlarından tahmin edilebilir; gizli sorunlar bağımsız kök taşır. Bağlı kartların maliyeti farklıyken en ucuz karta basmanın baskın stratejiye dönüşüp dönüşmeyeceği Claude tarafından incelenecek.
+- Dinamik kart seçiminde "eksik yetkinliği kapatan" profilin tanımı, +10 yüzde puanlık dördüncü kart hedeflemesinin bu seçimle birleşmesi, beşinci çekimde ağırlığın sürüp sürmeyeceği, fiyatlar ve aynı kartın tekrar çıkması. Uygun aday kalmadıysa ödeme öncesi bildirim, geri koymasız çekim ve ücretli/ücretsiz kartların aynı puan bütçesine uyup uymayacağı açık; Claude'un örneğindeki 55+70 ve 75+65 iki alanlı kartlar mevcut 120 puan tavanını aşar. Gizli sorun bilgisi aday seçimiyle sızmamalı.
+- Farklı Tier satırları ortak kök taşıyabilir; görünür T2 ile gizli T3/T4'ün bağlanmaması yönündeki önceki kullanıcı kuralı ve T1–T5'in aynı kök olmaması nasıl statik üretim kuralına dönüşecek? Bağlantının ne zaman görünür olacağı, en yüksek bağlı Tier'in başarı eşiğine etkisi ve aynı köke başka satırdan ikinci kez basmanın engellenmesi Claude incelemesine açık.
+- Satırdaki tahmini maliyet ile tahsil edilen gerçek kök maliyeti arasındaki farkın ödeme öncesi nasıl anlatılacağı açık.
+- %33 departman tabanının fabrika kayıp birimlerine çevrilmesi; departman ağırlığı veya başka basit bir köprü gerekip gerekmediği. Dinamik kartların gerçek parayla erişiminde GAME_OVERVIEW §11 ve §26'ya uygun korkuluklar da açık.
 
 ### Denge parametreleri ve testle kesinleşecekler
 
@@ -267,8 +273,8 @@ Diğerleri:
 - İnsan Yönetimi alanındaki özgül sorunların içeriği, kaynak türü etiketleri ve %80 azaltma / %30–40 kişi kaynaklı sorun payı hedeflerinin testle ayarlanması. Yatay sıklık etkisi yalnızca patronun kalıcı puanına bağlıdır. (Claude notu: ilke Karar Özeti'nde kapandı.)
 - “Düzelt”in kök nedenin gerektirdiği işe dayanan para maliyeti, kartların yakın maliyet aralığı, aylık patron zamanı ve danışmanın zaman tasarrufu.
 - Kabul edilen taslak kademe eğrisinin (≈ %80 / %40 / %15 / %5) oyun testlerinde ayarlanması; Tier içinde farklı puanların aynı şansa sahip olmasının uygunluğu.
-- Ayda bir fabrika geneli “Düzelt” hakkının sorun sayısı ve fabrika ölçeği arttığında dengeye etkisi; sonraki ay tekrar denemenin aynı mı, artan mı para maliyeti taşıyacağı.
-- Kart havuzunun kesin büyüklüğü (10–15), her ayki 3 kartın seçim yöntemi, güçlü kartların nadirliği; havuzun ezberlenmesine karşı puan varyasyonu veya büyüyen havuz.
+- Aylık 40 saat başlangıç örneği, müdahale süreleri ve danışmanın ne kadar zaman tasarrufu sağladığı; başarısız denemelerin saat maliyeti, aynı kökün bağlı başka satırından aynı ay yeniden denemenin engellenmesi ve sonraki ay tekrar denemenin para maliyeti.
+- Kart havuzunun kesin büyüklüğü (10–15 ilk taslaktır), firma ölçeği ve görünen bilgi açığıyla dinamik aday seçimi, güçlü kartların nadirliği ve ücretli adayın güç sınırı.
 - Kesin fiyat formülü ve 1/3/12 ay için A/2,75A/10A örneklerinin kesinleşmesi.
 - Uzun süreli çok alanlı danışmanların baskın strateji olup olmadığı; yıllık danışman maliyetinin küçük fabrika net kârına oranı ve kariyer yetkinliğinin değeri.
 - İki aktif danışman ve alan sayısı × 60 bütçesinin dengede kariyer yatırımını koruyup korumadığı; iki kartla kapsanabilen en geniş alan kümesi.
@@ -279,8 +285,8 @@ Diğerleri:
 - İflas borcunun miktarı ve yaklaşık bir oyun yılında toparlanmanın denge hedefi olup olmayacağı; psikoloji düşüşünün süresi ve toparlanma hızı. Claude önerisi: psikoloji belirli sürede kendiliğinden toparlanır, borç ödemesi gelire oranlanır (açık).
 - “Acı tecrübe” artışının kesin büyüklüğü ve üst sınırı; karakter başına tek seferlik verilmesinin denge testi.
 - Yetkinlik Tier eşikleri (T4–T5 arasındaki 10 puanlık aralığın kademe eğrisiyle birlikte yeniden değerlendirilmesi dahil), kazanılma hızı, düşüşü ve beşinci yıl hedefi.
-- Departman başına eşzamanlı problem sayısı.
-- Ulaşılabilir performans ve kârın makine, ürün, talep ve giderlere göre nasıl hesaplanacağı; sorun kayıplarının toplamı, bağlı etkilerin iki kez sayılmaması ve bir müdahalenin farklı satırlara etkisi.
+- Departman başına en fazla beş eşzamanlı problem satırı vardır (Tier başına en fazla bir); sorunların hangi sıklıkla ve hangi Tier'de üretileceğinin dengesi açık.
+- Ulaşılabilir 100 birimlik fabrika beklentisinin makine, ürün, talep ve giderlere göre hesabı; departman kayıp birimlerinin yüzde performansa dönüşümü, bağlı satırların iki kez sayılmaması ve Ar-Ge/Yatırım gibi alanların aylık çıktıya mı gelecek fırsatlara mı yansıyacağı.
 - Statların öğrenme hızına vereceği azami bonus.
 
 ### Ayrı IDEA veya FREEZE sonrası işler
@@ -293,7 +299,8 @@ Diğerleri:
 - `GAME_OVERVIEW` §9'daki toplu "açıklanamayan kayıp" sinyalinin sorun kartı modeline, §11 ve §26'daki monetizasyon dilinin kullanıcının gerçek para kararına göre güncellenmesi (FREEZE sonrası).
 - Oyunun süresi ve bitiş koşulu; iflastan sonraki sermaye/borç durumu. Claude önerisi: çekirdek oyun döngüsü IDEA'sına taşınır (açık).
 - Karakterin yaşlanması ve doğal ölümü; aynı karakterle iflas sonrası devam kuralının ömür sınırıyla ilişkisi ayrı çekirdek döngü IDEA'sında tasarlanır. Başlangıç yaşı ve ölüm zamanlaması bu IDEA'nın kararı değildir.
-- Firma ölçeğine göre danışman havuzu/prestij kısıtı ve teorik fabrika kârı modeli ayrı ekonomi tasarımında değerlendirilecek beyin fırtınası önerileridir; henüz kullanıcı kararı değildir.
+- Fabrika ölçeğine göre danışman aday gücü IDEA-001 yönüdür; fabrika kârı ve departman ağırlıklarının hesabı ayrı ekonomi tasarımında kesinleşir.
+- Rutin sorunlarda tek “Düzelt”, stratejik sorunlarda birden fazla çözüm alternatifi beyin fırtınası önerisidir; mevcut tek buton kuralını değiştirmeden ayrı IDEA/kapsam kararı olarak saklanır.
 - Fabrika dönemindeki stratejik derinliğin “Düzelt” dışında hangi sistemlerden geleceği.
 
 ## Karar Özeti
@@ -304,7 +311,7 @@ Kullanıcının yönlendirmeleri (IDEA düzeyinde; henüz FREEZE değil):
 - Yetkinlik Tier eşiğine ulaşıyorsa sorun kesin çözülür; ulaşmıyorsa başarı olasılığı yetkinliğe bağlıdır (60/70 için yaklaşık %80 hedefi); çünkü bilgi açığı çözmeyi imkânsız değil, riskli kılmalı.
 - Yetkinlik bilgi modeli olarak öncelikle kök neden görünürlüğünü belirler; çünkü seçenek kilitlemek yerine oyuncunun neyi bildiği öne çıkmalı.
 - Fabrika batınca aynı karakter devam eder; çünkü başarısızlık sonraki girişime ders taşımalı.
-- Ay sonunda 10–15 sabit profilden rastgele 3 danışman kartı açılır, dördüncü kart oyun parası veya gerçek parayla açılır; çünkü oyuncu rapordan sonra seçim yapmalı ve ek kart için ödeme yolu seçebilmeli.
+- Ay sonunda 3 danışman adayı görünür, dördüncü kart oyun parası veya gerçek parayla açılır; çünkü oyuncu rapordan sonra seçim yapmalı ve ek kart için ödeme yolu seçebilmeli; 10–15 sabit profil havuzu dinamik seçimle yeniden değerlendirilecek.
 - Her danışman 2–5 alandaki görünür puanıyla fiyatlanır; çünkü farklı bilgi açıkları ve bütçeler için seçenekler olmalı.
 - Danışman sözleşmesi süreli ve bütün profil alanları boyunca aktiftir; çünkü oyuncu tek alanlık kısa görev yerine kapsamlı bir danışman seçip süreye bağlanmak istiyor.
 - Etkin yetkinlik patron ve aktif danışman puanlarının en yükseğidir, toplama değildir; çünkü çok danışman tutmak 100 üstü puan veya sınırsız güç üretmemeli.
@@ -321,22 +328,26 @@ Kullanıcının yönlendirmeleri (IDEA düzeyinde; henüz FREEZE değil):
 - İnsan Yönetimi yükseldikçe kişi kaynaklı sorunların sıklığı azalır; çünkü bu yetkinliğin aylık personel sonuçlarında somut karşılığı olmalı.
 - İnsan Yönetimi için %50 azaltma tavanı reddedildi, daha güçlü etki önerilecek; çünkü oyuncunun bu yetkinliğe zaman ayırması anlamlı olmalı, kesin oran henüz açık.
 - Statlar eşik altı “Düzelt” şansını artırmaz ve gizli sorunlarda şans kaba aralıkla gösterilir; çünkü kariyer bilgisi statla aşılamamalı ve kesin yüzde gizli Tier'ı ele vermemeli.
-- Her sorun kendi “Düzelt” butonunu ve yüksek/orta/düşük şans etiketini taşır; çünkü oyuncu hangi soruna müdahale ettiğini ve riskini kart üzerinde görmeli, üç etiket yakın açığı kısmen sezdirirken derin açığı gizler.
+- Her departman kartında T1–T5 için daima beş satır vardır; her Tier en fazla bir kez görünür ve boş satır “–” olur, çünkü departman kaybı sabit ve okunur bir yapıda sunulmalı.
+- Sorun bulunan her Tier satırı kendi “Düzelt” butonunu ve yüksek/orta/düşük şans etiketini taşır; çünkü oyuncu hangi soruna müdahale ettiğini ve riskini görmeli, üç etiket gizli nedeni tam açıklamamalı.
 - Kişi kaynaklı sorunların sıklığını yalnızca patronun kalıcı İnsan Yönetimi puanı azaltır; çünkü danışman bu yatay kariyer yatırımının yerini almamalı.
 - İki danışman kartının birleşince on alanı kapsaması yasaklanmaz; çünkü kapsam tek başına derin sorunlarda kesin çözüm sağlamaz, geniş kartların dengesi fiyat ve nadirlikle kurulmalı.
-- Sözleşmesi süren danışman aylık aday havuzuna girmez ve uzatma teklifi yapılmaz; çünkü aktif bir kartın yeniden sunulması seçim hakkını boşa harcar ve uzatma gereksiz ayrıntı ekler.
+- Sözleşmesi süren danışman aylık aday havuzuna girmez; sözleşme yalnızca ilk yarısında ayrı işlemle uzatılabilir, çünkü aktif kart çekiliş hakkını boşa harcamamalı ve oyuncu devam kararını erken vermeli.
 - Dördüncü kart rastgele kalır ve eksik yetkinliği kapatma olasılığı normal çekilişten 10 yüzde puan yüksek olur; çünkü ücretli seçimde oyuncuya daha yararlı bir aday şansı verilmeli.
 - Ayda en fazla iki ücretli danışman çekimi yapılır ve beşinci çekim dördüncü kartın yerini alır; çünkü oyuncu bir kez yeniden deneyebilmeli ama sınırsız kart çevirip en iyi adayı garantilememeli.
-- Patronun yetkinlikle eriştiği kademe “Görüş Seviyesi”, sorunun eşik kademesi “Sorun Derinliği” adını alır; çünkü iki kavramı karıştırmadan anlatmak gerekir ve bu adlar yeni mekanik yaratmaz.
 - Danışman sözleşmesi oyun parası veya gerçek parayla ödenebilir; çünkü oyuncuya iki ödeme seçeneği sunulurken gerçek para zorunlu olmamalı.
 - Danışman fiyatında en yüksek iki alan puanı daha ağır basar; çünkü iki zirve uzmanlığı olan kart ciddi bir bedel taşımalı.
 - İnsan Yönetimi yaklaşık %80'e kadar kişi kaynaklı sorunları azaltır, kendi alan sorunları da vardır ve kişi kaynaklı sorunlar toplamın yaklaşık %30–40'ıdır; çünkü bu yetkinlik güçlü ama diğer alanların yerini almayan bir yatırım olmalı.
 - Ayrı müdür/ekip mekaniği IDEA-001'in kapsamı dışındadır ve daha sonra tasarlanabilir; çünkü bugünkü basit “Düzelt” akışı gelecekte ekip kararlarını kapatmamalı.
-- Fabrika genelinde ayda yalnızca bir “Düzelt” denemesi yapılır ve başarısız deneme de hakkı tüketir; çünkü kör deneme para, zaman ve ertelenen kayıp açısından gerçek risk taşımalı.
-- Danışman olsa da her sorun kartında yalnızca tek “Düzelt” bulunur ve başarı hesabı max(patron, aktif danışmanlar) ile yapılır; çünkü danışman desteği ayrı bir karar menüsü yaratmadan yetkinlik açığını kapatmalı.
+- Aynı soruna ayda en fazla bir “Düzelt” denemesi yapılır; fabrika genelindeki müdahaleleri para ve patron zamanı sınırlar, çünkü kör deneme riskli olmalı ama başka sorunlara müdahaleyi engellememeli.
+- Danışman olsa da her sorunlu Tier satırında yalnızca tek “Düzelt” bulunur ve başarı hesabı max(patron, aktif danışmanlar) ile yapılır; çünkü danışman desteği ayrı bir karar menüsü yaratmadan yetkinlik açığını kapatmalı.
 - Danışman aynı kök nedeni gidermenin oyun parası maliyetini değiştirmez, patron zamanını azaltır; çünkü sözleşme ücreti ayrıca ödenmiştir ve analiz yükünü danışman üstlenir.
-- Aynı görünür köke bağlı satırlardan birinin başarıyla düzeltilmesi hepsini kapatır; çünkü tek müdahale ortak nedeni ortadan kaldırır ve satırların kayıpları birlikte geri kazanılır.
-- Departman performansı, sorun satırlarının kayıpları düşülerek açıklanır (örneğin %100 − %5 − %15 − %10 − %10 = %60); çünkü oyuncu rapordaki eksik performansı somut nedenlerle ilişkilendirebilmeli.
-- Gizli sorunlar başka sorunlarla ortak kök nedeni paylaşmaz ve görünür düşük derinlikli sorun üzerinden çözülmez; çünkü bilinmeyen derin problem kolay bir belirtiye basılarak aşılmamalı.
-- Kök nedeni gidermenin para maliyeti kayıp yüzdesine göre belirlenmez ve sorun kartlarının bedelleri genel olarak yakın ama özdeş değildir; çünkü oyuncu bağlantıyı yalnızca fiyat eşitliğinden öğrenmemeli.
-- Kartlarda çözüm ihtimali yüksek/orta/düşük olarak üç düzeyde gösterilir; çünkü kaba risk bilgisi verilirken gizli derinlik tam açıklanmamalı.
+- Departman kaybı beş Tier satırının kayıp birimleriyle açıklanır (örneğin T1: –, T2: 20, T3: 50, T4: 30, T5: – = 100 birim); çünkü oyuncu toplam kaybı hangi derinlikteki sorunların yarattığını görebilmeli.
+- Önceki T2 eşiği 50 kalır ve örnekte patron yetkinliği 60 alınır; çünkü 20/50/30 sayıları yetkinlik eşiği değil sorunların kayıp birimleridir.
+- Farklı Tier satırları ortak bir köke bağlanabilir ve kök çözülürse bağlı satırlar kapanır; çünkü tek temel neden birkaç kayba yol açabilir, ancak gizli satırları düşük Tier üzerinden aşma sınırı Claude incelemesinde netleşmelidir.
+- Sorun kartı tahmini maliyet gösterebilir, tahsil edilen bedel aynı kök için satırdan bağımsız gerçek çözüm maliyetidir; çünkü kayıp yüzdesi veya ucuz görünen kart aynı işi daha ucuz hale getirmemeli.
+- Sorunlu Tier satırında çözüm ihtimali yüksek/orta/düşük olarak üç düzeyde gösterilir; çünkü kaba risk bilgisi verilirken gizli neden tam açıklanmamalı.
+- Patronun ilgili departmandaki tek yetkinlik puanı Tier eşiğiyle doğrudan karşılaştırılır; çünkü ayrı “Görüş Seviyesi” aynı bilgiyi tekrarlar ve gereksiz kavram yaratır.
+- Danışman adaylarının gücü fabrika ölçeğine göre sınırlandırılır ve seçim görünür bilgi açıklarına göre dinamik olur; çünkü küçük fabrikanın en güçlü uzmanlara hemen erişmesi ve gizli sorunların kart teklifinden ifşa edilmesi istenmez.
+- Her departmanın performansı en az %33 kalır ve fabrika kaybı basit birimlerle departmanlara dağıtılır; çünkü sorunlar matematiksel olarak açıklanırken departman performansı eksiye düşmemeli ve genel rapor kolay okunmalı.
+- Fabrika büyüdükçe sorun sayısı artar ve aylık patron zamanı sınırlıdır (40 saat ilk örnek); çünkü büyüme yönetim önceliği ve ileride yetki devri ihtiyacı yaratmalı.
