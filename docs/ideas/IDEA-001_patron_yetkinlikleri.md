@@ -192,71 +192,77 @@ Bilmediği işi kime bırakacağını bilir.
 
 ## Notlar (Claude)
 
-Tarihçe: Tur 1 inceleme [REV-001](../reviews/REV-001_claude_patron_yetkinlikleri.md) ve bu dosyanın Git geçmişi. Aşağıdakiler Tur 14 `Öneri (GPT)` metninin incelemesidir. Kullanıcının isteğiyle özellikle **üst bedelin hesabı**, **kök neden maliyetiyle uyumu** ve **küçük fabrikada erişilebilirliği** ele alındı. `Karar Özeti` tartışmaya açılmamış; notlar kararların içindeki açıkları ve uygulanma biçimini hedefler. Bu turda yalnızca `Notlar (Claude)` değişti.
+Tarihçe: Tur 1 inceleme [REV-001](../reviews/REV-001_claude_patron_yetkinlikleri.md) ve bu dosyanın Git geçmişi. Aşağıdakiler Tur 15 `Öneri (GPT)` metninin incelemesidir. Kullanıcının isteğiyle özellikle **fabrika ölçeği geçişi**, **saat güvencesi** ve **küçük fabrikanın danışmansız gizli sorun deneyebilmesi** ele alındı. `Karar Özeti` tartışmaya açılmamış; notlar kararların içindeki açıkları ve uygulanma biçimini hedefler. Bu turda yalnızca `Notlar (Claude)` değişti.
 
-Örneklerde Tur 14'teki varsayımsal tablo iki kat artışla geriye doğru uzatıldı: T1 10.000, T2 20.000, T3 40.000 / 10 saat, T4 80.000 / 14 saat, T5 160.000 / 20 saat.
+Örneklerde Tur 15'in bantları kullanıldı: T3 35–45 bin / 9–11 saat, T4 70–90 bin / 13–15 saat, T5 150–170 bin / 19–21 saat. Alt Tier'ler için şu varsayım eklendi: T1 8–12 bin / 3–5 saat, T2 17–23 bin / 5–7 saat.
 
 ### Aldığım Notlar
 
-- Tur 13 kararları doğru işlenmiş. Gizli satırlarda ortak tahmin, görünür satırda etiketin işaret ettiği kök bedeli, güvence, anında sonuç ve saat borcunun kaldırılması Öneri'ye ve Karar Özeti'ne tutarlı biçimde yansımış.
-- "Bağlantı öğrenilince gizli satırın tahmini gerçek kök bedeline çevrilmez" kuralı, yalnızca gizli satırlar arasındaki bağlantıda derinlik sızıntısını doğru biçimde kapatıyor.
-- "Düşük" etiketinin arayüzde görünmediği kabul edilmiş ve kesin/yüksek/orta düzeltmesi yapılmış.
-- Maliyetin kayıp büyüklüğünden değil kökün gerektirdiği müdahaleden türemesi doğru bir ilke. Böylece kayıp miktarı ile bedel birbirini ele vermez.
+- Tur 14 kararları doğru işlenmiş: örtüşmeyen para bantları, üst bedelin gerçek durumdan bağımsız olması, ölçeğe bağlı derinlik tavanı ve güvencenin yalnızca basma anında yapılan bir yeterlilik kontrolü olması.
+- "Ölçek büyüyünce mevcut sorunların Tier'i değişmez" kuralı doğru; oyuncu var olan sorunun sessizce derinleştiğini görmez.
+- Ölçek sınırının oyuncuya açıkça gösterilmesi, üst bedeli sızıntısız ve anlaşılır kılıyor.
+- Ucuz bağlı satır sorunu ve erişim test ölçütü "henüz karar değil" olarak dürüstçe işaretlenmiş.
 
 ### Bulduğum Sakıncalar
 
-**1. Üst bedel gerçek departman durumundan hesaplanırsa sızıntı yapar; olası en derin Tier'den hesaplanmalı.**
-Üst bedel, departmanda gerçekten var olan en derin kökten hesaplanırsa bilgi verir. Planlama 60 olan patronun üst bedeli 160.000 yerine 80.000 görünürse oyuncu T5 yuvasının boş olduğunu anlar. Öneri:
-- Gizli satırın üst bedeli, gerçek duruma bakılmaksızın **departmanda olası en derin Tier'in tavanı** olsun. Mevcut kurallarda bu, T4'e erişemeyen her patron için T5'tir.
-- Böylece üst bedel çoğu durumda departman için sabit bir değer olur. Hesap basittir ve sızıntı yapmaz.
-- Görünür satırda kök derinliği etiketten zaten bellidir; üst bedel o Tier'in tavanıdır. Maliyet Tier'e göre standartsa üst bedel tahmine eşit olur ve görünür satırda güvence ayrı bir engel yaratmaz.
-- Danışman patron saatini azaltıyorsa üst saat de bu azaltmayla hesaplanmalı. Aksi halde danışman, deneme hakkını açmada işe yaramaz.
+**1. Ölçek küçülmesi "gerçek ≤ üst" değişmezini bozar (kritik).**
+Tur 15 yalnızca büyümeyi tanımlıyor. Fabrika küçülürse (kriz, makine satışı, iflasa yakın dönem) tavan düşer, ama o sırada var olan T4 sorunu yerinde kalır. Örnek: orta ölçekten küçüğe inen fabrikada gizli satırların üst bedeli T3 tavanına (45 bin) iner. Gerçek bir T4 kökünün bedeli ise 70–90 bindir. Başarıda güvence yetmez ve Tur 13'te kaldırılan zorunlu ek fatura geri döner. Üç yol var:
+- **(a) Tavan yalnızca artar:** Basit ve sızıntısız, ama krizden küçülen fabrikanın yeni sorunları da büyük fabrika derinliğinde kalır. Bu, §20'deki sarmal riskine hizmet eder.
+- **(b) Küçülmede tavan, o anda var olan bütün satırlar kapanana kadar eski değerinde kalır:** Hangi satırların o anda var olduğu oyuncunun gördüğü bilgidir, bu yüzden sızıntı yapmaz. Yine de "ne zaman düşecek" takibi gerektirir.
+- **(c) Satır bazlı tavan (Claude önerisi):** Her satırın üst bedeli, **satırın ortaya çıktığı aydaki ölçek tavanından** hesaplanır. Satırın ortaya çıktığı ay rapordan görülen herkese açık bir bilgidir; sızıntı yapmaz. Tek kural hem büyümeyi hem küçülmeyi çözer:
+  - Büyüyünce eski satırlar eski, düşük güvencesini korur.
+  - Küçülünce derin eski satırlar kendi yüksek güvencesini korur.
+  - Bedeli: aynı departmandaki gizli satırlar, oluştukları aya göre farklı üst bedel gösterebilir. Bu, Tur 15'teki "aynı departmandaki gizli satırlar aynı üst bedeli gösterir" cümlesinin "aynı ölçekte oluşan gizli satırlar" diye güncellenmesini gerektirir. Kullanıcı kararı gerekir.
 
-**2. Kök neden türüne göre değişen maliyet, tek bir değişmezle tabloya bağlanabilir.**
-Maliyet kök türüne göre değişirse (ör. T4 "kayırma" ile başka bir T4 kökü farklı fiyatlanırsa) iki sorun doğar. Birincisi, gizli satırın ortak tahmini bazı köklerin gerçek bedelinden yüksek kalabilir. O zaman başarısızlık başarıdan pahalıya gelir; bu saçma bir sonuçtur ve iade sorusunu geri getirir. İkincisi, görünür satırda tahmin gerçeğe eşit olmaz. Öneri, **örtüşmeyen Tier bantları**:
-- Her Tier'in bir para/saat bandı vardır (ör. T3 35–45 bin, T4 70–90 bin). Kök türü bedelini kendi bandının içinden seçer. Bantlar örtüşmez ve Tier ile artar.
-- Onay ekranı tek tablodan üç değer türetir. **Tahmin**, erişilemeyen en sığ Tier bandının tabanıdır; görünür satırda ise kök Tier'inin tabanıdır. **Gerçek bedel**, kök türünün bedelidir. **Üst bedel**, olası en derin Tier bandının tavanıdır.
-- Değişmez: **tahmin ≤ gerçek ≤ üst**. Başarısızlık hiçbir zaman başarıdan pahalı değildir. İade kavramı gereksizleşir, çünkü güvence modelinde önceden bir şey tahsil edilmiyor, yalnızca yeterlilik kontrol ediliyor. Açık Kararlar'daki "gerçek bedel tahminden düşükse iade" maddesi bu değişmezle kapanabilir.
-- Başarıdan sonraki bildirim gerçek bedeli ve kökün Tier'ini gösterir. Sorun kapandığı için bu artık sızıntı değil, öğretici geri bildirimdir.
+**2. Büyüme anında güvence sıçraması büyümeyi cezalandırır; satır bazlı tavan bunu da çözer.**
+Satır bazlı tavan olmadan, küçükten ortaya geçen fabrikada Planlama 60 olan patronun var olan gizli T3 satırlarının üst bedeli bir gecede 45 bin / 11 saatten 90 bin / 15 saate çıkar. Bu satırların hiçbiri T4 olamaz, çünkü küçük ölçekte oluştular. Oyuncu "büyüdüm, dünkü sorunumu artık deneyemiyorum" hissini yaşar. Satır bazlı tavanla bu sıçrama hiç olmaz.
+Ayrıca büyüme kararının önünde bir önizleme olmalı: "Orta ölçeğe geçince T4 sorunları görülmeye başlayabilir. Bu alanlarda yetkinliğiniz T4'e yetmiyor: Planlama, Satın Alma…" Böylece büyüme bilinen bir riskle alınan bir karar olur. Bu, "patron neyi bilmediğini bilir" ilkesinin doğrudan bir uygulaması.
 
-**3. Küçük fabrika için güvence, derin gizli sorunlara müdahaleyi fiilen kapatabilir (kritik; Karar Özeti ile çelişki riski).**
-Örnek ilk oyuncunun sekiz alanı 25–35 aralığında. Bu alanlarda patron yalnızca T1'e erişir ya da hiçbir Tier'e erişemez. Örnek tabloyla:
-- Planlama 35 olan patronun gizli satırlarında tahmin 20.000 (T2), üst bedel 160.000 (T5). Oran 8 kat.
-- Finans 25 olan patronda tahmin 10.000 (T1), üst bedel 160.000. Oran 16 kat.
-- Başarısızlığı 10.000'e mal olacak bir deneme için 160.000 serbest nakit gerekiyor. Yeni kurulmuş bir fabrikanın bu parayı birkaç departmanda aynı ay bulması zor.
-- Sonuç: yeni kurulmuş fabrikanın patronu, bilmediği departmanlarda "Düzelt"e basamaz. Karar Özeti'ndeki "bilgi açığı çözmeyi imkânsız değil, riskli kılmalı" gerekçesi fiilen tersine döner: riskli değil, imkânsız olur.
-- Tek çıkış danışman kalır. Danışman fiilen zorunlu hale gelir ve gerçek parayla danışman seçeneği varken GAME_OVERVIEW §26'daki "bilgisizliği cezalandırıp gerçek paraya satmamak" ilkesiyle çelişir.
-- Saat tarafı daha hafif: sonuç anında belirlendiği için 20 saatlik pay yalnızca basıldığı anda aranır. Pratikte ayın son 20 saati gizli satırlara kullanılamaz. Bu kabul edilebilir bir yönetim kısıtı.
+**3. Danışman gücü tavanı, sorun derinliği tavanıyla eşlenmeli.**
+Tur 15 bu uyumu "ayrıca sınanır" diye bırakmış. Oysa bu bir denge ayarı değil, mantıksal bir koşul: bir ölçekte oluşabilecek en derin sorunun eşiğine o ölçekteki hiçbir aday ulaşamıyorsa, o sorun o ölçekte yalnızca kör şansla çözülebilir. Öneri kuralı: **danışman adaylarının alan puanı tavanı ≥ ölçeğin en derin Tier eşiği**. Örnek taslakta bu, küçük ölçekte en az 70, ortada en az 90, büyükte 100 eder. Güçlü adaylar yine nadir ve pahalı kalabilir; kural yalnızca "hiç yok" durumunu önler.
 
-Çözüm yolları (birleştirilebilir):
-- **(a) Olası en derin Tier fabrika ölçeğine bağlansın (Claude önerisi):** Ör. küçük fabrikada en derin sorun T3, orta fabrikada T4, büyük fabrikada T5 olsun. Bu herkese açık bir bilgi olduğu için üst bedel sızıntı yapmaz. Üst bedel küçük fabrikada doğal olarak küçülür. Ayrıca kabul edilmiş "danışman gücü fabrika ölçeğine bağlı" kuralıyla tutarlılık sağlar: küçük fabrikaya 100 puanlık danışman gelmiyorsa, orada T5 sorunu da olmamalı. Aksi halde küçük fabrikada T5 kökü yalnızca ≈ %5 kör şansla ve T5 güvencesiyle çözülebilir. "Fabrika büyüdükçe sorun sayısı artar" kararını "sorun derinliği de artar" diye genişletir; tematik olarak da doğru, çünkü büyüme yeni türden sorunlar getirir.
-- **(b) Maliyet eğrisi yumuşatılsın:** Zorluk zaten başarı şansında (%80 → %5) ölçekleniyor. Maliyetin ayrıca iki katına çıkması cezayı ikiye katlar. T1'den T5'e toplam 2–3 kat artış, üst bedel / tahmin oranını makul tutar.
-- **(c) Bedeller fabrika ölçeği çarpanıyla hesaplansın:** Küçük fabrikanın kökleri de küçük bedelli olur. Ancak bu tek başına oranı değiştirmez; (a) veya (b) ile birlikte gerekir.
-- Reddedilmesi gereken yol: yetmeyen güvence için borç veya kısmi güvence. Tur 13'te kaldırılan borç sorununu geri getirir.
+**4. Saat güvencesi: bantların örtüşmesi sorun değil; gereken koşul tabanın ve tavanın Tier ile azalmaması.**
+"Tahmin ≤ gerçek ≤ üst" değişmezi için bantların örtüşmemesi gerekmez. İki koşul yeterli:
+- Tier yükseldikçe bant tabanı azalmamalı. Böylece en sığ olası Tier'in tabanı, her gerçek kökün altında kalır.
+- Tier yükseldikçe bant tavanı azalmamalı. Böylece en derin olası Tier'in tavanı, her gerçek kökün üstünde kalır.
 
-**4. Güvenceye ek olarak test ölçütü tanımlanmalı.**
-FREEZE öncesinde erişilebilirlik ölçülebilir bir hedefe bağlanmalı. Öneri: *"Örnek ilk oyunun patronu, kuruluştan sonraki ilk üç ayda her ay en az bir gizli satırı danışmansız deneyebilmeli."* Bu hedef tutmazsa (a) veya (b) ile ayar yapılır.
+Bu yüzden saat bantları örtüşebilir; kök türüne göre esneklik kazandırır. (Para bantlarında örtüşmeme kararı sorun değil; yalnızca gerekenden katıdır. Tek ek faydası, başarıdan sonra gösterilen bedelin kökün Tier'ini açıkça söylemesidir.)
+
+Danışmanın saat indirimi için öneri: indirim **tahmin, gerçek ve üst saate aynı oranla** uygulansın (ör. × 0,7). Oransal indirim değişmezi korur. Sabit düşüş ise kısa işleri sıfırın altına itebilir.
+
+Saat güvencesinin pratik etkisini de not ediyorum. Büyük fabrikada Planlama 60 olan patron, gizli satır denemesi için her basışta 21 saat pay tutmalı. 40 saatle başarısız denemeler 9'ar saat yaktığında ay içinde en fazla üç gizli deneme yapılabilir. Ayın son ~20 saati yalnızca görünür satırlara kalır. Bu anlamlı bir yönetim kısıtı ve kabul edilebilir. Küçük fabrikada üst saat 11 olduğu için kısıt hafifler.
+
+**5. Küçük fabrikada danışmansız deneme artık mümkün; ama iki arayüz açığı var.**
+Örnek ilk oyuncunun küçük fabrikasında (tavan T3):
+- Planlama 35 → tahmin 17 bin / 5 saat, üst 45 bin / 11 saat. Oran ≈ 2,6 kat; Tur 14'teki 8 kattan büyük iyileşme.
+- Finans 25 → tahmin 8 bin / 3 saat, üst 45 bin / 11 saat. Oran ≈ 5,6 kat; Tur 14'teki 16 kattan büyük iyileşme.
+- En kötü durumda (T3 kökü) şanslar: Planlama 35 için iki kademe (≈ %40), Finans 25 için üç kademe (≈ %15). Risk anlamlı ama deneme yapılabilir. Karar Özeti'ndeki "imkânsız değil, riskli" gerekçesi korunuyor.
+- Kasanın bu tutarlara yetip yetmediği ekonomi IDEA'sı olmadan söylenemez. Bu yüzden erişim test ölçütü FREEZE öncesi bir kabul koşulu olarak onaylanmalı.
+
+Arayüz açıkları:
+- **Ölçek dışı yuvalar:** Küçük fabrikada T4 ve T5 yuvaları hiçbir zaman dolamaz. Kartta bunlar "–" (boş) olarak görünürse, "gizli boş yuva" ile karışır. Öneri: bu yuvalar **"ölçek dışı"** diye ayrı gösterilsin.
+- **Tek olası gizli Tier:** Tavan T3 olan küçük fabrikada Planlama 60 olan patronun tek olası gizli Tier'i T3'tür. "Derinlik bilinmiyor" başlığı burada gerçeği yansıtmaz; tahmin, üst bedel ve şans kesin olarak bellidir. Öneri: olası gizli Tier tekse satır o Tier'in şans etiketini göstersin. Bu herkese açık bilgiden çıkar, sızıntı değildir. Adı ve nedeni yine gizli kalsın.
 
 ### Kafama Yatmayanlar
 
-- **"Kaynaklar deneme boyunca güvence olarak ayrılır" ifadesi gereksiz.** Sonuç anında belirlendiği için bu bir ayırma değil, basma anındaki bir **yeterlilik kontrolüdür**. Metin böyle sadeleşirse "ayrılmış kaynak" durumu tanımlamaya gerek kalmaz.
-- **En ucuz bağlı satır hâlâ seçilebiliyor.** Bağlantı öğrenildikten sonra, grupta görünür bir satır varsa gizli bağlı satır daha düşük tahmin gösterir. Oyuncu başarısızlık bedelini azaltmak için o satıra basabilir. Başarı bedeli değişmediği için etkisi küçük. Grupta görünür satır varsa gizli bağlı satırlar onun tahminini gösterebilir; görünür satırın etiketi bu derinliği zaten açtığı için bu yeni bir sızıntı yaratmaz.
-- **Kayıp ne zaman geri kazanılıyor?** Anında sonuç kabul edildi ama kaybın aynı ay mı, sonraki ay mı geri geldiği hâlâ açık. Güvence ile birlikte bu belirleyici: başarılı bir müdahalenin parası o ay çıkıyor, getirisi ne zaman geliyor? Önerim: getiri sonraki ayın raporuna yansısın; rapor okuması sadeleşir.
-- **Hâlâ açık:** %33 taban ile birim modeli arasındaki köprü; ücretli kartlarda pay-to-win. Bulgu 3 gerçekleşirse pay-to-win riski büyür.
+- **"Küçük kal" baskın stratejisi:** Küçük fabrikada derin sorun hiç çıkmıyorsa, küçük kalmak güvenli bir strateji olur. Büyüme kârla teşvik edilmezse oyuncu hiç büyümez ve "fabrikayı ayakta tutmak kurmaktan zordur" deneyimi zayıflar. Büyüme teşvikinin ekonomi IDEA'sında açıkça tasarlanması gerekiyor.
+- **Ölçek tanımı ayrık olmalı:** Tavanın bir basamak olarak işlemesi için ölçek kesin sınıflara ayrılmalı (küçük / orta / büyük). Sınıfların eşiği (makine sayısı, çıktı, gelir) ekonomi IDEA'sına ait. IDEA-001 yalnızca "ölçek sınıfı görünür ve ayrıktır" kuralını koymalı.
+- **Danışmanın saat indirimi hangi puanda geçerli?** Danışmanın ilgili alandaki puanı patronunkinden düşükse de indirim uygulanıyor mu? Önerim: danışman o alanı kartında listeliyorsa indirim uygulansın. Böylece kural basit kalır.
+- **Hâlâ açık:** %33 taban köprüsü, ücretli kartlarda pay-to-win ve ucuz bağlı satır sorunu.
 
 ### Açık Sorular
 
-Tur 15'ten önce kullanıcının karar vermesi önerilen üç konu:
+Tur 16'dan önce kullanıcının karar vermesi önerilen üç konu:
 
-1. **Üst bedelin hesabı:** Gerçek duruma bakılmadan, departmanda olası en derin Tier'in tavanından hesaplansın mı (Claude önerisi)?
-2. **Maliyet yapısı:** Örtüşmeyen Tier bantları ve kök türü bant içinde; tahmin taban, üst bedel tavan; "tahmin ≤ gerçek ≤ üst" değişmezi ile iade kuralı kalksın mı (Claude önerisi)?
-3. **Küçük fabrika erişimi:** (a) olası en derin Tier fabrika ölçeğine bağlansın mı (Claude önerisi), (b) maliyet eğrisi T1'den T5'e 2–3 kat ile sınırlansın mı, yoksa ikisi birden mi? Önerilen erişim test ölçütü kabul edilsin mi?
+1. **Ölçek geçişi:** Gizli satırın üst bedeli, satırın ortaya çıktığı aydaki ölçek tavanından mı hesaplansın (c, Claude önerisi)? Yoksa (a) tavan yalnızca artsın mı, (b) küçülmede var olan satırlar kapanana kadar eski tavan mı sürsün?
+2. **Saat güvencesi:** Saat bantları örtüşebilsin, ama taban ve tavan Tier ile azalmasın mı? Danışman indirimi tahmin, gerçek ve üst saate aynı oranla mı uygulansın?
+3. **Küçük fabrika erişimi:** Ölçek dışı yuvalar ayrı gösterilsin mi? Tek olası gizli Tier varsa şans etiketi gösterilsin mi? "İlk üç ayda her ay en az bir danışmansız gizli deneme" ölçütü FREEZE öncesi kabul koşulu olsun mu?
 
 Diğerleri:
 
-- Üst saat hesabına danışmanın saat tasarrufu dahil edilsin mi?
-- Başarılı müdahalenin getirisi aynı ay mı, sonraki ayın raporunda mı?
-- %33 taban için departman ağırlığı mı, yalnızca fabrika tabanı mı?
+- Danışman puan tavanı ≥ ölçeğin en derin Tier eşiği kuralı kabul edilsin mi?
+- Büyüme öncesi "yeni derinlik riski" önizlemesi eklensin mi?
+- Büyüme teşviki ve ölçek sınıflarının eşikleri ekonomi IDEA'sına mı taşınsın?
 
 ## Açık Kararlar
 
