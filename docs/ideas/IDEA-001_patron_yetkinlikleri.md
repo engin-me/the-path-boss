@@ -184,69 +184,67 @@ Bilmediği işi kime bırakacağını bilir.
 
 ## Notlar (Claude)
 
-Tarihçe: Tur 1 inceleme [REV-001](../reviews/REV-001_claude_patron_yetkinlikleri.md) ve bu dosyanın Git geçmişi. Aşağıdakiler Tur 12 `Öneri (GPT)` metninin incelemesidir. Kullanıcının isteğiyle özellikle **kök düzeyinde aylık tekrar kilidi**, **tahmini/gerçek maliyet** ve **beş satırlı gizli sorun gösterimi** ele alındı. `Karar Özeti` tartışmaya açılmamış; notlar kararların içindeki açıkları ve uygulanma biçimini hedefler. Bu turda yalnızca `Notlar (Claude)` değişti.
+Tarihçe: Tur 1 inceleme [REV-001](../reviews/REV-001_claude_patron_yetkinlikleri.md) ve bu dosyanın Git geçmişi. Aşağıdakiler Tur 13 `Öneri (GPT)` metninin incelemesidir. Kullanıcının isteğiyle özellikle **ek para faturası**, **nakit yetersizliği** ve **sonraki ayın saat borcu** ele alındı. `Karar Özeti` tartışmaya açılmamış; notlar kararların içindeki açıkları ve uygulanma biçimini hedefler. Bu turda yalnızca `Notlar (Claude)` değişti.
+
+Örneklerde kullanılan maliyet tablosu varsayımsaldır: T3 40.000 / 10 saat, T4 80.000 / 14 saat, T5 160.000 / 20 saat.
 
 ### Aldığım Notlar
 
-- Tur 11'in ana önerileri doğru işlenmiş: kökün derinliği bağlı satırların en derini, bağlantı aynı departmanda ve en fazla iki kademe aralıkta, "gizli satır görünür satırla bağlanmaz" yasağı kalktı. Başarı ve maliyet kökten hesaplanıyor.
-- Tutarlı örnek düzeltildi: Planlama'nın 10 birimlik kaybı 2 + 5 + 3 olarak satırlara dağıtılıyor. Tur 11'deki "Planlama 100 birim" çelişkisi kapandı.
-- "Satırın eşiği → belirti görünür; kökün eşiği → bağlantı ve kesin sonuç" ayrımı açık ve tek kurala dayanıyor.
-- Satın Alma örneği beş satırlı kart ve "Derinlik bilinmiyor" diline uyarlandı.
+- Tur 12'deki üç karar doğru işlenmiş: gizli satırda "belirsiz" etiketi, görünür kök kilidi ve "aynı kökün" ifadesi, tahmin önce / fark başarıda maliyet modeli.
+- Onay metninin ek para ve saat borcunu önceden söylemesi ve sınır belirtilmeden büyük zorunlu ödeme çıkarılmaması doğru bir korkuluk.
+- İade, nakit yetersizliği ve ayı aşan saat borcu Açık Kararlar'a doğru biçimde FREEZE öncesi konu olarak yazılmış.
 
 ### Bulduğum Sakıncalar
 
-**1. Gizli satırdaki şans etiketi, adsız gösterime rağmen derinliği çoğu durumda tam olarak ele veriyor (kritik).**
-Şans yalnızca kademe farkına bağlı ve gizli satırlar tam olarak patronun erişemediği Tier'ler. Bu yüzden etiket, adsız satırın Tier'ini doğrudan söylüyor. Örnek, Planlama yetkinliği 60 (T2'ye erişiyor) olan patron:
-- Gizli T3 → 1 kademe → "yüksek"; gizli T4 → 2 kademe → "orta"; gizli T5 → 3 kademe → "düşük".
-- Üç gizli yuvanın üç etiketi de birbirinden farklı. Oyuncu "yüksek" yazan adsız satırın T3, "orta" yazanın T4 olduğunu kesin olarak çıkarır.
-- Aynı durum patron T3 veya T4'e eriştiğinde de geçerli. Yalnızca T1'e bile erişemeyen ya da yalnızca T1'e erişen patronda "düşük" etiketi birkaç derinliği birleştirip kısmen gizliyor.
-- Sonuç: Karar Özeti'ndeki "gizli sorunun tam Tier'i ifşa edilmemeli" gerekçesi gerçekleşmiyor; adsız gösterim fiilen işlevsiz kalıyor. Öneri metnindeki "üç etiket … derinliği tam ifşa etmez" cümlesi bu yüzden doğru değil.
+**1. Gizli satırın kendi tahmini maliyeti Tier'i ele veriyor (kritik; Tur 12'de kapatılan sızıntı maliyetten geri dönüyor).**
+Onay ekranı "seçilen satırın tahmini parası ve saati"ni gösteriyor. Maliyet Tier ile artıyorsa, adsız bir satırda 40.000 / 10 saat görünmesi T3, 80.000 / 14 saat görünmesi T4 demektir. Şans etiketini "belirsiz" yapmak bu yüzden tek başına yetmiyor.
+Öneri: bir departmandaki **bütün gizli satırlar aynı tahmini göstersin**. Bu tahmin, patronun erişemediği **en sığ Tier'in** bedeli olsun (Planlama 60 olan patron için T3: 40.000 / 10 saat).
+- Satırlar arasında fark olmadığı için tahmin hiçbir Tier'i ele vermez.
+- Gerçek kök her zaman bu tahmine eşit ya da ondan derindir. Bu yüzden gizli satırda "gerçek bedel tahminden düşükse iade" durumu hiç oluşmaz.
+- Patron yetkinliği arttıkça tahmin gerçeğe yaklaşır. T4'e erişen patronun tek gizli Tier'i T5 olduğu için sürpriz fatura kalmaz. Bu, "bilgi belirsizliği azaltır" temasıyla uyumlu.
 
-Bu bir tasarım hatası değil, iki hedefin matematiksel olarak bağdaşmaması: şans yalnızca derinliğe bağlıysa, şansı göstermek derinliği gösterir. Kullanıcının seçmesi gereken üç yol:
-- **(a) Gizli satırda şans gösterilmesin ("belirsiz") (Claude önerisi):** Patron sorunun var olduğunu ve kaybını bilir, ne kadar zor olduğunu bilmez. "Neyi bilmediğini bilir" ilkesine en uygun ve en sade yol. Görünür satırlar etiketlerini korur.
-- **(b) Gizli satırda patronun tahmini gösterilsin:** Etiket gerçek şansı değil, patronun yanılabilen tahminini gösterir; yetkinlik düştükçe tahmin bir kademe şaşabilir. Kaba risk bilgisini korur, derinliği kesinleştirmez, ama yeni bir gürültü kuralı ekler.
-- **(c) Derinliğin sezilmesi bilinçli kabul edilsin:** Adsız gösterim yalnızca kozmetik kalır; Karar Özeti'ndeki gerekçe "neden gizli, zorluk sezilebilir" olarak güncellenir.
+**2. Görünür satırda sürpriz fatura gereksiz: etiket kökün derinliğini zaten söylüyor.**
+Bağlantı en fazla iki kademe aralıkta ve patron görünür satırın eşiğine ulaşmış durumda. Bu yüzden görünür satırda etiket kökün derinliğini birebir veriyor: "kesin" kök patronun erişiminde demek, "yüksek" bir kademe, "orta" iki kademe derinde demek. Planlama 60 olan patronun T2 satırında "orta" görmesi, kökün T4 olduğunu ödeme öncesinde zaten söylüyor.
+Öneri: **görünür satırın tahmini, etiketin işaret ettiği kök derinliğinin bedeli olsun.** Örnekte bu 80.000 / 14 saat eder.
+- Bu, etiketin zaten verdiği bilgiden fazlasını açmaz.
+- Ek fatura ve onaydaki uyarı yalnızca "belirsiz" satırlarda kalır. Uyarı bütün gizli satırlarda aynı göründüğü için bir şey ele vermez; görünür satırlarda gösterilmesi ise yanıltıcı gürültü olurdu.
+- Bağlantı öğrenildikten sonra bağlı satırlar gruptaki **en yüksek tahmini** göstersin. Grupta görünür satır varsa bu, etiketin zaten açtığı bedeldir. Grup yalnızca gizli satırlardan oluşuyorsa ortak gizli tahmin olduğu gibi kalır. Tur 13'teki "köke ait aynı tahmin" ifadesi, bağlantı yalnızca gizli satırlar arasındaysa kökün derinliğini sızdırır; bu nedenle değiştirilmeli.
+- Maliyet Tier'e göre **standart tablo** (gerekirse fabrika ölçeği çarpanıyla) olursa görünür satırda tahmin gerçeğe eşit olur ve iade sorusu tamamen kapanır.
 
-Ek not: İçerik üretiminde derin sorunların kaybı sistematik olarak daha büyük olursa, kayıp miktarı da derinliği ele verir. Kayıp büyüklüğü Tier'den bağımsız dağıtılmalı.
+**3. Nakit yetersizliği: Tur 12'deki üst sınır önerimi geri çekiyorum; bilgisizliği ödüllendirir.**
+Gizli satır tahmini en sığ Tier'e göre olduğunda, gerçek ile tahmin arasındaki fark en çok bilgisiz patronda büyür. Örnekte T3 tahmini ile T5 gerçek bedeli arasında 4 kat fark var. "Tahminin en fazla 2 katı" gibi bir sınır, derin sorunu kör denemeyle çözen patrona indirim yapar. Danışman tutup kökü gören patron ise tam bedeli öder. Bu, bilgiyi cezalandırıp bilgisizliği ödüllendiren bir baskın strateji yaratır ve GAME_OVERVIEW §27 ile çelişir.
+Kalan iki yolun değerlendirmesi:
+- **Taksit:** Farkın nakde yetmeyen kısmı birkaç aya yayılır. Başarı kaybı geri getirdiği için taksit geri kazanılan çıktıdan ödenebilir; bu tematik olarak iyi. Ancak ayrı bir borç durumu yaratır ve iflas hesabına, ertelenen kayıplara ve §20'deki sarmal riskine bağlanır. Ekonomi IDEA'sı olmadan tanımlanamaz.
+- **Güvence (Claude önerisi):** Onay ekranı tahmin ile birlikte **"en fazla"** bedeli de gösterir. Gizli satırda bu, erişilebilecek en derin Tier'in bedelidir (örnekte T5: 160.000 / 20 saat). Bu değer departmandaki bütün gizli satırlarda aynı olduğu için bir şey sızdırmaz. Deneme ancak kasada ve bu ayın saat bakiyesinde "en fazla" bedel kadar pay varsa açılır. Sonuç anında belirlenir: başarısızlıkta tahmin, başarıda gerçek bedel harcanır. Fark her zaman karşılanabilir olduğu için borç, taksit, üst sınır ve iade kurallarına gerek kalmaz.
+- Güvencenin bedeli şudur: nakdi sıkışık ve bilgisiz patron derin gizli satırları deneyemez. Bu bilinçli bir sonuç olarak kabul edilebilir, çünkü bilmeyen patron daha büyük yedek tutmak zorundadır; bilmediğini bilmenin somut karşılığı budur. Danışman gizli satırı açınca "en fazla" gerçek bedele iner. Küçük fabrikanın gizli satırlara hiç dokunamaması testte ölçülmeli.
 
-**2. Kök düzeyinde aylık kilit: her kilit biçimi bağlantıyı ilk etkileşimde ortaya çıkarır; bunu açık bir kural yapın.**
-Seçenekler ve sonuçları:
-- **Yalnızca satır kilidi:** Aynı kök bağlı satırlardan aynı ay birkaç kez denenebilir (T2, T3, T4 üzerinden %40 şansla üç deneme ≈ %78). Aylık tek deneme kuralı fiilen delinir. Bağlantı yine ortaya çıkar: ikinci satırdaki başarı ilk satırı da kapatır.
-- **Görünmez kök kilidi:** Bağlı satır tıklanabilir görünür ama deneme reddedilir ya da sessizce başarısız sayılır. Reddetmek bağlantıyı yine gösterir; sessizce başarısız saymak ise oyuncuyu aldatan bir ceza olur. Kabul edilemez.
-- **Görünür kök kilidi (Claude önerisi):** Başarısız denemeden sonra bağlı satırlar da kilitlenir ve mesajla açıklanır: "Bu sorunla aynı kökten geldiği anlaşılan 1 satır daha bu ay denenemez."
-
-Sonuç: bağlantı, kök üzerinde ilk deneme yapıldığı anda ortaya çıkar. Başarıda satırlar birlikte kapandığı için, başarısızlıkta da kilit mesajıyla. Bu kaçınılmaz ve tematik olarak doğru: müdahale bilgi üretir, başarısızlık öğretir. Kilit mesajı bağlantıyı gösterir ama kökün derinliğini ve nedenini göstermez; gizli satırlar adsız kalır. Öneri metnindeki "aynı satırın o ay yeniden denenemeyeceği" ifadesi "aynı kökün" olarak düzeltilmeli.
-
-**3. Tahmini/gerçek maliyet: Tur 11'deki zaman önerimi geri çekiyorum, bir açık yaratıyordu.**
-Tur 11'de "sadelik için yalnızca satırın kendi süresi harcansın" önermiştim. Bu bir istismar açar: kökü T4 olan bağlantıda T2 satırından yapılan başarılı müdahale, kökün 14 saatlik işini T2'nin 6 saatiyle çözmüş olur. Öneriyi geri çekiyorum. Önerilen tam model:
-- **Onay ekranı:** Satırın tahmini parası ve saati gösterilir. Kök maliyeti önceden gösterilmez, çünkü sığ görünen satırda yüksek bedel görünmesi bağlantıyı ödemeden önce ele verir.
-- **Başarısızlık:** Tahmini para ve saat harcanır. Görünür kök kilidi devreye girer ve bağlantı açıklanır.
-- **Başarı:** Bağlı satırlar kapanır. Kökün gerçek maliyetiyle arasındaki fark "kök daha derindeymiş" açıklamasıyla faturalanır: para farkı hemen, saat farkı ise sonraki ayın patron zamanından düşülür. Böylece başarı halinde toplam bedel her zaman kökün bedeli olur.
-- **Bağlantı bilindikten sonra:** Bağlı satırların hepsi kökün tahminini gösterir. Böylece "en ucuz satırdan dene" avantajı yalnızca bağlantı henüz bilinmezken, yani kasıtlı kullanılamazken vardır.
-- **Nakit riski:** Başarıyla gelen büyük bir fark faturası nakdi sıkışık fabrikayı iyi haberle birlikte krize sokabilir. Farka bir üst sınır konmalı (ör. tahminin en fazla 2 katı) ya da fark taksitlendirilmeli.
-- **Karar Özeti notu:** "Tahsil edilen bedel … satırdan bağımsız gerçek çözüm maliyetidir" maddesi bu modelle yalnızca başarı halinde tam doğru olur. Başarısızlıkta satırın tahmini tahsil edilir. Madde buna göre "başarıda toplam bedel satırdan bağımsız olarak kökün maliyetidir" diye güncellenmeli.
-
-**4. Görünür satırda düşük çıkan şans bağlantıyı ve kökün derinliğini sezdirir; bu kabul edilebilir.**
-Planlama yetkinliği 60 olan patron T2'yi görüyor. T2 gizli bir T4'e bağlıysa T2 satırındaki etiket "kesin" değil "orta" çıkar. Oyuncu T2'nin daha derin bir köke bağlı olduğunu anlar, hatta farkın iki kademe olduğunu çıkarabilir. Bu, Tur 11'de önerdiğim "sezgi sinyali" ve GAME_OVERVIEW §9 ile uyumlu. Ancak 1. maddedeki (a) seçilirse bu satırda bilinçli bir istisna oluşur: görünür satır şans gösterir, gizli satır göstermez. İstisnanın gerekçesi yazılmalı: görünür satırda patron belirtiyi tanıyor ve işin beklenenden zor olduğunu sezebiliyor.
+**4. Sonraki ayın saat borcu: sınırsız devir, başarının ardından yönetim felcine yol açar.**
+Tur 13 modelinde, iki departmanda da T2'ye erişen patron aynı ay bu iki departmanın birer gizli satırında T3 tahminiyle başarılı olsun. İki kök de T5 çıkarsa sonraki aya 2 × 10 = 20 saat borç devreder. Bu 40 saatin yarısıdır. Üçüncü bir başarı borcu 30 saate çıkarır. Sonraki ayda patron neredeyse hiçbir şeye müdahale edemez, ertelenen sorunların kaybı büyür (Açık Kararlar: kaybın büyüme hızı) ve borç en çok başarılı ayın ardından gelir. Birikim, "iyi haber cezası" hissi ve §20'deki sarmal riski doğar.
+- Borç modeli korunacaksa üç korkuluk gerekir: (i) devreden saat ay sonu raporunda ayrı satırda gösterilir; (ii) devreden toplam borç, sonraki ayın belirli bir payını (ör. yarısını) aşamaz; (iii) bu sınıra gelinmişse yeni "belirsiz" satır denenemez. Borç affedilmemeli, çünkü affetmek yine bilgisizliğe indirim olur.
+- (ii) ve (iii) fiilen 3. maddedeki güvence kuralına eşdeğerdir. Bu yüzden saat için de güvence önerilir: denemeden önce bu ayın bakiyesinde "en fazla" saat kadar pay aranır ve fark aynı ay harcanır. Devir, çok aylık borç ve rapor satırı hiç oluşmaz.
+- Güvence seçilirse Karar Özeti'ndeki "saat sonraki aydan düşülerek" ifadesi değişir. Bu kullanıcı onaylı bir karar olduğu için ancak kullanıcı kararıyla değiştirilebilir.
 
 ### Kafama Yatmayanlar
 
-- **%33 taban ile birim modeli arasındaki köprü hâlâ açık.** Tur 10'da önerdiğim departman ağırlığı veya yalnızca fabrika tabanı seçeneği yanıt bekliyor. Planlama'nın 10 birimlik kaybının %33 tabanına göre izinli olup olmadığı, Planlama'nın fabrikadaki ağırlığı bilinmeden söylenemiyor.
-- **Ücretli kartlar ve pay-to-win** hâlâ açık: ücretli kartların ücretsizlerle aynı puan bütçesine uyması ve avantajın yalnızca hedefleme olması önerisi yanıt bekliyor.
-- **Gizli boş yuvanın gösterimi:** Örnekteki "gizli boş yuva: –" satırı oyuncuya erişemediği Tier'lerden birinin boş olduğunu söylüyor. Bu zararsız, çünkü gizli sorun sayısı zaten görünüyor. Ancak adsız satırlar her ay karışık sırayla gösterilmezse, sabit sıra zamanla Tier'i ima edebilir. Açık Kararlar'da not edilmiş; sıranın her ay rastgele olması önerilir.
+- **"Düşük" etiketi artık hiç görünmüyor.** Görünür satırda kök en fazla iki kademe derinde olduğu için şans ya "kesin", ya "yüksek", ya da "orta" olur; gizli satırlar "belirsiz" gösterir. %15 ve %5 yalnızca gizli satırlarda iç hesap olarak kalır. Karar Özeti ve Öneri'deki "yüksek / orta / düşük" ifadesi sadeleştirilmeli.
+- **Başarısızlıkta küçük bir bilgisizlik indirimi var.** Görünür "orta" satırda başarısızlık T4 tahminini yakar; aynı T4 kökü gizli satırdan denendiğinde başarısızlık yalnızca T3 tahminini yakar. Başarı her iki yoldan da tam bedelle ödendiği için bu bir istismar değil. Yine de testte izlenmeli.
+- **Başarıdan sonraki bildirim** "kök daha derindeymiş" demekle yetinmemeli; kapanan kökün Tier'ini de söylemeli. Sorun kapandığı için bu artık sızıntı değil, öğretici geri bildirimdir (§21, §23).
+- **Hâlâ açık:** %33 taban ile birim modeli arasındaki köprü; ücretli kartlarda pay-to-win.
 
 ### Açık Sorular
 
-Tur 13'ten önce kullanıcının karar vermesi önerilen üç konu:
+Tur 14'ten önce kullanıcının karar vermesi önerilen üç konu:
 
-1. **Gizli satırlarda şans etiketi:** (a) "belirsiz" gösterilsin (Claude önerisi), (b) patronun yanılabilen tahmini gösterilsin, (c) derinliğin etiketten sezilmesi bilinçli kabul edilsin. Hangisi?
-2. **Kök kilidi:** Başarısız denemeden sonra bağlı satırlar görünür biçimde kilitlensin ve bağlantı mesajla açıklansın mı (Claude önerisi)?
-3. **Maliyet modeli:** Onayda satırın tahmini parası ve saati; başarıda kök farkı (para hemen, saat sonraki aydan); bağlantı bilinince tüm bağlı satırlarda kökün tahmini; fark için üst sınır ya da taksit. Bu model kabul edilsin mi?
+1. **Gizli satır tahmini:** Bir departmandaki bütün gizli satırlar, erişilemeyen en sığ Tier'in bedelini ortak tahmin olarak göstersin mi (Claude önerisi)?
+2. **Ödeme modeli:** (A) Borç: para farkı hemen, nakit yetmezse taksit; saat farkı sonraki aya, devir sınırı ve yeni deneme kilidiyle. (B) Güvence: onayda "en fazla" bedel gösterilir, kasada ve bu ayın saatinde o kadar pay varsa denenir, fark aynı ay harcanır (Claude önerisi). Her iki durumda da üst sınır reddedilsin mi?
+3. **Görünür satır tahmini:** Görünür satır, etiketin işaret ettiği kök derinliğinin bedelini göstersin ve ek fatura yalnızca "belirsiz" satırlarda kalsın mı (Claude önerisi)?
 
 Diğerleri:
 
+- "Düzelt" sonucu anında mı, ay sonunda mı belirleniyor? Güvence modeli anında sonuç varsayar. Ay sonunda belirleniyorsa pay ay boyunca ayrılmış kalır ve model ağırlaşır.
+- Müdahale bedeli Tier'e göre standart tablo mu (iade sorusunu kapatır), yoksa soruna özel mi?
+- Sadeleştirme: "düşük" etiketi arayüzden kaldırılsın mı?
 - %33 taban için departman ağırlığı mı, yalnızca fabrika tabanı mı?
-- Adsız gizli satırların sırası her ay rastgele olsun mu? Kayıp büyüklüğü Tier'den bağımsız dağıtılsın mı?
 
 ## Açık Kararlar
 
