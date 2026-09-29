@@ -6,13 +6,13 @@ Current phase:
 Core game design
 
 Active topic:
-None. IDEA-001 core design approved as FRZ-001; remaining topics await separate design work.
+IDEA-002 Fabrika Ekonomisi (short draft proposal).
 
 Latest freeze:
 FRZ-001 Patron Yetkinlikleri ve Fabrika Sorun Döngüsü (CURRENT, 2026-09-29).
 
 Pending review:
-None.
+Claude review of IDEA-002 Tur 1 after the user publishes the draft.
 
 Next step:
-User commits and pushes FRZ-001 and the updated index/state/IDEA files. Then choose the next design topic: factory economy and balance, consultant marketplace/monetization, or personnel. GAME_OVERVIEW should be reconciled with approved decisions when those adjacent topics are designed.
+User commits and pushes IDEA-002 and this current-state update; Claude reviews the proposal in the same IDEA file. Keep the review focused on the three open economic decisions.
