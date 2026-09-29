@@ -7,6 +7,7 @@
 - [FRZ-003 v2 — İflas, Tasfiye ve Fabrika Satışı](freeze/FRZ-003_v2_iflas_ve_fabrika_satisi.md) — altı aylık kurtarma eşiği, makinenin kazanç hesabına giriş zamanı, yatırım referansı, satış ve iflas sonrası devam. Source: [IDEA-003](ideas/IDEA-003_iflas_ve_yeniden_baslangic.md), [IDEA-004](ideas/IDEA-004_is_alma_ve_makine_yatirimlari.md). Status: CURRENT. Supersedes FRZ-003.
 - [FRZ-004 — İş Alma ve Makine Yatırımları](freeze/FRZ-004_is_alma_ve_makine_yatirimlari.md) — sabit koşullu birden çok tam iş, makine uygunluğu, teslim, iş maliyeti ve azami kâr potansiyeli. Source: [IDEA-004](ideas/IDEA-004_is_alma_ve_makine_yatirimlari.md), Tur 2. Status: CURRENT. Depends on FRZ-001, FRZ-002 v3, FRZ-003 v2.
 - [FRZ-005 — Personel ve İnsan Yönetimi](freeze/FRZ-005_personel_ve_insan_yonetimi.md) — ayrı müdür mekaniği olmadan personel kökleri, İnsan Yönetimi'nin yeni sorunları önlemesi ve gizli bilgi sızdırmayan rapor. Source: [IDEA-005](ideas/IDEA-005_personel_ve_insan_yonetimi.md), Tur 2. Status: CURRENT. Depends on FRZ-001 and FRZ-002 v3.
+- [FRZ-006 — Danışman Pazarı ve Sözleşmeler](freeze/FRZ-006_danisman_pazari.md) — danışman kart bütçesi, aylık aday/ücretli çekim sınırı, süreli sözleşme ve FRZ-001'e bağlı geçici uzmanlık. Source: [IDEA-001](ideas/IDEA-001_patron_yetkinlikleri.md) içindeki kullanıcı kararları ve [IDEA-006](ideas/IDEA-006_danisman_pazari.md). Status: CURRENT. Depends on FRZ-001 and FRZ-002 v3.
 
 ## Superseded decisions
 
@@ -16,4 +17,4 @@
 
 ## Open design work
 
-- Kesin sayısal denge, danışman kart piyasası/monetizasyonu, teklif sayısı, makine fiyat/kapasite değerleri ve personel etkisinin kesin eğrisi henüz FREEZE kapsamında değildir.
+- Kesin sayısal denge, danışman ücretleri/gerçek para sunumu, teklif sayısı, makine fiyat/kapasite değerleri ve personel etkisinin kesin eğrisi henüz FREEZE kapsamında değildir.

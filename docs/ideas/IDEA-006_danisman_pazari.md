@@ -2,7 +2,7 @@
 
 ## Durum/Tur
 
-Durum: DRAFT — Claude incelemesi bekleniyor; bu dosya FREEZE değildir.
+Durum: Kullanıcının isteğiyle yeni Claude turu açılmadan önceki kullanıcı kararları [FRZ-006](../freeze/FRZ-006_danisman_pazari.md) olarak CURRENT yapıldı. Kesin kurallar FREEZE dosyasındadır.
 Tur: 1
 Date: 2026-09-29
 Bağımlılıklar: [FRZ-001](../freeze/FRZ-001_patron_yetkinlikleri.md), [FRZ-002 v3](../freeze/FRZ-002_v3_fabrika_ekonomisi.md). Önceki yönlendirmeler [IDEA-001](IDEA-001_patron_yetkinlikleri.md) içindedir.
@@ -19,7 +19,7 @@ Bağımlılıklar: [FRZ-001](../freeze/FRZ-001_patron_yetkinlikleri.md), [FRZ-00
 
 ## Notlar (Claude)
 
-İnceleme bekleniyor. Yalnızca kritik çelişkileri ve en fazla üç açık kararı yaz.
+Bu konu için kullanıcı tercihiyle yeni Claude incelemesi yapılmadı. Önceki tartışma ve kararlar [IDEA-001](IDEA-001_patron_yetkinlikleri.md) ile Git geçmişindedir.
 
 ## Açık Kararlar
 
@@ -29,4 +29,8 @@ Bağımlılıklar: [FRZ-001](../freeze/FRZ-001_patron_yetkinlikleri.md), [FRZ-00
 
 ## Karar Özeti
 
-- Bu turda yeni nihai karar yoktur. Önceki kullanıcı yönlendirmesi: sınırlı, farklı uzmanlık kartları ve süreli pahalı sözleşmeler oyuncunun bilgi açığını kapatsın; çünkü danışman kariyer deneyimine alternatif olabilmeli ama onu bedelsiz geçersiz kılmamalıdır. Bu IDEA henüz FREEZE değildir.
+- Danışman kartında 2–5 alan, alan başına 25–100 puan ve toplamda alan sayısı × 60 sınırı uygulanır; çünkü güçlü ve geniş uzmanlık pahalı ve nadir kalmalıdır.
+- Rapordan sonra üç ücretsiz aday, en fazla iki ücretli rastgele çekim ve beşinci kartın dördüncünün yerine geçmesi uygulanır; çünkü oyuncu sınırlı seçime sahip olmalı ama sınırsız kart çevirme baskın strateji olmamalıdır.
+- Aday hedeflemesi yalnızca görünen bilgiye dayanır ve dördüncü kart eksik alana +10 yüzde puan uygunluk taşır; çünkü ücretli çekim değerli olurken gizli kökler sızmamalıdır.
+- En fazla iki danışman süreli ve iadesiz sözleşmeyle hemen çalışır, yalnızca ilk yarıda uzatılır; çünkü destek gerçek ama geçici ve bağlayıcı olmalıdır.
+- Danışman sözleşmesi aynı teklifte oyun parası veya gerçek parayla alınabilir; çünkü gerçek ödeme bilgi açığını kapatmanın zorunlu yolu olmamalıdır. Fiyat ve monetizasyon ayrıntısı açıktır.

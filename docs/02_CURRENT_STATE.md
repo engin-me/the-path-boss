@@ -6,13 +6,13 @@ Current phase:
 Core game design
 
 Active topic:
-IDEA-006 Danışman Pazarı (Tur 1).
+None. IDEA-006 core rules approved as FRZ-006; detailed balance remains open.
 
 Latest freeze:
-FRZ-005 Personel ve İnsan Yönetimi (CURRENT, 2026-09-29). FRZ-001, FRZ-002 v3, FRZ-003 v2 and FRZ-004 remain current.
+FRZ-006 Danışman Pazarı ve Sözleşmeler (CURRENT, 2026-09-29). FRZ-001, FRZ-002 v3, FRZ-003 v2, FRZ-004 and FRZ-005 remain current.
 
 Pending review:
-Claude review of IDEA-006.
+None. User chose to proceed without a new Claude round for this topic.
 
 Next step:
-Publish IDEA-006 and request Claude's brief in-file review.
+Numerical balance and acceptance tests for the frozen core systems; consultant prices and paid-card presentation remain open.
