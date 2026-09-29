@@ -1,6 +1,6 @@
 # FRZ-007 — Çalışanlık Kariyeri ve Yetkinlik Kazanımı
 
-Status: CURRENT
+Status: SUPERSEDED by [FRZ-007 v2](FRZ-007_v2_calisanlik_kariyeri.md) on 2026-09-29.
 Date: 2026-09-29
 Source: [IDEA-007](../ideas/IDEA-007_calisanlik_kariyeri_ve_yetkinlik_kazanimi.md); kullanıcının aktardığı Claude risk incelemesi ve kapatma/FREEZE kararı.
 Depends on: [FRZ-001](FRZ-001_patron_yetkinlikleri.md), [FRZ-002 v3](FRZ-002_v3_fabrika_ekonomisi.md), [FRZ-003 v2](FRZ-003_v2_iflas_ve_fabrika_satisi.md).
