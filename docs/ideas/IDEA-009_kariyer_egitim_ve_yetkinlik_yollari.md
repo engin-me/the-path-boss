@@ -2,39 +2,59 @@
 
 ## Durum/Tur
 
-Durum: REVIEW BEKLİYOR — kullanıcı yönlendirmeleri ve açık kararlar. Bu dosya FREEZE değildir.
-Tur: 1
+Durum: TUR 2 SENTEZİ — kullanıcı Claude önerilerini kabul etti; FRZ-007 v2 ayrı taslaktır. Bu dosya FREEZE değildir.
+Tur: 2
 Tarih: 2026-09-29
-Bağımlılık: [FRZ-007](../freeze/FRZ-007_calisanlik_kariyeri.md) ve [FRZ-001](../freeze/FRZ-001_patron_yetkinlikleri.md). Kursun doğrudan yetkinlik kazandırmaması onaylanırsa FRZ-007 için yeni sürüm gerekir.
+Bağımlılık: [FRZ-007](../freeze/FRZ-007_calisanlik_kariyeri.md) ve [FRZ-001](../freeze/FRZ-001_patron_yetkinlikleri.md). Kullanıcı kurs ve diploma tavanı değişikliğini onayladı; [FRZ-007 v2 taslağı](../freeze/FRZ-007_v2_calisanlik_kariyeri.md) hazırlandı. Mevcut FRZ-007, v2 sonuçlandırılana kadar CURRENT kalır.
 
 ## Öneri (GPT)
 
-### Kullanıcının önerdiği yetkinlik yolları
+### Tur 2: İş, diploma ve yetkinlik
 
-| Yetkinlik | İş / mevcut oyun | Kurs | Tasarlanacak oyun |
-| --- | --- | --- | --- |
-| Üretim | Torna, taşlama | — | — |
-| Planlama | Beyaz yaka işi | Var | +1 |
-| Depo & Sevkiyat | Örümcek | — | +1 |
-| Bakım | Setup | — | +1 |
-| Kalite | Henüz iş belirtilmedi | Var | +1 |
-| Satın Alma | Beyaz yaka işi | Var | +1 |
-| Finans | Beyaz yaka işi | Var | +1 |
-| Ar-Ge / Ür-Ge | Beyaz yaka işi | Var | +1 |
-| Yatırım | Beyaz yaka işi | Var | +1 |
-| İnsan Yönetimi | Beyaz yaka işi | Var | +1 |
+Yetkinlik puanı iş, görev ve ilgili oyun deneyiminden gelir. Kurs yetkinlik vermez; stat ve sertifika verir. Diploma puan kazandırmaz, yalnız ilgili alanın kalıcı öğrenme tavanını kaldırır. Diplomasız karakterler de mavi yaka ve köprü işleriyle bütün alanlarda öğrenebilir. Takım Lideri Planlama ve İnsan Yönetimi geliştirmeye devam eder; tavanı aşan puan birikmez. Sertifika veya eşdeğer deneyim bu tavanı kaldıramaz. Böylece FRZ-007'deki her alana kalıcı öğrenme yolu korunurken diploma derin uzmanlık için değer taşır.
 
-“+1” denilen dokuz oyun daha sonra ayrı tasarlanacak. Kullanıcının kurs yönü önerisine göre kurslar bu alanların yetkinlik puanını doğrudan artırmaz; stat ve sertifika verir. Bu ayrım henüz onaylı kural değildir. Kalite için kalıcı yetkinlik kazandıran iş veya oyun yolunun nasıl işleyeceği netleşmelidir.
+| Yetkinlik | Diplomasız tavan | Tavanı kaldıran bölüm | Öğrenme yolu örnekleri |
+| --- | ---: | --- | --- |
+| Üretim | 89 (T3) | Mühendislik | Torna, taşlama |
+| Planlama | 69 (T2) | Mühendislik veya İşletme / İktisat | Takım Lideri, planlama işi/oyunu |
+| Depo & Sevkiyat | 89 (T3) | Henüz bölüm belirlenmedi | Örümcek, depo işi/oyunu |
+| Bakım | 89 (T3) | Mühendislik | Setup, bakım işi/oyunu |
+| Kalite | 89 (T3) | Mühendislik | Kalite kontrol / ölçüm operatörü; kalite mühendisi / müdürü |
+| Satın Alma | 69 (T2) | İşletme / İktisat | Köprü işi, satın alma işi/karar kartı |
+| Finans | 49 (T1) | İşletme / İktisat | Giriş/köprü işi, finans işi/karar kartı |
+| Ar-Ge / Ür-Ge | 49 (T1) | Mühendislik | Giriş/köprü işi, Ar-Ge işi/oyunu |
+| Yatırım | 49 (T1) | İşletme / İktisat | Giriş/köprü işi, yatırım işi/karar kartı |
+| İnsan Yönetimi | 69 (T2) | İşletme / İktisat | Takım Lideri, İK işi/karar kartı |
 
-### Üniversite, kurs, sertifika ve odak
+Depo & Sevkiyat iki bölümün de listesinde yoktur. Bu alanın 89 üstüne hangi eğitimle çıkılacağı açık karardır; listeyi sessizce genişletmedik. Satın Alma, Finans, Yatırım ve Ar-Ge için köprü işlerinin adları ve getirileri de daha sonra belirlenmelidir.
 
-- **Üniversite önerisi:** İki oyun yılı / 24 ay sürer ve her ay birleşik zaman havuzundan saat kullanır. Mevcut kısa dilimde ayda 8 eylem saati var; örnek olarak üniversite 2 saat, iş 5 saat, kurs 3 saat olursa çalışan öğrenci aynı ay kursa gidemez. Bu oran denge önerisidir, karar değildir.
-- **Kullanıcının üniversite sorusu:** Beyaz yaka olarak işaretlenen işler üniversite mezuniyeti istesin mi; mezun olmayan karakterlerin ilgili yetkinlikleri hiç gelişmesin mi? Kullanıcı iki oyun yılı üniversite ve aylık zaman bedeli önerdi; çalışma ve üniversite bir aradayken kursa fazla zaman kalmamalı.
-- **GPT değerlendirmesi:** Diploma belirli beyaz yaka pozisyonlarına başvuru koşulu olabilir. Bütün ilgili yetkinlik artışını diploma ile kilitlemek önerilmez: mavi yaka liderlik deneyimi veya fabrika işletme tecrübesi de bilgi kazandırabilir. Claude bu ayrımı ve mavi yakadan beyaz yakaya geçişi değerlendirsin.
-- **Kurs yönü:** Kullanıcı, kursun doğrudan yetkinlik yerine stat gelişimi ve sertifika vermesini önerdi. Yetkinliği iş/görev/oyun deneyimi kazandırır; stat öğrenme hızını veya görev performansını etkileyebilir, tek başına Tier açmaz. Bu yön FRZ-007 §1–3'teki kursla yetkinlik kazanımı kuralını değiştirir; Claude bu çatışmayı ve on alanın kalıcı öğrenme yollarını özellikle incelemeli. Onaydan sonra yeni FREEZE sürümü gerekir.
-- **Sertifika:** Kullanıcı, üst seviye işlerde sertifika şartı olmasını hatırlıyor. Mevcut CURRENT FREEZE'lerde sertifika listesi veya hangi işin hangisini istediği yok. GPT önerisi: yalnız ilgili ileri pozisyonlarda belirli sertifika aransın; her beyaz yaka işine aynı sertifika kapısı konmasın.
-- **Odak:** Kullanıcı odağın statları desteklemesini istiyor; kayıtlarda onaylı mekanik yok. GPT önerisi: oyuncu ay başında bir stat odağı seçer; o ayki uygun çalışma/oyun eylemleri ilgili statın gelişimini destekler. Odak yetkinlik puanını doğrudan artırmaz.
-- **Zaman ölçeği:** Mevcut oynanabilir dilimde iş maaşı, yetkinlik getirisi, enerji ve kurs bedeli aylık işleniyor. Yıllık yetkinlik ödülü tanımlanmamış. Uzun kariyerde tekrar eden aylık puanların hızı ayrıca dengelenmeli.
+### Üniversite ve zaman
+
+Üniversite birikimli 24 aylık tam zamanlı çalışma karşılığıdır; ara verme, iş kaybı veya iflas birikimi silmez. Tam zamanlı eğitimde maaş yoktur ve zaman uygunsa kurs alınabilir. Çalışarak eğitim ayda yaklaşık 2 saat kullanır; aynı ay kurs alınamaz ve daha yavaş ilerlediği için bitiş 24 takvim ayını aşabilir. Kesin saat, ilerleme ve ücret formülü dengeye bırakılır. Mühendislik Üretim, Bakım, Kalite, Ar-Ge ve Planlama; İşletme / İktisat Finans, Yatırım, Satın Alma, İnsan Yönetimi ve Planlama tavanlarını kaldırır. İlgili ikinci bölüm veya yüksek lisans öteki grubu açabilir. Diploma tek başına puan vermez.
+
+### Statlar, kurs, sertifika ve odak
+
+Statlar doğrudan yetkinlik puanı veya Tier vermez; işte öğrenme hızını en fazla ×1,3 çarpanıyla, iş ve oyun performansını, patronken Düzelt'in zaman ve para maliyetini etkiler. Eşik altındaki Düzelt şansını etkilemez. Kurs zaman ve oyun parası karşılığında ilgili statı artırır ve ilgili sertifikayı verir; farklı sertifika türleri az sayıda tutulur. Sertifikalar ilgili ileri işlerin başvuru koşuludur, diploma tavanını aşmaz. Odak ay başında ücretsiz seçilir, yalnız o ayın işiyle ilgili statı yavaşça artırır; kurs daha hızlıdır ve sertifika verir.
+
+Claude notlarında tam bir stat–yetkinlik tablosu bulunmuyor. Notlarında açıkça geçen eşlemeyi çekirdek alıp kalan satırları **GPT'nin incelemeye açık tamamlama önerisi** olarak ayırıyoruz:
+
+| Stat | İlişkili yetkinlikler | Kaynak |
+| --- | --- | --- |
+| Zeka | Finans, Yatırım, Planlama, Ar-Ge / Ür-Ge | Kullanıcı tarafından aktarılan Claude örneği |
+| Dikkat | Kalite, Bakım, Üretim | Kullanıcı tarafından aktarılan Claude örneği |
+| Yaratıcılık | Ar-Ge / Ür-Ge, Planlama | GPT tamamlama önerisi |
+| Güç | Üretim, Depo & Sevkiyat, Bakım | GPT tamamlama önerisi |
+| Hız | Üretim, Depo & Sevkiyat, Planlama | GPT tamamlama önerisi |
+| Sosyallik | İnsan Yönetimi, Satın Alma | GPT tamamlama önerisi |
+| Görünüm | İnsan Yönetimi, Satın Alma iş performansı; öğrenme bağı ayrıca incelenecek | GPT tamamlama önerisi |
+
+Tablo ilgili statın öğrenme çarpanına veya iş performansına nerede girebileceğini gösterir; hiçbir satır statın yetkinlik puanını kendiliğinden artıracağı anlamına gelmez.
+
+### Oyun şablonları ve aylık getiri
+
+Dokuz ayrı oyun yerine üç yeniden kullanılabilir şablon vardır: Optimizasyon (Planlama, Ar-Ge); Teşhis (Bakım, Kalite); Karar kartı (Satın Alma, Finans, Yatırım, İnsan Yönetimi). İlk aşamada her şablondan bir örnek yapılır. Depo & Sevkiyat için önerilen yeni oyunun hangi şablona gireceği açık kalır. Üretim torna/taşlamayla, Depo örümcekle, Bakım setup ile de öğrenilebilir. Oyunlar ilgili iş/görev deneyiminin parçasıdır; tek başına bütün kariyer yollarının yerini almaz.
+
+İş ve görev getirileri aylık işlenir; aynı işte öğrenme zamanla azalır. Ortalama performans da yetkinlik kazandırır, başarısız performans daha az kazandırabilir. Terfi ve performans değerlendirmesi yıllıktır. Kesin aylık puanlar ve azalma eğrisi henüz dengelenmemiştir.
 
 ## Notlar (Claude)
 
@@ -97,13 +117,19 @@ GAME_OVERVIEW §24'e göre küçük fabrika yaklaşık 5 oyun yılında kurulabi
 
 ## Açık Kararlar
 
-1. Üniversite diploması hangi beyaz yaka pozisyonlarında zorunlu olacak? Denk deneyim/terfi yolu bulunacak mı?
-2. Üniversitenin aylık saat ve para bedeli ile çalışırken devam koşulu ne olacak? İki yıl kesintisiz mi, birikimli 24 ay mı?
-3. Hangi kurs hangi statı ve sertifikayı verir; ileri işler hangi sertifikayı arar?
-4. İş, mini oyun ve görev sonuçları yetkinliği hangi hızda artırır? Başarısız veya ortalama performans puan kazandırır mı?
-5. Odak stat gelişimini nasıl etkiler ve ne sıklıkla değiştirilebilir?
-6. Kalite için mavi yaka/beyaz yaka kariyer yolları nasıl ayrılır?
+1. Depo & Sevkiyat tavanı 89 iken hangi bölüm veya eğitim yolu 90–100 aralığını açar? Üç şablondan hangisi yeni depo oyununu karşılar?
+2. Claude notlarında tam stat–yetkinlik eşleme tablosu yok. GPT'nin tamamladığı Yaratıcılık, Güç, Hız, Sosyallik ve Görünüm satırları ayrıca incelenecek; Görünüm öğrenme çarpanına mı, yalnız iş performansına mı girecek?
+3. Üniversitenin tam zamanlı/çalışarak aylık saat, ücret ve ilerleme oranı; ilgili ikinci bölüm/yüksek lisansın süresi ve koşulları nedir?
+4. Hangi az sayıdaki sertifika hangi ileri işi açar; ilgili köprü işlerinin isimleri ve giriş koşulları nelerdir?
+5. İş ve oyunların aylık puan formülü, aynı işte azalma eğrisi, başarısız ay getirisi, kurs/odak stat artış miktarı ve stat–alan çarpan ağırlıkları denge çalışmasında belirlenir.
 
 ## Karar Özeti
 
-Henüz kullanıcı onayından ve Claude incelemesinden geçmiş yeni karar yok. Bu dosya mevcut önerileri kaydeder; FRZ-007 yürürlüktedir.
+- Kullanıcı diploma öğrenmeyi sıfırdan kilitlemek yerine diplomasız alan tavanlarını 89/69/49 yapmaya karar verdi; çünkü mavi yaka deneyimi bütün alanlarda bilgi kazandırmalı, derin bilgi için üniversite anlamlı olmalı.
+- Kullanıcı Mühendislik ve İşletme / İktisat bölümlerinin belirtilen alan tavanlarını kaldırmasına, ikinci bölüm veya yüksek lisansla diğer grubun açılmasına karar verdi; çünkü diploma bilgi puanı vermeden uzmanlık yolunu belirlemeli.
+- Kullanıcı üniversiteyi ara verilebilen birikimli 24 aylık eğitim yapmaya, tam zamanlı ve çalışarak modları ayırmaya karar verdi; çünkü iş kaybı ilerlemeyi silmemeli ve çalışma ile eğitim arasında zaman/gelir bedeli olmalı.
+- Kullanıcı statları en fazla ×1,3 öğrenme çarpanı, iş/oyun performansı ve Düzelt süresi/maliyetiyle sınırlamaya karar verdi; çünkü stat bilgi veya Tier yaratmamalı, eşik altı Düzelt şansını satın almamalı.
+- Kullanıcı kursun yetkinlik yerine stat ve az sayıda ileri iş sertifikası vermesine, ücretsiz aylık odağın ise işle ilgili statı yavaş geliştirmesine karar verdi; çünkü iş deneyimi bilginin asıl kaynağı kalmalı, kurs ile odağın bedel ve hız farkı olmalı.
+- Kullanıcı Kalite için mavi yakada kalite kontrol/ölçüm operatörü, beyaz yakada kalite mühendisi/müdürü yolunu seçti; çünkü kurs yetkinlik vermezken Kalite'nin kalıcı iş yolu bulunmalı.
+- Kullanıcı dokuz ayrı yeni oyun yerine Optimizasyon, Teşhis ve Karar kartı şablonlarını ve önce her birinden bir örnek yapmayı seçti; çünkü kariyer–patron döngüsü kapsam yükü yüzünden gecikmemeli.
+- Kullanıcı yetkinlik getirisini aylık ve aynı işte azalan, terfi ile değerlendirmeyi yıllık yapmaya ve ortalama performansa da puan vermeye karar verdi; çünkü düzenli deneyim ödüllendirilmeli ve kötü aylar ilerlemeyi bütünüyle kesmemeli.
