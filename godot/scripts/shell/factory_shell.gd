@@ -51,19 +51,38 @@ var background: TextureRect
 var content: VBoxContainer
 var tab_buttons := {}
 var overlay: Control
+var safe_top: Control
+var safe_bottom: Control
 var listing_cards := {}
 var area_label: Label
 var area_used_bar: ProgressBar
 var area_preview_bar: ProgressBar
 
 func _ready() -> void:
-	var window := get_window()
-	if window != null:
-		window.content_scale_size = Vector2i(540, 960)
-		window.size = Vector2i(540, 960)
 	_reset_state()
 	_build()
+	_apply_safe_area()
 	_render()
+
+# Android back key: close a dialog, then a detail screen, then go to Özet.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		if overlay != null and overlay.get_child_count() > 0:
+			_confirm_no()
+		elif detail != "":
+			_back()
+		elif page != "ozet":
+			_on_tab("ozet")
+
+# Keeps the header and tab bar clear of notches and gesture bars on phones.
+func _apply_safe_area() -> void:
+	if not OS.has_feature("mobile") or safe_top == null:
+		return
+	var safe := DisplayServer.get_display_safe_area()
+	var window := get_window()
+	var scale := float(window.size.x) / maxf(1.0, get_viewport_rect().size.x)
+	safe_top.custom_minimum_size = Vector2(0, maxf(0.0, safe.position.y / scale))
+	safe_bottom.custom_minimum_size = Vector2(0, maxf(0.0, (window.size.y - safe.end.y) / scale))
 
 func _reset_state(rng_seed := -1) -> void:
 	game = ShellBoss.new()
@@ -81,6 +100,8 @@ func _build() -> void:
 	column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	column.add_theme_constant_override("separation", 0)
 	add_child(column)
+	safe_top = Control.new()
+	column.add_child(safe_top)
 	column.add_child(_build_header())
 	sticky = VBoxContainer.new()
 	column.add_child(sticky)
@@ -109,6 +130,8 @@ func _build() -> void:
 	content.add_theme_constant_override("separation", 12)
 	margin.add_child(content)
 	column.add_child(_build_tab_bar())
+	safe_bottom = Control.new()
+	column.add_child(safe_bottom)
 	overlay = Control.new()
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -927,6 +950,7 @@ func _detail_factory(factory: Dictionary) -> void:
 	var prepay := CheckBox.new()
 	prepay.text = "İlk %d ayın kirasını peşin öde (%%%d indirim)" % [quote["half"], int(roundf(float(quote["discount"]) * 100.0))]
 	prepay.add_theme_font_size_override("font_size", 15)
+	prepay.custom_minimum_size = Vector2(0, 48)
 	prepay.button_pressed = picked_prepay
 	prepay.toggled.connect(_toggle_prepay)
 	terms.add_child(prepay)
@@ -1044,6 +1068,7 @@ func _detail_credit() -> void:
 		var check := CheckBox.new()
 		check.text = "%s · %s" % [machine["model"], Data.usd(value)]
 		check.add_theme_font_size_override("font_size", 15)
+		check.custom_minimum_size = Vector2(0, 48)
 		check.button_pressed = collateral_picks.has(machine["uid"])
 		check.toggled.connect(_toggle_collateral.bind(machine["uid"]))
 		pick.add_child(check)

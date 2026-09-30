@@ -16,6 +16,13 @@ var intro_done := false
 var body: VBoxContainer
 
 func _ready() -> void:
+	# Wide desktop screen: the project is portrait for mobile (factory_shell), so
+	# this legacy test screen sets its own size and scaling.
+	var legacy_window := get_window()
+	if legacy_window != null and not OS.has_feature("mobile"):
+		legacy_window.content_scale_size = Vector2i(1280, 800)
+		legacy_window.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP
+		legacy_window.size = Vector2i(1280, 800)
 	get_viewport().set_embedding_subwindows(false)
 	_build_shell()
 	_refresh()
