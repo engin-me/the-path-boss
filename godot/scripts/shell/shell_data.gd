@@ -40,7 +40,7 @@ const LEVEL_MULT := {1: 0.70, 2: 1.00, 3: 1.40}
 const BRANDS := {1: ["Brandt", "Halden"], 2: ["Novak Precision", "Meridian"], 3: ["Aurex", "Kessler"]}
 const MODEL_PREFIX := {"Torna": "T", "Freze": "F", "Taşlama": "G", "Dövme": "P"}
 const LEVEL_CAPACITY := {1: 40, 2: 55, 3: 70}
-const TYPE_CAP := {"Torna": 1.0, "Freze": 1.0, "Taşlama": 0.9, "Dövme": 1.5}
+const LEVEL_LETTER := {1: "A", 2: "B", 3: "C"}  # engine machine class (capacity 40 / 55 / 70)
 const LEVEL_AREA := {1: 25.0, 2: 30.0, 3: 40.0}
 const TYPE_AREA := {"Torna": 1.0, "Freze": 1.2, "Taşlama": 1.1, "Dövme": 2.2}
 const LEVEL_HEIGHT := {1: 3.0, 2: 3.5, 3: 4.5}
@@ -92,11 +92,11 @@ static func _listing(uid: int, type: String, level: int, age: int, discount: flo
 	var brand: String = BRANDS[level][uid % 2]
 	var area := roundf(float(LEVEL_AREA[level]) * float(TYPE_AREA[type]))
 	return {
-		"uid": uid, "type": type, "level": level, "brand": brand,
+		"uid": uid, "kind": type, "type": LEVEL_LETTER[level], "level": level, "brand": brand,
 		"model": "%s %s-%d" % [brand, MODEL_PREFIX[type], 100 + level * 100 + uid],
 		"age": age, "list_price": list, "base_price": base, "discount": discount,
 		"price": roundf(base * (1.0 - discount)),
-		"capacity": int(roundf(float(LEVEL_CAPACITY[level]) * float(TYPE_CAP[type]))),
+		"capacity": int(LEVEL_CAPACITY[level]),
 		"area": area, "height": snappedf(float(LEVEL_HEIGHT[level]) + float(TYPE_HEIGHT[type]), 0.1),
 		"personnel": personnel_for(type, level),
 		"kw": int(list / 4.0), "energy": snappedf(list * ENERGY_RATE, 0.01),
@@ -179,10 +179,10 @@ static func generate_offers(month: int) -> Array:
 		if count >= 2 and rng.randf() < 0.45:
 			var secondary: String = TYPES[(TYPES.find(primary) + rng.randi_range(1, 3)) % 4]
 			var first := int(ceil(count / 2.0))
-			reqs.append({"type": primary, "level": _level(rng), "count": first})
-			reqs.append({"type": secondary, "level": _level(rng), "count": count - first})
+			reqs.append({"kind": primary, "level": _level(rng), "count": first})
+			reqs.append({"kind": secondary, "level": _level(rng), "count": count - first})
 		else:
-			reqs.append({"type": primary, "level": _level(rng), "count": count})
+			reqs.append({"kind": primary, "level": _level(rng), "count": count})
 		var best := 1
 		for req in reqs:
 			best = maxi(best, int(req["level"]))
@@ -225,7 +225,7 @@ static func term_by_months(months: int) -> Dictionary:
 	return TERMS[1]
 
 static func req_text(req: Dictionary) -> String:
-	return "%d× %s %s" % [req["count"], LEVELS[int(req["level"])], req["type"]]
+	return "%d× %s %s" % [req["count"], LEVELS[int(req["level"])], req["kind"]]
 
 static func month_label(month: int) -> String:
 	var names := ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"]

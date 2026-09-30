@@ -2,7 +2,7 @@
 
 ## Durum/Tur
 
-Durum: DRAFT — Kullanıcının 2026-09-30 tasarım kararları ve Claude önerileri kaydedildi; Claude incelemesi ve Codex sentezi bekleniyor. Bu IDEA oyun kuralı değildir. `godot/factory_shell.tscn` mock veriyle bu önerileri gösterir; BossState'e bağlı değildir.
+Durum: DRAFT — Kullanıcının 2026-09-30 tasarım kararları ve Claude önerileri kaydedildi; Claude incelemesi ve Codex sentezi bekleniyor. Bu IDEA oyun kuralı değildir. `godot/factory_shell.tscn` bu önerileri `godot/scripts/shell/shell_boss.gd` motoruyla oynatılabilir hâle getirir (BossState'in alt sınıfı; sorun/Düzelt, danışman, patron saati ve iflas hesabı BossState'ten). Eski patron testi değişmedi.
 Tur: 1
 Tarih: 2026-09-30
 Bağımlılıklar: [FRZ-001 v3](../freeze/FRZ-001_v3_patron_yetkinlikleri.md), [FRZ-002 v4](../freeze/FRZ-002_v4_fabrika_ekonomisi.md), [FRZ-003 v2](../freeze/FRZ-003_v2_iflas_ve_fabrika_satisi.md), [FRZ-004 v2](../freeze/FRZ-004_v2_is_alma_ve_makine_yatirimlari.md), [FRZ-008 v2](../freeze/FRZ-008_v2_fabrika_operasyon_cekirdegi.md), [IDEA-015](IDEA-015_fabrika_kiralama_ve_mobil_arayuz.md).
@@ -26,6 +26,10 @@ Bu bölüm kullanıcının sohbetteki kararlarından ve Claude önerilerinden de
 Tur 1 incelemesi bekleniyor.
 
 ## Açık Kararlar
+
+- Prototipte iş geliri = ilan geliri × teslimine kadarki aylık verimin ortalaması (verim = gerçekleşen/beklenen çıktı); beklenen çıktı, işe ayrılmış teslim edilmiş makinelerin kapasite toplamıdır. FRZ-002 v4 birim bazlı gelir kuralının çok aylı işe genellemesi olarak onay bekler.
+- Sabit gider (30) kiraya dönüştü ve makine başı gider (12) enerji + sarf + personel ile değişti; yeni ekonomi dengesi ölçülmedi.
+- Kuruluş güvencesi (FRZ-002 v3 §4) kiralamada ilk ay kirası + ölçeğin gizli Düzelt güvencesi olarak uygulanıyor; makine alımında ay gideri koruması BossState'teki gibi.
 
 - İş–makine modeli FRZ-004 v2'nin tek boyutlu "makine niteliği" ve tek sayılı kapasitesinin yerine geçer mi; 3/5 uygun teklif tabanı 20 ilan ve çok makineli işlerle nasıl yeniden tanımlanır; FRZ-001 v3 erken erişim testi yeniden ölçülmeli.
 - Hammadde formülü, bölünmüş ödeme ve teslim edilemeyen birimde hammaddenin kaderi (hurda geri dönüşü var mı).

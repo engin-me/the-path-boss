@@ -6,6 +6,7 @@ extends Control
 
 const Data = preload("res://scripts/shell/shell_data.gd")
 const BossState = preload("res://scripts/boss_state.gd")
+const ShellBoss = preload("res://scripts/shell/shell_boss.gd")
 
 const BG := Color("#0f1720")
 const PANEL := Color("#1a232e")
@@ -27,7 +28,8 @@ const TABS := [
 	{"id": "profil", "icon": "👤", "title": "Profil"}
 ]
 
-var state := {}
+var game = ShellBoss.new()
+var flash := ""
 var page := "ozet"
 var subtab := {"ozet": "genel", "isler": "tum", "tezgah": "tezgah"}
 var type_filter := "Tümü"
@@ -42,6 +44,7 @@ var pending := Callable()
 
 var header_date: Label
 var header_money: Label
+var header_hours: Label
 var sticky: VBoxContainer
 var stage: Control
 var background: TextureRect
@@ -62,16 +65,10 @@ func _ready() -> void:
 	_build()
 	_render()
 
-func _reset_state() -> void:
-	state = {
-		"month": 1, "cash": 400.0, "invested": 0.0,
-		"factory_id": "", "term": 12, "months_left": 0, "prepaid_months": 0,
-		"machines": [], "next_uid": 1, "package": false, "equip": {},
-		"offers": Data.generate_offers(1), "accepted": [], "last_report": "",
-		"skills": {}, "credit": {}
-	}
-	for i in BossState.SKILLS.size():
-		state["skills"][BossState.SKILLS[i]] = 40 + (i * 7) % 40
+func _reset_state(rng_seed := -1) -> void:
+	game = ShellBoss.new()
+	game.default_setup(rng_seed)
+	flash = ""
 
 # ------------------------------------------------------------------ layout
 
@@ -126,6 +123,8 @@ func _build_header() -> Control:
 	header_date = _label("", 15, TEXT, false)
 	header_date.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(header_date)
+	header_hours = _label("", 14, MUTED, false)
+	row.add_child(header_hours)
 	var pill := PanelContainer.new()
 	pill.add_theme_stylebox_override("panel", _box(GREEN_DIM, GREEN, 8, 1))
 	header_money = _label("", 17, GREEN, false)
@@ -323,92 +322,6 @@ func _close_overlay() -> void:
 		child.queue_free()
 	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-# ------------------------------------------------------------------ state queries
-
-func _factory() -> Dictionary:
-	return Data.factory_by_id(String(state["factory_id"]))
-
-func _base_rent() -> float:
-	var factory := _factory()
-	if factory.is_empty():
-		return 0.0
-	return roundf(float(factory["rent"]) * float(Data.term_by_months(int(state["term"]))["factor"]))
-
-func _delivered() -> Array:
-	var list: Array = []
-	for machine in state["machines"]:
-		if int(machine["arrive"]) <= int(state["month"]):
-			list.append(machine)
-	return list
-
-func _free_machines() -> Array:
-	var list: Array = []
-	for machine in _delivered():
-		if int(machine["job"]) == 0:
-			list.append(machine)
-	return list
-
-func _capacity_total() -> int:
-	if not state["package"]:
-		return 0
-	var total := 0
-	for machine in _delivered():
-		total += int(machine["capacity"])
-	return total
-
-func _package() -> Dictionary:
-	var factory := _factory()
-	return Data.package_for(int(factory["m2"])) if not factory.is_empty() else {"items": {}, "price": 0.0, "area": 0.0}
-
-func _area_used() -> float:
-	var used := 0.0
-	for machine in state["machines"]:
-		used += float(machine["area"])
-	if state["package"]:
-		used += float(_package()["area"])
-	for id in state["equip"]:
-		used += float(Data.EQUIPMENT[id]["area"]) * int(state["equip"][id])
-	return used
-
-func _monthly_running() -> float:
-	var cost := 0.0
-	for machine in _delivered():
-		cost += float(machine["energy"]) + float(machine["consumables"]) + Data.WAGE * int(machine["personnel"])
-	return cost
-
-func _invested() -> float:
-	var total := 0.0
-	for machine in state["machines"]:
-		total += float(machine["paid"])
-	return total
-
-func _current_value(machine: Dictionary) -> float:
-	var owned := maxi(0, int(state["month"]) - int(machine["bought"]))
-	return roundf(float(machine["paid"]) * pow(0.98, owned))
-
-# Greedy assignment of free delivered machines to a job's requirement list.
-func _assign(reqs: Array) -> Dictionary:
-	var pool: Array = _free_machines().duplicate()
-	var ordered: Array = reqs.duplicate()
-	ordered.sort_custom(func(a, b): return int(a["level"]) > int(b["level"]))
-	var uids: Array = []
-	var missing: Array = []
-	for req in ordered:
-		var short := int(req["count"])
-		for _i in int(req["count"]):
-			var best: Dictionary = {}
-			for machine in pool:
-				if machine["type"] == req["type"] and int(machine["level"]) >= int(req["level"]):
-					if best.is_empty() or int(machine["level"]) < int(best["level"]):
-						best = machine
-			if not best.is_empty():
-				uids.append(best["uid"])
-				pool.erase(best)
-				short -= 1
-		if short > 0:
-			missing.append("%d× %s %s" % [short, Data.LEVELS[int(req["level"])], req["type"]])
-	return {"ok": missing.is_empty(), "uids": uids, "missing": missing}
-
 # ------------------------------------------------------------------ navigation
 
 func _on_tab(id: String) -> void:
@@ -425,9 +338,13 @@ func _back() -> void:
 	detail = ""
 	_render()
 
+func _say(message: String) -> void:
+	flash = message
+
 func _render() -> void:
-	header_date.text = Data.month_label(int(state["month"]))
-	header_money.text = Data.usd(float(state["cash"]))
+	header_date.text = Data.month_label(int(game.month))
+	header_money.text = Data.usd(float(game.cash))
+	header_hours.text = "⏱ %d/%d sa" % [game.hours_left, game.monthly_hours] if game.phase == "report" else ""
 	for id in tab_buttons:
 		var active: bool = id == page
 		var button: Button = tab_buttons[id]
@@ -442,6 +359,10 @@ func _render() -> void:
 	listing_cards.clear()
 	area_label = null
 	background.texture = _background_texture()
+	if flash != "":
+		var note := _card(content, "", GOLD)
+		note.add_child(_label(flash, 14, GOLD))
+		flash = ""
 	if detail != "":
 		_render_detail()
 		return
@@ -453,10 +374,10 @@ func _render() -> void:
 		"profil": _page_profil()
 
 func _background_texture() -> Texture2D:
-	if page != "ozet" or detail != "" or state["factory_id"] == "":
+	if page != "ozet" or detail != "" or game.factory_id == "":
 		return null
 	var gradient := Gradient.new()
-	var tint: Color = _factory()["tint"]
+	var tint: Color = game.factory()["tint"]
 	gradient.colors = PackedColorArray([tint.lightened(0.15), tint, BG])
 	gradient.offsets = PackedFloat32Array([0.0, 0.45, 1.0])
 	var texture := GradientTexture2D.new()
@@ -475,30 +396,49 @@ func _locked(message: String) -> void:
 # ------------------------------------------------------------------ Özet
 
 func _page_ozet() -> void:
+	if game.phase == "end":
+		_page_end()
+		return
 	_chips(content, [{"id": "genel", "title": "Genel"}, {"id": "dep", "title": "Departmanlar"}, {"id": "rapor", "title": "Rapor"}],
 		subtab["ozet"], func(id: String) -> void:
 			subtab["ozet"] = id
 			_render())
-	if state["factory_id"] == "":
+	if game.factory_id == "":
 		var empty := _card(content, "Henüz fabrikan yok", GOLD)
-		empty.add_child(_label("Önce bir yer kirala. Sonra tezgah alıp iş kabul edebilirsin.", 14, MUTED))
+		empty.add_child(_label("Önce bir yer kirala. Sonra ekipman, tezgah ve iş.", 14, MUTED))
 		empty.add_child(_button("Kiralık yerlere bak", _on_tab.bind("fabrika"), true))
 		return
 	match subtab["ozet"]:
-		"dep":
-			var box := _card(content, "Departmanlar ve Düzelt")
-			box.add_child(_label("Sorun satırları, şans etiketleri ve Düzelt düğmesi burada görünecek (BossState bağlanınca).", 14, MUTED))
-		"rapor":
-			var box := _card(content, "Ay raporu")
-			box.add_child(_label(state["last_report"] if state["last_report"] != "" else "İlk ay: henüz rapor yok.", 14, MUTED))
-		_:
-			_ozet_general()
+		"dep": _ozet_departments()
+		"rapor": _ozet_report()
+		_: _ozet_general()
+
+func _phase_button() -> void:
+	if game.phase == "offers":
+		content.add_child(_button("Raporu aç ▶", _open_report, true, false, true))
+	elif game.phase == "report":
+		content.add_child(_button("Ayı bitir ▶", _close_month, true, false, true))
+
+func _open_report() -> void:
+	var result: String = game.run_report()
+	if result != "":
+		_say(result)
+	else:
+		subtab["ozet"] = "rapor"
+	_render()
+
+func _close_month() -> void:
+	var result: String = game.close_month()
+	if result != "":
+		_say(result)
+	subtab["ozet"] = "genel"
+	_render()
 
 func _ozet_general() -> void:
-	var factory := _factory()
+	var factory: Dictionary = game.factory()
 	content.add_child(_label(factory["name"], 22, TEXT))
 	content.add_child(_label("%s · %d m² · %.1f m yükseklik" % [factory["region"], factory["m2"], factory["height"]], 13, MUTED))
-	if not state["package"]:
+	if not game.package_bought:
 		var warn := _card(content, "Zorunlu ekipman eksik", GOLD)
 		warn.add_child(_label("Zorunlu ekipman paketi alınmadan kapasite kullanılamaz.", 13, MUTED))
 		warn.add_child(_button("Ekipmana git", _go_equipment, true))
@@ -507,175 +447,179 @@ func _ozet_general() -> void:
 	grid.add_theme_constant_override("h_separation", 10)
 	grid.add_theme_constant_override("v_separation", 10)
 	content.add_child(grid)
-	var delivered := _delivered().size()
-	var transit: int = state["machines"].size() - delivered
-	var value := 0.0
-	for machine in state["machines"]:
-		value += _current_value(machine)
-	var running := _monthly_running()
-	var credit: Dictionary = state["credit"]
+	var delivered: int = game.delivered().size()
+	var transit: int = game.machines.size() - delivered
+	var oee := "—"
+	if not game.report.is_empty():
+		oee = "%%%d" % int(roundf(float(game.report["oee"]) * 100.0))
 	var tiles := [
 		["Makine", "%d%s" % [delivered, " (+%d yolda)" % transit if transit > 0 else ""]],
-		["Yatırım tutarı", Data.usd(_invested())],
-		["Güncel değer", Data.usd(value)],
-		["OEE", "—"],
-		["Kapasite", "%d birim/ay" % _capacity_total()],
-		["Boşta makine", str(_free_machines().size())],
-		["Aylık işletme", Data.usd(running)],
-		["Sözleşme", "%d ay kaldı" % int(state["months_left"])]
+		["Yatırım tutarı", Data.usd(float(game.invested))],
+		["Güncel değer", Data.usd(float(game.investment_value()))],
+		["OEE", oee],
+		["Kapasite", "%d birim/ay" % game.capacity_at_least(1)],
+		["Boşta makine", str(game.free_machines().size())],
+		["Aylık gider", Data.usd(float(game.ordinary_expense()))],
+		["Sözleşme", "%d ay kaldı" % int(game.months_left)],
+		["Patron zamanı", "%d / %d sa" % [game.hours_left if game.phase == "report" else game.monthly_hours, game.monthly_hours]]
 	]
-	if not credit.is_empty():
-		tiles.append(["Kredi borcu", Data.usd(float(credit["balance"]))])
+	if game.debt > 0.0:
+		tiles.append(["Borç", Data.usd(float(game.debt))])
 	for tile in tiles:
 		var box := _card(grid, "", BORDER)
 		box.add_child(_label(tile[0], 12, MUTED))
 		box.add_child(_label(tile[1], 18, TEXT))
 		_panel_of(box).size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.add_child(_button("Ayı bitir ▶", _end_month, true))
+	_phase_button()
+	if game.phase == "offers" and not game.last_lines.is_empty():
+		var last := _card(content, "Geçen ay")
+		for line in game.last_lines:
+			last.add_child(_label(str(line), 13, MUTED))
+
+func _ozet_report() -> void:
+	if game.phase != "report":
+		var box := _card(content, "Ay raporu")
+		if game.last_lines.is_empty():
+			box.add_child(_label("Rapor, ay başında \"Raporu aç\" ile açılır.", 14, MUTED))
+		else:
+			box.add_child(_label("Geçen ayın kapanışı:", 13, MUTED))
+			for line in game.last_lines:
+				box.add_child(_label(str(line), 13, TEXT))
+		_phase_button()
+		return
+	var report: Dictionary = game.report
+	var box := _card(content, "Ay %d raporu" % game.month, GREEN)
+	_row(box, "Beklenen çıktı", "%d birim" % int(report["expected"]), TEXT, 15)
+	_row(box, "Gerçekleşen", "%.0f birim (verim %%%d)" % [float(report["realized"]), int(roundf(float(report["efficiency"]) * 100.0))], TEXT, 15)
+	_row(box, "Kayıp", "%.1f birim" % float(report["loss"]), RED if float(report["loss"]) > 0.0 else TEXT, 15)
+	_row(box, "OEE (fiziksel)", "%%%d" % int(roundf(float(report["oee"]) * 100.0)), TEXT, 15)
+	_row(box, "Boş kapasite", "%d birim" % int(report["empty"]), MUTED, 15)
+	if report["capped"]:
+		box.add_child(_label("Bir departmanın kaybı %20 tavanına kırpıldı.", 12, GOLD))
+	var losses: Dictionary = report["losses"]
+	if not losses.is_empty():
+		var by_dep := _card(content, "Kayıp — departmana göre")
+		for department in losses:
+			_row(by_dep, department, "%.1f" % float(losses[department]), TEXT, 14)
+	box.add_child(_label("Gelir, işler tesliminde verimle orantılı yazılır.", 12, MUTED))
+	_phase_button()
+
+func _ozet_departments() -> void:
+	var head := _card(content, "Düzelt", BORDER)
+	head.add_child(_label("Patron zamanı %d/%d sa · kullanılabilir nakit %s" % [game.hours_left if game.phase == "report" else game.monthly_hours, game.monthly_hours, Data.usd(float(game.available_cash()))], 13, MUTED))
+	if game.phase != "report":
+		head.add_child(_label("Düzelt, ay raporu açıldıktan sonra yapılır. Şimdilik yalnızca durum görünür.", 12, GOLD))
+	var quiet: Array = []
+	for department in BossState.SKILLS:
+		var rows: Array = game.active_rows(department)
+		if rows.is_empty():
+			quiet.append(department)
+			continue
+		_department_card(department, rows)
+	if not quiet.is_empty():
+		content.add_child(_label("Aktif sorunu olmayan departmanlar: " + ", ".join(quiet), 12, MUTED))
+	_phase_button()
+
+func _department_card(department: String, rows: Array) -> void:
+	var patron: int = game.skills[department]
+	var effective: int = game.effective_skill(department)
+	var reach: int = game.reach(department)
+	var box := _card(content, department, BORDER)
+	box.add_child(_label("Patron %d%s → T%d'ye kadar okur" % [patron, (" · danışmanla %d" % effective) if effective > patron else "", reach], 12, MUTED))
+	for row in rows:
+		var slot: String = ("T%d" % row["tier"]) if row["visible"] else "Derinlik bilinmiyor"
+		var growth: String = " (büyüyor)" if float(row["loss"]) > float(row["base_loss"]) + 0.05 else ""
+		box.add_child(_label("%s · %.1f kayıp%s · şans %s" % [slot, row["loss"], growth, row["chance"]], 15, TEXT if row["visible"] else GOLD))
+		var text: String = "Bu ay denendi" if row["attempted"] else "Düzelt · tahmin %s / en fazla %s · %d–%d sa" % [Data.usd(float(row["estimate"])), Data.usd(float(row["upper"])), row["estimate_hours"], row["upper_hours"]]
+		box.add_child(_button(text, _fix.bind(row["id"]), false, row["attempted"] or row["blocked"] != ""))
+		if row["blocked"] != "" and not row["attempted"]:
+			box.add_child(_label(row["blocked"], 12, RED))
+
+func _fix(root_id: String) -> void:
+	var result: Dictionary = game.fix(root_id)
+	_say(game.notice)
+	_render()
 
 func _go_equipment() -> void:
 	subtab["tezgah"] = "ekipman"
 	_on_tab("tezgah")
 
-func _end_month() -> void:
-	var lines: Array = []
-	var month: int = state["month"]
-	# rent (first half of the term is prepaid when chosen)
-	if int(state["prepaid_months"]) > 0:
-		state["prepaid_months"] = int(state["prepaid_months"]) - 1
-		lines.append("Kira: peşin ödenmişti")
-	else:
-		state["cash"] = float(state["cash"]) - _base_rent()
-		lines.append("Kira: %s" % Data.usd(_base_rent()))
-	var running := _monthly_running()
-	state["cash"] = float(state["cash"]) - running
-	lines.append("Enerji, sarf ve personel: %s" % Data.usd(running))
-	# credit installment
-	var credit: Dictionary = state["credit"]
-	if not credit.is_empty():
-		var interest := float(credit["balance"]) * float(credit["rate"])
-		var principal := float(credit["installment"]) - interest
-		credit["balance"] = maxf(0.0, float(credit["balance"]) - principal)
-		credit["left"] = int(credit["left"]) - 1
-		state["cash"] = float(state["cash"]) - float(credit["installment"])
-		lines.append("Kredi taksidi: %s" % Data.usd(float(credit["installment"])))
-		if int(credit["left"]) <= 0:
-			state["credit"] = {}
-			lines.append("Kredi kapandı; ipotek kalktı.")
-	# jobs: material tranches every 6 months, delivery pays revenue
-	var remaining: Array = []
-	for job in state["accepted"]:
-		job["elapsed"] = int(job["elapsed"]) + 1
-		if int(job["elapsed"]) % 6 == 0 and float(job["material_left"]) > 0.0 and int(job["elapsed"]) < int(job["months"]):
-			var tranche: float = minf(float(job["material_left"]), float(job["material_tranche"]))
-			state["cash"] = float(state["cash"]) - tranche
-			job["material_left"] = float(job["material_left"]) - tranche
-			lines.append("Hammadde dilimi: %s (%s)" % [Data.usd(tranche), job["title"]])
-		if int(job["elapsed"]) >= int(job["months"]):
-			state["cash"] = float(state["cash"]) + float(job["revenue"])
-			lines.append("Teslim: %s (+%s)" % [job["title"], Data.usd(float(job["revenue"]))])
-			for machine in state["machines"]:
-				if int(machine["job"]) == int(job["id"]):
-					machine["job"] = 0
-		else:
-			remaining.append(job)
-	state["accepted"] = remaining
-	state["months_left"] = int(state["months_left"]) - 1
-	if int(state["months_left"]) <= 0:
-		state["months_left"] = int(state["term"])
-		lines.append("Sözleşme aynı koşulla yenilendi.")
-	state["month"] = month + 1
-	state["offers"] = Data.generate_offers(int(state["month"]))
-	for machine in state["machines"]:
-		if int(machine["arrive"]) == int(state["month"]):
-			lines.append("Teslim alındı: %s · %d personel işe başladı" % [machine["model"], machine["personnel"]])
-	state["last_report"] = "Mock rapor (kurallar bağlı değil)\n" + "\n".join(lines)
+func _page_end() -> void:
+	var outcome := {"survived": "Fabrika test süresince ayakta kaldı.", "forced": "Zorunlu kapanış: tasfiye borcu kapattı, iflas değil.", "bankrupt": "Zorunlu kapanış ve iflas: tasfiyeden sonra borç kaldı."}
+	var box := _card(content, "Kapanış raporu", GOLD, true)
+	box.add_child(_label(outcome.get(game.closure.get("type", ""), "Oyun bitti."), 18, TEXT))
+	box.add_child(_label("Son kasa %s · borç %s · makine %d" % [Data.usd(float(game.cash)), Data.usd(float(game.debt)), game.machines.size()], 14, MUTED))
+	for lesson in game.lessons():
+		box.add_child(_label("• " + lesson, 13, TEXT))
+	box.add_child(_button("Yeniden başla", _restart, true, false, true))
+
+func _restart() -> void:
+	_reset_state()
+	page = "ozet"
+	detail = ""
 	_render()
 
 # ------------------------------------------------------------------ İşler
 
 func _page_isler() -> void:
-	if state["factory_id"] == "":
+	if game.factory_id == "":
 		_locked("İş teklifleri fabrikan olunca açılır.")
 		return
-	var offers: Array = state["offers"]
-	var taken: Array = []
-	for job in state["accepted"]:
-		taken.append(job["id"])
 	var doable := 0
-	for offer in offers:
-		if _assign(offer["reqs"])["ok"] and state["package"]:
+	for offer in game.offers:
+		if game.accept_block_reason(offer["id"]) == "":
 			doable += 1
 	_chips(content, [
-		{"id": "tum", "title": "Tümü (%d)" % offers.size()},
+		{"id": "tum", "title": "Tümü (%d)" % game.offers.size()},
 		{"id": "yapabilir", "title": "Yapabileceklerim (%d)" % doable},
-		{"id": "kabul", "title": "Kabul edilenler (%d)" % state["accepted"].size()}],
+		{"id": "kabul", "title": "Kabul edilenler (%d)" % game.jobs.size()}],
 		subtab["isler"], func(id: String) -> void:
 			subtab["isler"] = id
 			_render())
 	var box := _card(content, "Makineler")
-	var free := _free_machines().size()
-	box.add_child(_bar(_delivered().size() - free, maxi(1, _delivered().size())))
-	box.add_child(_label("%d makine işte, %d boşta · zorunlu ekipman: %s" % [_delivered().size() - free, free, "tamam" if state["package"] else "EKSİK"], 13, MUTED if state["package"] else RED))
+	var delivered: int = game.delivered().size()
+	var free: int = game.free_machines().size()
+	box.add_child(_bar(delivered - free, maxi(1, delivered)))
+	box.add_child(_label("%d makine işte, %d boşta · zorunlu ekipman: %s" % [delivered - free, free, "tamam" if game.package_bought else "EKSİK"], 13, MUTED if game.package_bought else RED))
+	if game.phase != "offers":
+		content.add_child(_label("İş kabulü ay başında, rapor açılmadan önce yapılır.", 12, GOLD))
 	if subtab["isler"] == "kabul":
-		if state["accepted"].is_empty():
+		if game.jobs.is_empty():
 			content.add_child(_label("Henüz kabul edilmiş iş yok.", 14, MUTED))
-		for job in state["accepted"]:
+		for job in game.jobs:
 			var card := _card(content, job["title"], GREEN)
 			_row(card, "Müşteri", job["customer"])
 			_row(card, "Kalan süre", "%d ay" % (int(job["months"]) - int(job["elapsed"])))
-			_row(card, "Gelir (tesliminde)", Data.usd(float(job["revenue"])), GREEN)
+			_row(card, "Gelir (tesliminde, verimle)", Data.usd(float(job["revenue"])), GREEN)
 			_row(card, "Ayrılan makine", str(job["uids"].size()))
 		return
-	for offer in offers:
-		if taken.has(offer["id"]):
+	for offer in game.offers:
+		var reason: String = game.accept_block_reason(offer["id"])
+		if subtab["isler"] == "yapabilir" and reason != "":
 			continue
-		var fits: bool = bool(_assign(offer["reqs"])["ok"]) and bool(state["package"])
-		if subtab["isler"] == "yapabilir" and not fits:
-			continue
-		_offer_card(offer)
+		_offer_card(offer, reason)
 
-func _offer_card(offer: Dictionary) -> void:
-	var check := _assign(offer["reqs"])
-	var box := _card(content, offer["title"], GREEN if check["ok"] else BORDER)
+func _offer_card(offer: Dictionary, reason: String) -> void:
+	var box := _card(content, offer["title"], GREEN if reason == "" else BORDER)
 	box.add_child(_label(offer["customer"], 12, MUTED))
+	var first := true
 	for req in offer["reqs"]:
-		var own := _own_count(req)
+		var own: int = game.owned_count(req)
 		var enough: bool = own >= int(req["count"])
-		_row(box, "Gereken makine" if req == offer["reqs"][0] else "", "%s  %s" % [Data.req_text(req), "✔" if enough else "(%d var)" % own], TEXT if enough else RED)
+		_row(box, "Gereken makine" if first else "", "%s  %s" % [Data.req_text(req), "✔" if enough else "(%d var)" % own], TEXT if enough else RED)
+		first = false
 	_row(box, "Süre", "%d ay" % offer["months"])
 	_row(box, "Gelir", Data.usd(float(offer["revenue"])), GREEN)
 	_row(box, "Hammadde maliyeti (%%%d)" % int(roundf(float(offer["share"]) * 100.0)), Data.usd(float(offer["material"])))
-	var first := _first_payment(offer)
-	if first < float(offer["material"]):
-		box.add_child(_label("Kabulde %s düşer; kalanı her 6 ayın başında." % Data.usd(first), 12, GOLD))
+	var payment: float = game.first_payment(offer)
+	if payment < float(offer["material"]):
+		box.add_child(_label("Kabulde %s düşer; kalanı her 6 ayın başında." % Data.usd(payment), 12, GOLD))
 	else:
 		box.add_child(_label("Hammadde kabulde düşer.", 12, GOLD))
-	var reason := ""
-	if not state["package"]:
-		reason = "Zorunlu ekipman eksik"
-	elif not check["ok"]:
-		reason = "Eksik: " + ", ".join(check["missing"])
-	elif first > float(state["cash"]):
-		reason = "Yetersiz nakit"
 	box.add_child(_button("Kabul et" if reason == "" else reason, _ask_accept.bind(offer["id"]), reason == "", reason != ""))
 
-func _own_count(req: Dictionary) -> int:
-	var count := 0
-	for machine in _delivered():
-		if machine["type"] == req["type"] and int(machine["level"]) >= int(req["level"]):
-			count += 1
-	return count
-
-# Material for the first 6 months is paid on acceptance; jobs of 6 months or less pay in full.
-func _first_payment(offer: Dictionary) -> float:
-	var months: int = offer["months"]
-	if months <= 6:
-		return float(offer["material"])
-	return roundf(float(offer["material"]) * 6.0 / float(months))
-
 func _ask_accept(id: int) -> void:
-	var offer := _offer_by_id(id)
+	var offer: Dictionary = game.offer_by_id(id)
 	if offer.is_empty():
 		return
 	var reqs_text: Array = []
@@ -684,40 +628,20 @@ func _ask_accept(id: int) -> void:
 	_confirm("İşi kabul et", [
 		offer["title"] + " · " + offer["customer"],
 		"Ayrılacak makineler: " + ", ".join(reqs_text),
-		"Kabulde bakiyeden düşen hammadde: %s" % Data.usd(_first_payment(offer)),
-		"Gelir tesliminde yazılır: %s (%d ay)" % [Data.usd(float(offer["revenue"])), offer["months"]]
+		"Kabulde bakiyeden düşen hammadde: %s" % Data.usd(game.first_payment(offer)),
+		"Gelir tesliminde yazılır: %s (%d ay), üretim verimiyle orantılı" % [Data.usd(float(offer["revenue"])), offer["months"]]
 	], "Kabul et", _accept_offer.bind(id))
 
-func _offer_by_id(id: int) -> Dictionary:
-	for offer in state["offers"]:
-		if offer["id"] == id:
-			return offer
-	return {}
-
 func _accept_offer(id: int) -> void:
-	var offer := _offer_by_id(id)
-	if offer.is_empty():
-		return
-	var check := _assign(offer["reqs"])
-	if not check["ok"] or not state["package"]:
-		return
-	var first := _first_payment(offer)
-	state["cash"] = float(state["cash"]) - first
-	var job: Dictionary = offer.duplicate(true)
-	job["elapsed"] = 0
-	job["uids"] = check["uids"]
-	job["material_left"] = float(offer["material"]) - first
-	job["material_tranche"] = roundf(float(offer["material"]) * 6.0 / float(offer["months"]))
-	for machine in state["machines"]:
-		if check["uids"].has(machine["uid"]):
-			machine["job"] = job["id"]
-	state["accepted"].append(job)
+	var result: String = game.accept_offer(id)
+	if result != "":
+		_say(result)
 	_render()
 
 # ------------------------------------------------------------------ Tezgah
 
 func _page_tezgah() -> void:
-	if state["factory_id"] == "":
+	if game.factory_id == "":
 		_locked("Tezgah almak için önce bir yer kiralamalısın; makineler alan tüketir.")
 		return
 	_build_area_bar()
@@ -730,20 +654,20 @@ func _page_tezgah() -> void:
 		_page_equipment()
 		return
 	var type_options: Array = [{"id": "Tümü", "title": "Tümü"}]
-	for type in Data.TYPES:
-		type_options.append({"id": type, "title": type})
+	for kind in Data.TYPES:
+		type_options.append({"id": kind, "title": kind})
 	_chips(content, type_options, type_filter, func(id: String) -> void:
 		type_filter = id
 		selected_listing = -1
 		_render())
 	for listing in Data.machine_listings():
-		if type_filter != "Tümü" and listing["type"] != type_filter:
+		if type_filter != "Tümü" and listing["kind"] != type_filter:
 			continue
 		_machine_card(listing)
 	_update_area_preview()
 
 func _build_area_bar() -> void:
-	var factory := _factory()
+	var factory: Dictionary = game.factory()
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", _box(Color("#151d26"), BORDER, 0, 0))
 	var box := VBoxContainer.new()
@@ -755,7 +679,7 @@ func _build_area_bar() -> void:
 	stack.custom_minimum_size = Vector2(0, 12)
 	area_preview_bar = _bar(0, float(factory["m2"]), YELLOW)
 	area_preview_bar.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	area_used_bar = _bar(_area_used(), float(factory["m2"]), GREEN)
+	area_used_bar = _bar(game.area_used(), float(factory["m2"]), GREEN)
 	area_used_bar.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	area_used_bar.add_theme_stylebox_override("background", StyleBoxEmpty.new())
 	stack.add_child(area_preview_bar)
@@ -768,15 +692,15 @@ func _build_area_bar() -> void:
 func _update_area_preview(hover_area := -1.0) -> void:
 	if area_label == null:
 		return
-	var factory := _factory()
+	var factory: Dictionary = game.factory()
 	var extra := hover_area
 	if extra < 0.0:
 		extra = 0.0
 		if selected_listing >= 0:
-			for listing in Data.machine_listings():
-				if listing["uid"] == selected_listing:
-					extra = float(listing["area"])
-	var used := _area_used()
+			var chosen: Dictionary = game.listing_by_uid(selected_listing)
+			if not chosen.is_empty():
+				extra = float(chosen["area"])
+	var used: float = game.area_used()
 	area_used_bar.value = used
 	area_preview_bar.value = used + extra
 	var text := "Alan: %d / %d m² kullanılıyor · tavan %.1f m" % [int(used), factory["m2"], factory["height"]]
@@ -790,10 +714,10 @@ func _machine_card(listing: Dictionary) -> void:
 	var box := _card(content, "", GOLD if selected else BORDER, true)
 	var panel := _panel_of(box)
 	listing_cards[listing["uid"]] = panel
-	box.add_child(_image_slot("machines", "%s_%d" % [String(listing["type"]).to_lower(), listing["level"]], Color("#26313d")))
+	box.add_child(_image_slot("machines", "%s_%d" % [String(listing["kind"]).to_lower(), listing["level"]], Color("#26313d")))
 	box.add_child(_label(listing["model"], 22, TEXT))
 	var age_text := "Yeni (sıfır)" if int(listing["age"]) == 0 else "İkinci el · %d yaşında" % listing["age"]
-	box.add_child(_label("%s · %s · %s" % [listing["type"], Data.LEVELS[int(listing["level"])], age_text], 15, MUTED))
+	box.add_child(_label("%s · %s · %s" % [listing["kind"], Data.LEVELS[int(listing["level"])], age_text], 15, MUTED))
 	if float(listing["discount"]) > 0.0:
 		box.add_child(_rich("[s][color=#93a3b3]%s[/color][/s]  [color=#3ddc84][b]%s[/b][/color]  [color=#eac47a](-%%%d)[/color]" % [
 			Data.usd(float(listing["base_price"])), Data.usd(float(listing["price"])), int(roundf(float(listing["discount"]) * 100.0))], 22))
@@ -805,14 +729,7 @@ func _machine_card(listing: Dictionary) -> void:
 	_row(box, "Personel", "%d kişi (teslimde işe başlar)" % listing["personnel"], TEXT, 16)
 	_row(box, "Teslim", "%d ay" % listing["delivery"], TEXT, 16)
 	_row(box, "Bakım riski (yaş)", Data.maintenance_risk(int(listing["age"])), TEXT, 16)
-	var factory := _factory()
-	var reason := ""
-	if float(listing["price"]) > float(state["cash"]):
-		reason = "Yetersiz nakit"
-	elif _area_used() + float(listing["area"]) > float(factory["m2"]):
-		reason = "Alan yetmiyor"
-	elif float(listing["height"]) > float(factory["height"]):
-		reason = "Tavan çok alçak"
+	var reason: String = game.listing_block_reason(listing["uid"])
 	box.add_child(_button("Satın al" if reason == "" else reason, _ask_buy.bind(listing["uid"]), reason == "", reason != "", true))
 	panel.mouse_entered.connect(func() -> void: _update_area_preview(float(listing["area"])))
 	panel.mouse_exited.connect(func() -> void: _update_area_preview())
@@ -826,19 +743,13 @@ func _on_card_input(event: InputEvent, uid: int) -> void:
 			panel.add_theme_stylebox_override("panel", _box(Color(PANEL.r, PANEL.g, PANEL.b, 0.94), GOLD if id == uid else BORDER, 14, 2))
 		_update_area_preview()
 
-func _listing_by_uid(uid: int) -> Dictionary:
-	for listing in Data.machine_listings():
-		if listing["uid"] == uid:
-			return listing
-	return {}
-
 func _ask_buy(uid: int) -> void:
-	var listing := _listing_by_uid(uid)
+	var listing: Dictionary = game.listing_by_uid(uid)
 	if listing.is_empty():
 		return
-	var arrive: int = int(state["month"]) + int(listing["delivery"])
+	var arrive: int = int(game.month) + int(listing["delivery"])
 	_confirm("Satın alma onayı", [
-		"%s · %s %s" % [listing["model"], Data.LEVELS[int(listing["level"])], listing["type"]],
+		"%s · %s %s" % [listing["model"], Data.LEVELS[int(listing["level"])], listing["kind"]],
 		"Ödeme şimdi: %s" % Data.usd(float(listing["price"])),
 		"Teslim: %d ay sonra (%s). Teslime kadar kapasite artmaz." % [listing["delivery"], Data.month_label(arrive)],
 		"Teslimde %d personel otomatik işe başlar (kişi başı %s/ay)." % [listing["personnel"], Data.usd(Data.WAGE)],
@@ -847,51 +758,34 @@ func _ask_buy(uid: int) -> void:
 	], "Satın al", _buy.bind(uid))
 
 func _buy(uid: int) -> void:
-	var listing := _listing_by_uid(uid)
-	if listing.is_empty():
-		return
-	state["cash"] = float(state["cash"]) - float(listing["price"])
-	var machine: Dictionary = listing.duplicate()
-	machine["uid"] = state["next_uid"]
-	machine["paid"] = float(listing["price"])
-	machine["bought"] = state["month"]
-	machine["arrive"] = int(state["month"]) + int(listing["delivery"])
-	machine["job"] = 0
-	machine["mortgaged"] = false
-	state["next_uid"] = int(state["next_uid"]) + 1
-	state["machines"].append(machine)
+	var result: String = game.buy_listing(uid)
+	if result != "":
+		_say(result)
 	selected_listing = -1
 	_render()
 
 # ------------------------------------------------------------------ Ekipman
 
 func _page_equipment() -> void:
-	var factory := _factory()
-	var package := _package()
-	var box := _card(content, "Zorunlu ekipman paketi" + (" ✔" if state["package"] else ""), GREEN if state["package"] else GOLD, true)
-	box.add_child(_label("%s fabrika için: üretim yapabilmek şart. Eksikse kapasite kullanılamaz." % Data.size_class(int(factory["m2"])).capitalize(), 14, MUTED))
+	var package: Dictionary = game.package_info()
+	var box := _card(content, "Zorunlu ekipman paketi" + (" ✔" if game.package_bought else ""), GREEN if game.package_bought else GOLD, true)
+	box.add_child(_label("Üretim yapabilmek için şart. Eksikse kapasite kullanılamaz.", 14, MUTED))
 	for id in package["items"]:
 		var item: Dictionary = Data.EQUIPMENT[id]
 		_row(box, "%s × %d" % [item["name"], package["items"][id]], Data.usd(float(item["price"]) * int(package["items"][id])), TEXT, 15)
 	_row(box, "Alan", "%d m²" % int(package["area"]), TEXT, 15)
 	_row(box, "Paket fiyatı", Data.usd(float(package["price"])), GREEN, 17)
-	var reason := ""
-	if state["package"]:
-		reason = "Paket alındı"
-	elif float(package["price"]) > float(state["cash"]):
-		reason = "Yetersiz nakit"
-	elif _area_used() + float(package["area"]) > float(factory["m2"]):
-		reason = "Alan yetmiyor"
+	var reason: String = game.package_block_reason()
 	box.add_child(_button("Paketi satın al" if reason == "" else reason, _ask_package, reason == "", reason != "", true))
 	content.add_child(_label("İsteğe bağlı ekipman", 20, TEXT))
 	content.add_child(_label("Kesici uç ve takım sarfı tezgahın aylık işletme giderine dahildir.", 12, MUTED))
 	for id in Data.OPTIONAL_ORDER:
-		_equipment_card(id, factory)
+		_equipment_card(id)
 
-func _equipment_card(id: String, factory: Dictionary) -> void:
+func _equipment_card(id: String) -> void:
 	var item: Dictionary = Data.EQUIPMENT[id]
 	var qty: int = equip_qty.get(id, 1)
-	var box := _card(content, "%s  (sahip: %d)" % [item["name"], state["equip"].get(id, 0)], BORDER, true)
+	var box := _card(content, "%s  (sahip: %d)" % [item["name"], game.equip.get(id, 0)], BORDER, true)
 	box.add_child(_label(item["note"], 13, MUTED))
 	_row(box, "Birim fiyat", Data.usd(float(item["price"])), TEXT, 16)
 	_row(box, "Alan / adet", "%.1f m²" % float(item["area"]) if float(item["area"]) > 0.0 else "Alan tüketmez", TEXT, 16)
@@ -904,29 +798,21 @@ func _equipment_card(id: String, factory: Dictionary) -> void:
 	stepper.add_child(count)
 	stepper.add_child(_button("+", _change_qty.bind(id, 1)))
 	box.add_child(stepper)
-	var total_price := float(item["price"]) * qty
-	var total_area := float(item["area"]) * qty
-	var reason := ""
-	if item.has("min_height") and float(factory["height"]) < float(item["min_height"]):
-		reason = "Tavan çok alçak"
-	elif total_price > float(state["cash"]):
-		reason = "Yetersiz nakit"
-	elif _area_used() + total_area > float(factory["m2"]):
-		reason = "Alan yetmiyor"
-	box.add_child(_button("Satın al · %s" % Data.usd(total_price) if reason == "" else reason, _ask_equipment.bind(id), reason == "", reason != "", true))
+	var reason: String = game.equipment_block_reason(id, qty)
+	box.add_child(_button("Satın al · %s" % Data.usd(float(item["price"]) * qty) if reason == "" else reason, _ask_equipment.bind(id), reason == "", reason != "", true))
 
 func _change_qty(id: String, delta: int) -> void:
 	equip_qty[id] = maxi(1, int(equip_qty.get(id, 1)) + delta)
 	_render()
 
 func _ask_package() -> void:
-	var package := _package()
+	var package: Dictionary = game.package_info()
 	_confirm("Zorunlu paketi al", ["Ödeme: %s" % Data.usd(float(package["price"])), "Kaplanan alan: %d m²" % int(package["area"])], "Satın al", _buy_package)
 
 func _buy_package() -> void:
-	state["cash"] = float(state["cash"]) - float(_package()["price"])
-	state["invested"] = float(state["invested"]) + float(_package()["price"])
-	state["package"] = true
+	var result: String = game.buy_package()
+	if result != "":
+		_say(result)
 	_render()
 
 func _ask_equipment(id: String) -> void:
@@ -935,24 +821,25 @@ func _ask_equipment(id: String) -> void:
 	_confirm("Ekipman satın al", ["%s × %d" % [item["name"], qty], "Ödeme: %s" % Data.usd(float(item["price"]) * qty)], "Satın al", _buy_equipment.bind(id, qty))
 
 func _buy_equipment(id: String, qty: int) -> void:
-	state["cash"] = float(state["cash"]) - float(Data.EQUIPMENT[id]["price"]) * qty
-	state["equip"][id] = int(state["equip"].get(id, 0)) + qty
+	var result: String = game.buy_equipment(id, qty)
+	if result != "":
+		_say(result)
 	equip_qty[id] = 1
 	_render()
 
 # ------------------------------------------------------------------ Fabrika
 
 func _page_fabrika() -> void:
-	if state["factory_id"] != "":
-		var factory := _factory()
+	if game.factory_id != "":
+		var factory: Dictionary = game.factory()
 		var box := _card(content, "Kiraladığın yer", GREEN, true)
 		box.add_child(_image_slot("factories", factory["id"], factory["tint"]))
 		_row(box, "Fabrika", factory["name"], TEXT, 16)
 		_row(box, "Alan / yükseklik", "%d m² · %.1f m" % [factory["m2"], factory["height"]], TEXT, 16)
-		_row(box, "Aylık kira", Data.usd(_base_rent()), TEXT, 16)
-		_row(box, "Sözleşme", "%d ay · %d ay kaldı" % [state["term"], state["months_left"]], TEXT, 16)
-		if int(state["prepaid_months"]) > 0:
-			_row(box, "Peşin ödenmiş kira", "%d ay" % state["prepaid_months"], GREEN, 16)
+		_row(box, "Aylık kira", Data.usd(game.base_rent()), TEXT, 16)
+		_row(box, "Sözleşme", "%d ay · %d ay kaldı" % [game.term, game.months_left], TEXT, 16)
+		if int(game.prepaid_months) > 0:
+			_row(box, "Peşin ödenmiş kira", "%d ay" % game.prepaid_months, GREEN, 16)
 		box.add_child(_button("Sözleşmeyi bırak", _open_detail.bind("leave"), false, false, true))
 		content.add_child(_label("İlk dilimde tek fabrika var; başka bir yer için önce bu sözleşme bırakılır.", 12, MUTED))
 		return
@@ -966,13 +853,6 @@ func _page_fabrika() -> void:
 		_row(box, "Aylık kira (12 ay)", Data.usd(float(factory["rent"])), GREEN, 18)
 		box.add_child(_button("İncele", _open_detail.bind("factory", factory["id"]), true, false, true))
 
-func _prepay_quote(factory: Dictionary, months: int) -> Dictionary:
-	var term := Data.term_by_months(months)
-	var rent := roundf(float(factory["rent"]) * float(term["factor"]))
-	var half := months / 2
-	var discount := float(term["prepay_discount"])
-	return {"rent": rent, "half": half, "discount": discount, "amount": snappedf(rent * half * (1.0 - discount), 0.01)}
-
 # ------------------------------------------------------------------ Profil
 
 func _page_profil() -> void:
@@ -980,9 +860,11 @@ func _page_profil() -> void:
 	for name in BossState.SKILLS:
 		var row := HBoxContainer.new()
 		row.add_child(_label(name, 13, MUTED))
-		row.add_child(_label(str(state["skills"][name]), 13, TEXT, false))
+		var effective: int = game.effective_skill(name)
+		var own: int = game.skills[name]
+		row.add_child(_label(str(own) if effective == own else "%d → %d (danışman)" % [own, effective], 13, TEXT if effective == own else GREEN, false))
 		skills.add_child(row)
-		skills.add_child(_bar(float(state["skills"][name]), 100.0))
+		skills.add_child(_bar(float(effective), 100.0))
 	var stats := _card(content, "Statlar")
 	for stat in Data.STATS_LIST:
 		_row(stats, stat, "—")
@@ -1011,8 +893,7 @@ func _render_detail() -> void:
 			_detail_leave()
 		"consultant":
 			title.text = "  Danışman Ara"
-			var box := _card(content)
-			box.add_child(_label("Danışman pazarı (FRZ-006 v2) burada açılacak.", 14, MUTED))
+			_detail_consultants()
 		"credit":
 			title.text = "  Kredi"
 			_detail_credit()
@@ -1042,7 +923,7 @@ func _detail_factory(factory: Dictionary) -> void:
 		button.add_theme_stylebox_override("normal", _box(GREEN_DIM if chosen else PANEL_ALT, GREEN if chosen else BORDER, 10, 2 if chosen else 1))
 		button.pressed.connect(_pick_term.bind(term["months"]))
 		row.add_child(button)
-	var quote := _prepay_quote(factory, picked_term)
+	var quote: Dictionary = game.prepay_quote(factory["id"], picked_term)
 	var prepay := CheckBox.new()
 	prepay.text = "İlk %d ayın kirasını peşin öde (%%%d indirim)" % [quote["half"], int(roundf(float(quote["discount"]) * 100.0))]
 	prepay.add_theme_font_size_override("font_size", 15)
@@ -1051,8 +932,10 @@ func _detail_factory(factory: Dictionary) -> void:
 	terms.add_child(prepay)
 	if picked_prepay:
 		terms.add_child(_label("Şimdi ödenecek: %s" % Data.usd(float(quote["amount"])), 15, GREEN))
-	var due := float(quote["amount"]) if picked_prepay else 0.0
-	content.add_child(_button("Kirala", _ask_rent.bind(factory["id"]), true, due > float(state["cash"]), true))
+	var reason: String = game.rent_block_reason(factory["id"], picked_term, picked_prepay)
+	if reason != "":
+		content.add_child(_label(reason, 13, RED))
+	content.add_child(_button("Kirala", _ask_rent.bind(factory["id"]), true, reason != "", true))
 
 func _pick_term(months: int) -> void:
 	picked_term = months
@@ -1064,7 +947,7 @@ func _toggle_prepay(on: bool) -> void:
 
 func _ask_rent(id: String) -> void:
 	var factory := Data.factory_by_id(id)
-	var quote := _prepay_quote(factory, picked_term)
+	var quote: Dictionary = game.prepay_quote(id, picked_term)
 	var lines: Array = [
 		"%s · %d m² · %.1f m" % [factory["name"], factory["m2"], factory["height"]],
 		"Aylık kira: %s · sözleşme %d ay" % [Data.usd(float(quote["rent"])), picked_term]
@@ -1075,65 +958,89 @@ func _ask_rent(id: String) -> void:
 		"Sözleşmeyi erken bırakırsan %d kira (%s) ceza ödersin." % [Data.EXIT_FEE_RENTS, Data.usd(float(quote["rent"]) * Data.EXIT_FEE_RENTS)])
 
 func _rent_factory(id: String) -> void:
-	var factory := Data.factory_by_id(id)
-	var quote := _prepay_quote(factory, picked_term)
-	state["factory_id"] = id
-	state["term"] = picked_term
-	state["months_left"] = picked_term
-	state["prepaid_months"] = 0
-	if picked_prepay:
-		state["cash"] = float(state["cash"]) - float(quote["amount"])
-		state["prepaid_months"] = int(quote["half"])
+	var result: String = game.rent_factory(id, picked_term, picked_prepay)
+	if result != "":
+		_say(result)
+		_render()
+		return
 	detail = ""
 	page = "ozet"
+	subtab["ozet"] = "genel"
 	_render()
 
 func _detail_leave() -> void:
-	var fee := _base_rent() * Data.EXIT_FEE_RENTS
+	var fee: float = game.leave_fee()
+	var reason: String = game.leave_block_reason()
 	var box := _card(content, "Emin misin?", GOLD)
-	box.add_child(_label("Sözleşmeyi erken bırakırsan %d kira (%s) ceza ödersin; peşin ödenen kira iade edilmez. Makineler ve kabul edilmiş işler bu mock'ta silinir." % [Data.EXIT_FEE_RENTS, Data.usd(fee)], 14, TEXT))
+	box.add_child(_label("Sözleşmeyi erken bırakırsan %d kira (%s) ceza ödersin; peşin ödenen kira iade edilmez. Makineler, ekipman ve kabul edilmiş işler kaybolur." % [Data.EXIT_FEE_RENTS, Data.usd(fee)], 14, TEXT))
+	if reason != "":
+		box.add_child(_label(reason, 13, RED))
 	box.add_child(_button("Vazgeç", _back))
-	box.add_child(_button("Bırak ve %s öde" % Data.usd(fee), _leave_factory.bind(fee), true, fee > float(state["cash"])))
+	box.add_child(_button("Bırak ve %s öde" % Data.usd(fee), _leave_factory, true, reason != "" or fee > float(game.cash)))
 
-func _leave_factory(fee: float) -> void:
-	state["cash"] = float(state["cash"]) - fee
-	state["factory_id"] = ""
-	state["machines"] = []
-	state["accepted"] = []
-	state["package"] = false
-	state["equip"] = {}
-	state["prepaid_months"] = 0
-	state["credit"] = {}
+func _leave_factory() -> void:
+	var result: String = game.leave_factory()
+	if result != "":
+		_say(result)
 	detail = ""
 	page = "fabrika"
+	_render()
+
+# ------------------------------------------------------------------ Danışman
+
+func _detail_consultants() -> void:
+	var head := _card(content, "Danışmanlar · en fazla %d" % BossState.MAX_CONSULTANTS, BORDER)
+	head.add_child(_label("Etkin yetkinlik = max(patron, danışman); bilgi patrona kalıcı geçmez. Danışman ay raporundan sonra tutulur.", 12, MUTED))
+	for consultant in game.consultants:
+		head.add_child(_label("✓ %s · %s · kalan %d ay" % [consultant["name"], _scores(consultant["scores"]), consultant["months_left"]], 14, GREEN))
+	if game.phase != "report":
+		content.add_child(_label("Adaylar rapor açıldığında görünür.", 13, GOLD))
+	for index in game.candidates.size():
+		var candidate: Dictionary = game.candidates[index]
+		var reason: String = game.hire_block_reason(index)
+		var card := _card(content, candidate["name"], BORDER)
+		card.add_child(_label(_scores(candidate["scores"]), 13, MUTED))
+		_row(card, "Sözleşme", "%d ay · %s" % [BossState.CONSULTANT_MONTHS, Data.usd(float(candidate["total"]))])
+		card.add_child(_button("Tut" if reason == "" else reason, _hire.bind(index), reason == "", reason != ""))
+
+func _scores(scores: Dictionary) -> String:
+	var parts: Array = []
+	for key in scores:
+		parts.append("%s %d" % [key, scores[key]])
+	return ", ".join(parts)
+
+func _hire(index: int) -> void:
+	game.hire(index)
+	_say(game.notice)
 	_render()
 
 # ------------------------------------------------------------------ Kredi
 
 func _detail_credit() -> void:
+	var crisis := _card(content, "Kriz kredisi", BORDER)
+	crisis.add_child(_label("Tek seferlik, teminatsız. Kasayı ve borcu aynı tutarda artırır; borç açığını tek başına düzeltmez (FRZ-003 v2).", 12, MUTED))
+	crisis.add_child(_button("Kriz kredisi al · %s" % Data.usd(BossState.CREDIT_AMOUNT), _take_crisis, false, game.credit_used or (game.phase != "offers" and game.phase != "report")))
 	var offer: Dictionary = Data.CREDIT
-	var credit: Dictionary = state["credit"]
-	if not credit.is_empty():
-		_credit_active(credit)
+	if not game.loan.is_empty():
+		_credit_active(game.loan)
 		return
-	var installment := Data.installment(float(offer["amount"]), float(offer["rate"]), int(offer["months"]))
-	var need := float(offer["amount"]) * float(offer["collateral"])
+	var terms: Dictionary = game.loan_terms()
 	var box := _card(content, offer["bank"], BORDER, true)
 	_row(box, "Kredi tutarı", Data.usd(float(offer["amount"])), GREEN, 18)
 	_row(box, "Faiz", "%%%.1f / ay" % (float(offer["rate"]) * 100.0), TEXT, 16)
 	_row(box, "Vade", "%d ay" % offer["months"], TEXT, 16)
-	_row(box, "Aylık taksit", Data.usd(installment), TEXT, 16)
-	_row(box, "Gereken teminat", "%s değerinde ipotek (%%%d)" % [Data.usd(need), int(float(offer["collateral"]) * 100.0)], GOLD, 16)
+	_row(box, "Aylık taksit", Data.usd(float(terms["installment"])), TEXT, 16)
+	_row(box, "Gereken teminat", "%s değerinde ipotek (%%%d)" % [Data.usd(float(terms["need"])), int(float(offer["collateral"]) * 100.0)], GOLD, 16)
 	_row(box, "Erken kapatma cezası", "kalan anaparanın %%%d'si" % int(float(offer["early_fee"]) * 100.0), TEXT, 16)
 	box.add_child(_label("Teminat olarak teslim alınmış ve ipoteksiz makineler gösterilir; değer güncel piyasa değeridir. İpotekli makine satılamaz.", 12, MUTED))
 	var pick := _card(content, "Teminat seç", BORDER, true)
 	var total := 0.0
 	var any := false
-	for machine in _delivered():
+	for machine in game.delivered():
 		if machine["mortgaged"]:
 			continue
 		any = true
-		var value := _current_value(machine)
+		var value: float = game.current_value(machine)
 		var check := CheckBox.new()
 		check.text = "%s · %s" % [machine["model"], Data.usd(value)]
 		check.add_theme_font_size_override("font_size", 15)
@@ -1145,21 +1052,25 @@ func _detail_credit() -> void:
 	if not any:
 		pick.add_child(_label("İpoteklenebilir makine yok (teslim alınmış tezgah gerekir).", 13, MUTED))
 	pick.add_child(_label("Bina (satın alma yakında) — kilitli", 13, MUTED))
-	_row(pick, "Seçilen teminat", Data.usd(total), GREEN if total >= need else RED, 16)
-	content.add_child(_button("Krediyi al" if total >= need else "Teminat yetersiz (%s gerek)" % Data.usd(need), _ask_credit, true, total < need, true))
-	content.add_child(_label("Kriz kredisi (tek seferlik, teminatsız) ayrı bir araçtır; sonra bağlanacak.", 12, MUTED))
+	_row(pick, "Seçilen teminat", Data.usd(total), GREEN if total >= float(terms["need"]) else RED, 16)
+	var reason: String = game.loan_block_reason(collateral_picks)
+	content.add_child(_button("Krediyi al" if reason == "" else reason, _ask_loan, true, reason != "", true))
 
 func _credit_active(credit: Dictionary) -> void:
 	var offer: Dictionary = Data.CREDIT
-	var fee := float(credit["balance"]) * float(offer["early_fee"])
 	var box := _card(content, offer["bank"] + " · aktif kredi", GOLD, true)
 	_row(box, "Kalan anapara", Data.usd(float(credit["balance"])), TEXT, 16)
 	_row(box, "Aylık taksit", Data.usd(float(credit["installment"])), TEXT, 16)
 	_row(box, "Kalan vade", "%d ay" % credit["left"], TEXT, 16)
 	_row(box, "İpotekli makine", str(credit["uids"].size()), TEXT, 16)
-	_row(box, "Erken kapatma cezası", Data.usd(fee), GOLD, 16)
-	var total_due := float(credit["balance"]) + fee
-	box.add_child(_button("Erken kapat · %s" % Data.usd(total_due), _ask_close_credit, false, total_due > float(state["cash"]), true))
+	_row(box, "Erken kapatma cezası", Data.usd(float(credit["balance"]) * float(offer["early_fee"])), GOLD, 16)
+	var total_due: float = game.loan_close_cost()
+	box.add_child(_button("Erken kapat · %s" % Data.usd(total_due), _ask_close_loan, false, total_due > float(game.cash), true))
+
+func _take_crisis() -> void:
+	game.take_credit()
+	_say(game.notice)
+	_render()
 
 func _toggle_collateral(on: bool, uid: int) -> void:
 	if on and not collateral_picks.has(uid):
@@ -1168,38 +1079,31 @@ func _toggle_collateral(on: bool, uid: int) -> void:
 		collateral_picks.erase(uid)
 	_render()
 
-func _ask_credit() -> void:
+func _ask_loan() -> void:
 	var offer: Dictionary = Data.CREDIT
-	var installment := Data.installment(float(offer["amount"]), float(offer["rate"]), int(offer["months"]))
+	var terms: Dictionary = game.loan_terms()
 	_confirm("Kredi onayı", [
 		"%s · %s · %d ay · %%%.1f/ay" % [offer["bank"], Data.usd(float(offer["amount"])), offer["months"], float(offer["rate"]) * 100.0],
-		"Aylık taksit: %s" % Data.usd(installment),
+		"Aylık taksit: %s" % Data.usd(float(terms["installment"])),
 		"İpotek: %d makine (kredi kapanana kadar satılamaz)" % collateral_picks.size(),
 		"Erken kapatma cezası: kalan anaparanın %%%d'si" % int(float(offer["early_fee"]) * 100.0)
-	], "Krediyi al", _take_credit)
+	], "Krediyi al", _take_loan)
 
-func _take_credit() -> void:
-	var offer: Dictionary = Data.CREDIT
-	var installment := Data.installment(float(offer["amount"]), float(offer["rate"]), int(offer["months"]))
-	state["credit"] = {"balance": float(offer["amount"]), "rate": float(offer["rate"]), "installment": installment,
-		"left": int(offer["months"]), "uids": collateral_picks.duplicate()}
-	for machine in state["machines"]:
-		if collateral_picks.has(machine["uid"]):
-			machine["mortgaged"] = true
-	state["cash"] = float(state["cash"]) + float(offer["amount"])
+func _take_loan() -> void:
+	var result: String = game.take_loan(collateral_picks)
+	if result != "":
+		_say(result)
 	collateral_picks = []
 	_render()
 
-func _ask_close_credit() -> void:
-	var credit: Dictionary = state["credit"]
-	var fee := float(credit["balance"]) * float(Data.CREDIT["early_fee"])
-	_confirm("Krediyi erken kapat", ["Kalan anapara: %s" % Data.usd(float(credit["balance"])), "Erken kapatma cezası: %s" % Data.usd(fee), "İpotek kalkar."],
-		"Öde ve kapat", _close_credit)
+func _ask_close_loan() -> void:
+	var loan: Dictionary = game.loan
+	var fee := float(loan["balance"]) * float(Data.CREDIT["early_fee"])
+	_confirm("Krediyi erken kapat", ["Kalan anapara: %s" % Data.usd(float(loan["balance"])), "Erken kapatma cezası: %s" % Data.usd(fee), "İpotek kalkar."],
+		"Öde ve kapat", _close_loan)
 
-func _close_credit() -> void:
-	var credit: Dictionary = state["credit"]
-	state["cash"] = float(state["cash"]) - float(credit["balance"]) * (1.0 + float(Data.CREDIT["early_fee"]))
-	for machine in state["machines"]:
-		machine["mortgaged"] = false
-	state["credit"] = {}
+func _close_loan() -> void:
+	var result: String = game.close_loan()
+	if result != "":
+		_say(result)
 	_render()
