@@ -45,6 +45,7 @@ Tur 1 · 2026-09-30 · Kısa özet; ayrıntı sohbette.
 ### Kafama Yatmayanlar
 
 - Prototipte Faz 2 uygulandı: müşteri peşinatı %30 kabulde, hammadde tedarikçiden sipariş edilir (temin süresi, ödeme vadesi, gecikme riski, kalite/verim), gelmeden üretim başlamaz, işi bırakmak peşinatı iade ettirir. Sonuçlar `godot/playtests/reports/_shell_ozet.md`.
+- Prototipte Faz 3 uygulandı: ilan fiyatsız; oyuncu fiyat/peşinat/teslim süresi teklif eder, müşterinin gizli aciliyeti (1–10) kabul edeceği en yüksek fiyatı belirler, evet/hayır karşı teklif, ret notunda müşterinin tahmini maliyeti ve aciliyeti, teslimat skoru fiyat toleransını etkiler. Maliyet-marj bağı: sade işte düşük, karmaşık işte yüksek marj (eski "hammadde %30–75" kuralı bundan türer).
 - Hammadde ödemesi başlangıca bağlandığında, işi erken kabul etmek ücretsiz bir seçenek olur; teslim ve iptal/bırakma kuralları bu açığı kapatmalı.
 
 ### Açık Sorular

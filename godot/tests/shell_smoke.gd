@@ -35,8 +35,8 @@ func _run() -> void:
 	var by_count := {1: 0, 2: 0, 3: 0, 4: 0}
 	for offer in offers:
 		by_count[offer["count"]] += 1
-		if offer["share"] < 0.3 - 0.0001 or offer["share"] > 0.75 + 0.0001:
-			return _fail("Material share out of 30-75%")
+		if offer["share"] < 0.14 or offer["share"] > 0.80:
+			return _fail("Material share out of 15-80%")
 		for req in offer["reqs"]:
 			if req["parts"] <= 0 or absf(float(req["parts"]) * float(req["difficulty"]) - float(req["workload"])) > 0.01:
 				return _fail("workload must equal parts x difficulty")
@@ -199,6 +199,108 @@ func _run() -> void:
 	var terms_quote: Dictionary = p2.material_quote(job_p, "pacific")
 	if int(terms_quote["terms"]) != 2 or int(terms_quote["lead"]) != 2:
 		return _fail("Pacific Alloy has a 2-month lead and 2-month terms")
+	# ---- phase 3: quotes, hidden urgency, yes/no counters, delivery score
+	var q = Boss.new()
+	q.default_setup(91)
+	q.cash = 1500.0
+	q.rent_factory("harbor", 12, false)
+	q.buy_package()
+	q.buy_listing(13)
+	q.buy_listing(14)
+	q.run_report()
+	q.close_month()
+	q.run_report()
+	q.close_month()
+	q.problems.clear()
+	var doable: Array = []
+	for candidate in q.offers:
+		if q.accept_block_reason(candidate["id"]) == "":
+			doable.append(candidate)
+	if doable.size() < 4:
+		return _fail("Need at least four doable offers for the quote test")
+	var o1: Dictionary = doable[0]
+	var low_u: Dictionary = o1.duplicate(true)
+	var high_u: Dictionary = o1.duplicate(true)
+	low_u["urgency"] = 1
+	high_u["urgency"] = 10
+	if q.customer_limit(high_u, 30, int(o1["months"])) <= q.customer_limit(low_u, 30, int(o1["months"])):
+		return _fail("An urgent customer must tolerate a higher price")
+	var keep_score: float = q.delivery_score
+	var limit_ok: float = q.customer_limit(o1, 30, int(o1["months"]))
+	q.delivery_score = 0.1
+	if q.customer_limit(o1, 30, int(o1["months"])) >= limit_ok:
+		return _fail("A weak delivery score must lower the price the customer accepts")
+	q.delivery_score = keep_score
+	if q.customer_limit(o1, 50, int(o1["months"])) >= limit_ok or q.customer_limit(o1, 30, int(o1["months"]) + 1) >= limit_ok:
+		return _fail("A bigger advance or a later delivery must lower the accepted price")
+	# accepted: price at or below the limit
+	var cash_q: float = q.cash
+	var win: Dictionary = q.submit_quote(o1["id"], floorf(limit_ok), 30, int(o1["months"]))
+	if not win["ok"] or win["status"] != "accepted" or q.jobs.size() != 1 or q.offer_by_id(o1["id"]) != {}:
+		return _fail("A quote within the limit must be accepted: " + str(win))
+	if q.cash - cash_q < floorf(limit_ok) * 0.3 - 1.0:
+		return _fail("The advance must be paid on acceptance")
+	if q.submit_quote(o1["id"], 10.0, 30, 3)["ok"]:
+		return _fail("Only one quote per offer")
+	# counter: within 10% above the limit, then yes/no
+	var o2: Dictionary = doable[1]
+	var limit2: float = q.customer_limit(o2, 30, int(o2["months"]))
+	var cn: Dictionary = q.submit_quote(o2["id"], limit2 * 1.05, 30, int(o2["months"]))
+	if cn["status"] != "counter" or float(cn["mail"]["price"]) > limit2 + 0.5:
+		return _fail("A price slightly above the limit must get a counter at or below the limit")
+	var jobs_before: int = q.jobs.size()
+	if q.answer_counter(cn["mail"]["id"], true) != "" or q.jobs.size() != jobs_before + 1:
+		return _fail("Saying yes to a counter must create the job")
+	# no: the deal is lost
+	var o3: Dictionary = doable[2]
+	var cn3: Dictionary = q.submit_quote(o3["id"], q.customer_limit(o3, 30, int(o3["months"])) * 1.05, 30, int(o3["months"]))
+	if q.answer_counter(cn3["mail"]["id"], false) != "" or q.jobs.size() != jobs_before + 1 or q.mail_by_id(cn3["mail"]["id"])["status"] != "declined":
+		return _fail("Saying no must end the negotiation")
+	# reject: far above the limit; the note reveals the customer's cost and urgency
+	var o4: Dictionary = doable[3]
+	var rj: Dictionary = q.submit_quote(o4["id"], q.customer_limit(o4, 30, int(o4["months"])) * 1.6, 30, int(o4["months"]))
+	var note_text := "\n".join(rj["mail"]["lines"])
+	if rj["status"] != "rejected" or not note_text.contains("aciliyet") or not note_text.contains("tahmini maliyet"):
+		return _fail("A rejection must explain the customer's cost estimate and urgency")
+	# counters left unanswered expire at month end
+	var leftover: Dictionary = {}
+	for candidate in q.offers:
+		if q.accept_block_reason(candidate["id"]) == "":
+			leftover = candidate
+			break
+	if not leftover.is_empty():
+		var cn5: Dictionary = q.submit_quote(leftover["id"], q.customer_limit(leftover, 30, int(leftover["months"])) * 1.05, 30, int(leftover["months"]))
+		q.run_report()
+		q.close_month()
+		if q.mail_by_id(cn5["mail"]["id"])["status"] != "expired":
+			return _fail("An unanswered counter must expire")
+	# quote screens render
+	shell._reset_state(4)
+	shell.game.cash = 1200.0
+	shell.game.rent_factory("harbor", 12, false)
+	shell.game.buy_package()
+	shell.game.buy_listing(13)
+	shell.game.run_report()
+	shell.game.close_month()
+	shell.game.run_report()
+	shell.game.close_month()
+	var quote_offer: Dictionary = {}
+	for candidate in shell.game.offers:
+		if shell.game.accept_block_reason(candidate["id"]) == "":
+			quote_offer = candidate
+			break
+	if quote_offer.is_empty():
+		return _fail("Expected a doable offer for the quote screens")
+	shell._on_tab("isler")
+	shell.subtab["isler"] = "tum"
+	shell._open_detail("quote", str(quote_offer["id"]))
+	if shell.content.get_child_count() < 4:
+		return _fail("Quote screen did not render")
+	shell._send_quote(quote_offer["id"])
+	shell.subtab["isler"] = "mail"
+	shell._on_tab("isler")
+	if shell.game.mails.is_empty() or shell.content.get_child_count() < 3:
+		return _fail("Sending a quote must create a mail and show it")
 	# ---- abandon and sell
 	var g2 = Boss.new()
 	g2.default_setup(31)

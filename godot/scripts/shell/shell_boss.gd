@@ -20,6 +20,7 @@ const AVAILABILITY_DEPARTMENTS := ["Bakım", "Planlama", "Depo & Sevkiyat"]
 # this many units per delivered machine, so 6 units on one machine is 12 percent.
 const LOSS_UNITS_PER_MACHINE := 50.0
 const LATE_CANCEL_MONTHS := 3
+const COUNTER_BAND := 0.10  # prices up to 10 percent above the customer's limit get a counter-offer
 
 var factory_id := ""
 var term := 12
@@ -37,6 +38,9 @@ var delivery_score := 0.8
 var patron_overtime := false
 var auto_order := true
 var default_supplier := "nord"
+var quote_mode := true
+var mails: Array = []
+var next_mail := 1
 
 # ---------------------------------------------------------------- save / load
 
@@ -44,7 +48,7 @@ const BASE_FIELDS := ["phase", "persona", "budget", "skills", "diploma", "start_
 	"offer_history", "accepted", "report", "problems", "next_id", "consultants", "candidates", "hours_left", "month_start_hours",
 	"prevented_this_month", "prevented_total", "history", "findings", "month_flags", "closure", "notice"]
 const SHELL_FIELDS := ["factory_id", "term", "months_left", "prepaid_months", "package_bought", "equip", "jobs", "loan", "next_uid",
-	"invested", "last_lines", "offer_salt", "delivery_score", "patron_overtime", "auto_order", "default_supplier"]
+	"invested", "last_lines", "offer_salt", "delivery_score", "patron_overtime", "auto_order", "default_supplier", "quote_mode", "mails", "next_mail"]
 
 func to_save() -> Dictionary:
 	var data := {}
@@ -640,31 +644,157 @@ func accept_block_reason(id: int) -> String:
 		return "Yetersiz nakit"
 	return ""
 
+# Legacy path (quote_mode off): take the listed reference price with the default advance.
 func accept_offer(id: int) -> String:
 	var reason := accept_block_reason(id)
 	if reason != "":
 		return reason
 	var offer := offer_by_id(id)
-	var advance := advance_of(offer)
+	_create_job(offer, float(offer["revenue"]), Data.ADVANCE_RATE, int(offer["months"]))
+	return ""
+
+func _create_job(offer: Dictionary, price: float, advance_rate: float, due_months: int) -> Dictionary:
+	var advance := roundf(price * advance_rate)
 	cash += advance
 	var job: Dictionary = offer.duplicate(true)
+	job["revenue"] = price
+	job["months"] = due_months
 	job["elapsed"] = 0
 	job["accepted_month"] = month
 	job["start_month"] = month + int(offer["start_delay"])
-	job["due_month"] = month + int(offer["months"]) - 1
+	job["due_month"] = month + due_months - 1
 	job["produced"] = 0.0
 	job["yield"] = 1.0
 	job["advance"] = advance
 	job["order"] = {}
 	jobs.append(job)
 	offers.erase(offer)
-	history.append("Ay %d: iş kabul edildi: %s (peşinat %.0f)." % [month, job["title"], advance])
+	history.append("Ay %d: iş kabul edildi: %s (fiyat %.0f, peşinat %.0f)." % [month, job["title"], price, advance])
 	notice = "%s kabul edildi; %.0f peşinat kasaya girdi." % [job["title"], advance]
 	if auto_order:
 		var result := order_material(job["id"], default_supplier)
 		if result != "":
 			notice += " Hammadde otomatik sipariş edilemedi: " + result
+	return job
+
+# ---------------------------------------------------------------- quotes (IDEA-017)
+
+# What the player can work out: material at the default supplier, a scrap allowance,
+# and the plant overhead and personnel that the job occupies.
+func cost_estimate(offer: Dictionary) -> Dictionary:
+	var supplier := Data.supplier_by_id(default_supplier)
+	var material := float(offer["material"]) * float(supplier["price"])
+	var scrap := material * 0.15
+	var machine_months := float(offer["count"]) * float(offer["duration"])
+	var overhead := machine_months * 6.0
+	var personnel := machine_months * Data.WAGE
+	return {"material": material, "scrap": scrap, "overhead": overhead, "personnel": personnel, "total": material + scrap + overhead + personnel}
+
+# The customer's own cost belief (from the reference price and the job's complexity margin).
+func customer_cost(offer: Dictionary) -> float:
+	return float(offer["cost_ref"])
+
+# Highest price the customer accepts: cost x (1 + margin) where the margin runs from
+# (mid - 20 points) for a relaxed customer to (mid + 25 points) for an urgent one, then lowered
+# by a weak delivery score, a bigger advance and a later delivery.
+func customer_limit(offer: Dictionary, advance_pct: int, months_offered: int) -> float:
+	var mid := float(offer["mid"])
+	var margin := lerpf(maxf(0.05, mid - 0.20), mid + 0.25, (float(offer["urgency"]) - 1.0) / 9.0)
+	var limit := customer_cost(offer) * (1.0 + margin)
+	limit *= 0.90 + 0.15 * delivery_score
+	limit *= 1.0 - 0.002 * float(advance_pct - 30)
+	var wanted: int = int(offer["months"])
+	if months_offered > wanted:
+		limit *= 1.0 - 0.07 * float(months_offered - wanted)
+	else:
+		limit *= 1.0 + 0.04 * float(wanted - months_offered)
+	return limit
+
+func quote_block_reason(offer_id: int, price: float) -> String:
+	if phase != "offers":
+		return "Teklif ay başında (rapordan önce) verilir."
+	var reason := accept_block_reason(offer_id)
+	if reason != "":
+		return reason
+	if price <= 0.0:
+		return "Fiyat girin."
 	return ""
+
+func _mail(offer: Dictionary, status: String, lines: Array, extra := {}) -> Dictionary:
+	var mail := {"id": next_mail, "month": month, "offer_id": offer["id"], "title": offer["title"], "customer": offer["customer"],
+		"status": status, "lines": lines, "offer": offer.duplicate(true)}
+	mail.merge(extra)
+	next_mail += 1
+	mails.push_front(mail)
+	while mails.size() > 12:
+		mails.pop_back()
+	return mail
+
+# One quote per offer. Accepted, countered (yes/no) or rejected with an explanatory note.
+func submit_quote(offer_id: int, price: float, advance_pct: int, months_offered: int) -> Dictionary:
+	var reason := quote_block_reason(offer_id, price)
+	if reason != "":
+		return {"ok": false, "reason": reason}
+	var offer := offer_by_id(offer_id)
+	var limit := customer_limit(offer, advance_pct, months_offered)
+	var wanted: int = int(offer["months"])
+	var contact: String = Data.CONTACTS[int(offer["id"]) % Data.CONTACTS.size()]
+	if price <= limit:
+		if months_offered > wanted and int(offer["urgency"]) >= 8:
+			var mail := _mail(offer, "counter", ["Teşekkürler, fiyatınız uygun. Ancak %d ayda teslim istiyoruz; bu süreyi kabul ederseniz anlaşalım." % wanted],
+				{"price": price, "advance_pct": advance_pct, "months": wanted, "kind": "time"})
+			offers.erase(offer)
+			return {"ok": true, "status": "counter", "mail": mail}
+		var job := _create_job(offer, price, float(advance_pct) / 100.0, months_offered)
+		var accepted := _mail(offer, "accepted", ["Teklifiniz için teşekkürler, %s fiyatla %d ayda teslim şartıyla anlaştık." % [Data.usd(price), months_offered]])
+		return {"ok": true, "status": "accepted", "mail": accepted, "job": job}
+	if price <= limit * (1.0 + COUNTER_BAND):
+		var counter_price := roundf(limit * rng.randf_range(0.96, 1.0))
+		var mail := _mail(offer, "counter", ["Teklifiniz için teşekkürler. Fiyatı %s'ye çekebilir misiniz?" % Data.usd(counter_price)],
+			{"price": counter_price, "advance_pct": advance_pct, "months": months_offered, "kind": "price"})
+		offers.erase(offer)
+		return {"ok": true, "status": "counter", "mail": mail}
+	var note := "Teklifiniz hedef fiyatımızın üstünde olduğu için bu işte çalışamayacağız.\nNot: firmanın belirlediği tahmini maliyet %s ve işin aciliyet durumu %d/10.\n(%s bu hafta %s.)" % [
+		Data.usd(customer_cost(offer)), int(offer["urgency"]), contact, "yeniden arayacak" if int(offer["urgency"]) >= 7 else "aramadı"]
+	var rejected := _mail(offer, "rejected", note.split("\n"))
+	offers.erase(offer)
+	return {"ok": true, "status": "rejected", "mail": rejected}
+
+func mail_by_id(id: int) -> Dictionary:
+	for mail in mails:
+		if mail["id"] == id:
+			return mail
+	return {}
+
+func answer_counter(mail_id: int, yes: bool) -> String:
+	var mail := mail_by_id(mail_id)
+	if mail.is_empty() or mail["status"] != "counter":
+		return "Bu teklif artık yanıt beklemiyor."
+	if phase != "offers":
+		return "Yanıt ay başında verilir."
+	if not yes:
+		mail["status"] = "declined"
+		mail["lines"].append("Yanıtınız: hayır. Anlaşma olmadı.")
+		return ""
+	var offer: Dictionary = mail["offer"]
+	var probe := offer.duplicate(true)
+	probe["id"] = offer["id"]
+	if not package_bought:
+		return "Zorunlu ekipman eksik"
+	for req in offer["reqs"]:
+		if not owns(req):
+			return "Makine yok"
+	offers.append(offer)
+	_create_job(offer, float(mail["price"]), float(mail["advance_pct"]) / 100.0, int(mail["months"]))
+	mail["status"] = "accepted"
+	mail["lines"].append("Yanıtınız: evet. %s ve %d ay ile anlaştık." % [Data.usd(float(mail["price"])), mail["months"]])
+	return ""
+
+func _expire_mails() -> void:
+	for mail in mails:
+		if mail["status"] == "counter":
+			mail["status"] = "expired"
+			mail["lines"].append("Yanıt verilmediği için firma başka tedarikçiye yöneldi.")
 
 func order_block_reason(job_id: int, supplier_id: String) -> String:
 	var job := job_by_id(job_id)
@@ -988,6 +1118,7 @@ func close_month() -> String:
 		notice += " Test süresi bitti; fabrika ayakta."
 		return ""
 	var events := rng.randi_range(1, 2) + (1 if machines.size() >= 3 else 0) + (1 if machines.size() >= 5 else 0)
+	_expire_mails()
 	_generate_problems(events)
 	_generate_offers()
 	phase = "offers"

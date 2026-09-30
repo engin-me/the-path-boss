@@ -17,7 +17,9 @@ Kontroller:
 
 `factory_shell.tscn` dikey mobil (540×960) fabrika kabuğudur: sabit üst şerit, beş ana sekme (Özet, İşler, Tezgah, Fabrika, Profil), fabrika kiralama (6/12/24 ay, 2 kira erken çıkış), tezgah alma (alan ve yükseklik kontrolü), birden çok iş kabulü ve Profil. **Motor `scripts/shell/shell_boss.gd`** (BossState'in alt sınıfı): sorun/Düzelt, danışman, patron saati ve iflas hesabı BossState'ten gelir; kira, makine pazarı (teslim süreli), makine ayıran işler, zorunlu ekipman, ipotekli kredi ve ay döngüsü (Raporu aç → Düzelt → Ayı bitir) yeni modeldir. Eski `boss_state.gd` ve patron testi değişmedi. Kurallar IDEA-015/016 önerisidir, FREEZE değildir. Öneriler için `docs/ideas/IDEA-015` ve `IDEA-016`. Görseller `godot/art/factories/<id>.png` ve `godot/art/machines/<tür>_<seviye>.png` (örn. `torna_1.png`) yoluna konursa arayüz yer tutucu yerine onları gösterir. Önizlemeler `ui_previews/` altında.
 
-**Android APK için `ANDROID.md`.** **Kayıt:** oyun otomatik kaydedilir; Profil → "Kaydı sil ve yeni oyun" ile silinir. Başsız testlerde kayıt kapalıdır.
+**Android APK için `ANDROID.md`.** **Oyun akışı (prototip):** kira → zorunlu ekipman → tezgah (teslim süreli) → vardiya/patron ayarı → ilana teklif (fiyat, peşinat, süre) → müşteri yanıtı (kabul / evet-hayır karşı teklif / ret) → hammadde siparişi (tedarikçi) → FIFO üretim → rapor şelalesi (teorik → vardiya → performans → hurda → sorun → net) → teslim ve bakiye. Kurallar IDEA-015..018 önerileridir.
+
+**Kayıt:** oyun otomatik kaydedilir; Profil → "Kaydı sil ve yeni oyun" ile silinir. Başsız testlerde kayıt kapalıdır.
 
 **F5 artık bu arayüzü açar.** Eski patron test ekranı için `boss.tscn` dosyasını açıp F6 ile çalıştırın.
 

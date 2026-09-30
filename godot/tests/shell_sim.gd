@@ -12,12 +12,12 @@ const Data = preload("res://scripts/shell/shell_data.gd")
 # 16 Taşlama-Has 5y, 17 Taşlama-Std 9y, 18 Dövme-Std 7y, 19 Dövme-Has 4y.
 # "grow": add a shift to machines whose backlog is high (when cash allows).
 const PERSONAS := [
-	{"name": "Tek makine", "factory": "ridgeway", "term": 12, "prepay": false, "buys": [[1, 13]], "grow": false, "supplier": "nord"},
-	{"name": "Küçük temkinli", "factory": "ridgeway", "term": 12, "prepay": false, "buys": [[1, 13], [1, 14]], "grow": false, "supplier": "pacific"},
-	{"name": "Küçük vardiyacı", "factory": "ridgeway", "term": 12, "prepay": false, "buys": [[1, 13], [1, 14]], "grow": true, "supplier": "nord"},
-	{"name": "Orta ikinci el", "factory": "harbor", "term": 12, "prepay": false, "buys": [[1, 13], [1, 14], [1, 17]], "grow": true, "supplier": "midland"},
-	{"name": "Orta yeni makine", "factory": "harbor", "term": 12, "prepay": false, "buys": [[1, 1], [1, 4]], "grow": true, "supplier": "atlas"},
-	{"name": "Büyük iddialı", "factory": "millbrook", "term": 24, "prepay": false, "buys": [[1, 13], [1, 14], [1, 16], [2, 12]], "grow": true, "supplier": "nord"}
+	{"name": "Tek makine", "factory": "ridgeway", "term": 12, "prepay": false, "buys": [[1, 13]], "grow": false, "supplier": "nord", "margin": 0.30},
+	{"name": "Küçük temkinli", "factory": "ridgeway", "term": 12, "prepay": false, "buys": [[1, 13], [1, 14]], "grow": false, "supplier": "pacific", "margin": 0.30},
+	{"name": "Küçük vardiyacı", "factory": "ridgeway", "term": 12, "prepay": false, "buys": [[1, 13], [1, 14]], "grow": true, "supplier": "nord", "margin": 0.45},
+	{"name": "Orta ikinci el", "factory": "harbor", "term": 12, "prepay": false, "buys": [[1, 13], [1, 14], [1, 17]], "grow": true, "supplier": "midland", "margin": 0.30},
+	{"name": "Orta yeni makine", "factory": "harbor", "term": 12, "prepay": false, "buys": [[1, 1], [1, 4]], "grow": true, "supplier": "atlas", "margin": 0.60},
+	{"name": "Büyük iddialı", "factory": "millbrook", "term": 24, "prepay": false, "buys": [[1, 13], [1, 14], [1, 16], [2, 12]], "grow": true, "supplier": "nord", "margin": 0.45}
 ]
 
 func _initialize() -> void:
@@ -39,23 +39,23 @@ func _run() -> void:
 			Data.start_cash = float(arg.trim_prefix("cash="))
 		elif arg.begins_with("floor="):
 			ShellBoss.pool_floor = int(arg.trim_prefix("floor="))
-	print("| Karakter | Kiralanamadı | Ayakta | Zorunlu kapanış | İflas | Ort. son net kasa | En düşük kasa (ort.) | İlk iş ayı | OEE (24 sa, ort.) | Kapasite kullanımı | Ort. vardiya | Geç teslim / teslim | Bırakılan-iptal | Son skor | Gizli satırlı ay | Danışmansız deneme mümkün | Para engeli |")
+	print("| Karakter | Kiralanamadı | Ayakta | Zorunlu kapanış | İflas | Ort. son net kasa | En düşük kasa (ort.) | İlk iş ayı | OEE (24 sa, ort.) | Kapasite kullanımı | Ort. vardiya | Geç teslim / teslim | Bırakılan-iptal | Son skor | Teklif: kabul / karşı / ret | Gizli satırlı ay | Danışmansız deneme mümkün | Para engeli |")
 	print("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
 	for persona in PERSONAS:
 		var agg := {"denied": 0, "alive": 0, "forced": 0, "bankrupt": 0, "net": 0.0, "trough": 0.0, "first_job": 0.0, "first_n": 0,
 			"oee": 0.0, "oee_n": 0, "used": 0.0, "net_cap": 0.0, "shifts": 0.0, "shift_n": 0, "late": 0, "delivered": 0, "dropped": 0,
-			"score": 0.0, "hidden": 0, "ok": 0, "money": 0}
+			"score": 0.0, "hidden": 0, "ok": 0, "money": 0, "q_ok": 0, "q_counter": 0, "q_reject": 0}
 		for seed_value in seeds:
 			_play(persona, seed_value, months, agg)
 		var played: int = seeds - int(agg["denied"])
 		var d := float(maxi(1, played))
-		print("| %s | %d | %d | %d | %d | %.0f | %.0f | %s | %s | %s | %s | %d / %d | %d | %%%d | %d | %d | %d |" % [
+		print("| %s | %d | %d | %d | %d | %.0f | %.0f | %s | %s | %s | %s | %d / %d | %d | %%%d | %d / %d / %d | %d | %d | %d |" % [
 			persona["name"], agg["denied"], agg["alive"], agg["forced"], agg["bankrupt"], agg["net"] / d, agg["trough"] / d,
 			("%.1f" % (agg["first_job"] / maxf(1.0, agg["first_n"]))) if agg["first_n"] > 0 else "—",
 			("%%%d" % int(100.0 * agg["oee"] / maxf(1.0, agg["oee_n"]))) if agg["oee_n"] > 0 else "—",
 			("%%%d" % int(100.0 * agg["used"] / maxf(1.0, agg["net_cap"]))) if agg["net_cap"] > 0.0 else "—",
 			("%.1f" % (agg["shifts"] / maxf(1.0, agg["shift_n"]))) if agg["shift_n"] > 0 else "—",
-			agg["late"], agg["delivered"], agg["dropped"], int(100.0 * agg["score"] / d), agg["hidden"], agg["ok"], agg["money"]])
+			agg["late"], agg["delivered"], agg["dropped"], int(100.0 * agg["score"] / d), agg["q_ok"], agg["q_counter"], agg["q_reject"], agg["hidden"], agg["ok"], agg["money"]])
 	quit(0)
 
 # Expected monthly output of machines still on the way (one shift, no problems).
@@ -125,8 +125,16 @@ func _play(persona: Dictionary, seed_value: int, months: int, agg: Dictionary) -
 				offer_load += float(req["workload"])
 			if promised + offer_load > 0.85 * capacity_now * float(offer["months"]):
 				continue
-			game.accept_offer(offer["id"])
-			if first_job == 0:
+			var estimate: Dictionary = game.cost_estimate(offer)
+			var price := roundf(float(estimate["total"]) * (1.0 + float(persona["margin"])))
+			var result: Dictionary = game.submit_quote(offer["id"], price, 30, int(offer["months"]))
+			if not result["ok"]:
+				continue
+			agg["q_" + {"accepted": "ok", "counter": "counter", "rejected": "reject"}[result["status"]]] += 1
+			if result["status"] == "counter" and float(result["mail"]["price"]) >= float(estimate["total"]) * 1.05:
+				game.answer_counter(result["mail"]["id"], true)
+				result["status"] = "accepted"
+			if result["status"] == "accepted" and first_job == 0:
 				first_job = game.month
 		for machine in game.delivered():
 			agg["shifts"] += float(machine["shifts"])

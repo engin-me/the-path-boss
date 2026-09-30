@@ -176,8 +176,25 @@ const SUPPLIERS := [
 	{"id": "atlas", "name": "Atlas Premium", "price": 1.10, "lead": 1, "terms": 0, "delay": 0.03, "quality": 3, "note": "Pahalı, peşin, yüksek kalite"},
 	{"id": "midland", "name": "Midland Metals", "price": 1.00, "lead": 1, "terms": 1, "delay": 0.12, "quality": 2, "note": "Liste fiyatı, 30 gün vade"}
 ]
+const CONTACTS := ["Mary Collins", "Tom Bennett", "Laura Finch", "Henry Walsh", "Nora Keane", "Paul Sterling"]
+
+# Hidden urgency (1-10) leaks through a small signal; the noise keeps it from being exact.
+static func urgency_hint(offer: Dictionary) -> String:
+	var contact: String = CONTACTS[int(offer["id"]) % CONTACTS.size()]
+	var noisy: int = clampi(int(offer["urgency"]) + (int(offer["id"]) % 3) - 1, 1, 10)
+	if noisy >= 9:
+		return "%s (%s) bu hafta 4 kez aradı." % [contact, offer["customer"]]
+	if noisy >= 7:
+		return "%s (%s) iki kez arayıp durumu sordu." % [contact, offer["customer"]]
+	if noisy >= 5:
+		return "%s (%s) e-posta attı; ton sakin." % [contact, offer["customer"]]
+	if noisy >= 3:
+		return "%s (%s) başka tedarikçilere de soruyor gibi." % [contact, offer["customer"]]
+	return "%s (%s) yanıt vermesi iki hafta sürdü; acelesi yok." % [contact, offer["customer"]]
+
 const QUALITY_NAMES := ["", "Ekonomik", "Standart", "Premium"]
 const QUALITY_YIELD := {1: 0.96, 2: 1.0, 3: 1.015}
+const OVERHEAD_PER_MACHINE_MONTH := 9.0  # plant overhead 6 + personnel share 3 per machine-month (mock)
 const ADVANCE_RATE := 0.30  # customer advance on acceptance (proposal; fixed in the first slice)
 
 static func supplier_by_id(id: String) -> Dictionary:
@@ -222,13 +239,24 @@ static func fill_offer(offer: Dictionary, specs: Array, rng: RandomNumberGenerat
 		total_n += int(spec["n"])
 		best = maxi(best, level)
 	revenue = roundf(revenue * (1.0 + 0.15 * (best - 1)) * rng.randf_range(0.92, 1.08))
-	var share := cost_share(total_n, best, rng.randf_range(-0.04, 0.04))
+	# Margin grows with complexity (machines needed and level): 15% for a plain one-machine
+	# Standart job up to 60% for a four-machine Nitelikli job. The customer's cost follows
+	# from the reference price; material is what is left after overhead and personnel.
+	var complexity := 0.5 * float(total_n - 1) / 3.0 + 0.5 * float(best - 1) / 2.0
+	var mid := 0.15 + 0.45 * complexity
+	var cost_ref := revenue / (1.0 + mid)
+	var machine_months := 0.0
+	for spec in specs:
+		machine_months += float(spec["n"]) * float(offer["duration"])
+	var material := maxf(revenue * 0.15, (cost_ref - machine_months * OVERHEAD_PER_MACHINE_MONTH) / 1.15)
 	offer["reqs"] = reqs
 	offer["count"] = total_n
 	offer["best"] = best
 	offer["revenue"] = revenue
-	offer["share"] = share
-	offer["material"] = roundf(revenue * share)
+	offer["mid"] = mid
+	offer["cost_ref"] = cost_ref
+	offer["material"] = roundf(material)
+	offer["share"] = material / maxf(1.0, revenue)
 	offer["title"] = TITLES[specs[0]["kind"]][rng.randi_range(0, 2)]
 
 static func generate_offers(month: int, salt := 0) -> Array:
@@ -255,7 +283,7 @@ static func generate_offers(month: int, salt := 0) -> Array:
 		var duration := mini(rng.randi_range(count, 3 * count) if count > 1 else rng.randi_range(1, 3), 10)
 		var delay := rng.randi_range(0, 2)
 		var offer := {"id": month * 100 + i, "customer": CUSTOMERS[rng.randi_range(0, CUSTOMERS.size() - 1)], "duration": duration,
-			"start_delay": delay, "months": delay + duration + rng.randi_range(1, 2)}
+			"start_delay": delay, "months": delay + duration + rng.randi_range(1, 2), "urgency": rng.randi_range(1, 10)}
 		fill_offer(offer, specs, rng)
 		offers.append(offer)
 	return offers
