@@ -30,6 +30,8 @@ const TERMS := [
 	{"months": 24, "factor": 0.90, "prepay_discount": 0.12}
 ]
 const EXIT_FEE_RENTS := 2
+const ABANDON_PENALTY := 0.10  # of the job revenue; paid material is lost (mock)
+const SALE_RATE := 0.70  # voluntary sale of a machine (FRZ-003 v2)
 
 # ---------------------------------------------------------------- machines
 
@@ -45,7 +47,7 @@ const LEVEL_AREA := {1: 25.0, 2: 30.0, 3: 40.0}
 const TYPE_AREA := {"Torna": 1.0, "Freze": 1.2, "Taşlama": 1.1, "Dövme": 2.2}
 const LEVEL_HEIGHT := {1: 3.0, 2: 3.5, 3: 4.5}
 const TYPE_HEIGHT := {"Torna": 0.0, "Freze": 0.3, "Taşlama": 0.0, "Dövme": 1.5}
-const NEW_DELIVERY := {1: 2, 2: 3, 3: 5}  # months; second hand arrives in 1
+const NEW_DELIVERY := {1: 1, 2: 2, 3: 3}  # months; second hand arrives in 1
 const AGE_DROP := 0.07
 const AGE_FLOOR := 0.35
 const ENERGY_RATE := 0.01  # of new list price per month
@@ -108,19 +110,19 @@ static func _listing(uid: int, type: String, level: int, age: int, discount: flo
 
 # Mandatory package per factory size class; optional items are bought singly.
 const PACKAGE_CLASSES := {
-	"small": {"transpalet": 2, "kasa": 40, "raf": 4, "el_aleti": 2, "takim": 2},
-	"medium": {"transpalet": 3, "kasa": 60, "raf": 6, "el_aleti": 3, "takim": 3},
-	"large": {"transpalet": 6, "kasa": 120, "raf": 12, "el_aleti": 6, "takim": 6}
+	"small": {"transpalet": 1, "kasa": 10, "raf": 8, "el_aleti": 2, "takim": 2},
+	"medium": {"transpalet": 2, "kasa": 16, "raf": 14, "el_aleti": 3, "takim": 3},
+	"large": {"transpalet": 4, "kasa": 30, "raf": 28, "el_aleti": 6, "takim": 6}
 }
 const EQUIPMENT := {
-	"transpalet": {"name": "Transpalet", "price": 1.2, "area": 0.0, "required": true, "note": "Kasa ve palet taşıma"},
-	"kasa": {"name": "Malzeme kasası", "price": 0.06, "area": 0.3, "required": true, "note": "Hammadde ve yarı mamul"},
-	"raf": {"name": "Depo rafı", "price": 0.9, "area": 3.0, "required": true, "note": "Depolama alanı tüketir"},
-	"el_aleti": {"name": "El aletleri seti", "price": 2.5, "area": 1.0, "required": true, "note": "Bakım ve ayar"},
-	"takim": {"name": "Takım ve fikstür seti", "price": 6.0, "area": 1.0, "required": true, "note": "Tezgah bağlama takımları"},
-	"forklift": {"name": "Forklift", "price": 18.0, "area": 0.0, "required": false, "note": "Depo & Sevkiyat sorun ihtimalini azaltır; OEE'ye yansır (test)"},
-	"olcum": {"name": "Kalite ölçüm seti", "price": 9.0, "area": 1.5, "required": false, "note": "Kalite sorun ihtimalini azaltır (test)"},
-	"vinc": {"name": "Köprü vinç", "price": 40.0, "area": 0.0, "required": false, "min_height": 5.0, "note": "Ağır parçalar; en az 5,0 m tavan gerekir (test)"}
+	"transpalet": {"name": "Transpalet", "price": 5.0, "area": 0.0, "required": true, "note": "Kasa ve palet taşıma"},
+	"kasa": {"name": "Malzeme kasası", "price": 0.4, "area": 0.3, "required": true, "note": "Hammadde ve yarı mamul"},
+	"raf": {"name": "Depo rafı", "price": 3.0, "area": 3.0, "required": true, "note": "Depolama alanı tüketir"},
+	"el_aleti": {"name": "El aletleri seti", "price": 10.0, "area": 1.0, "required": true, "note": "Bakım ve ayar"},
+	"takim": {"name": "Takım ve fikstür seti", "price": 25.0, "area": 1.0, "required": true, "note": "Tezgah bağlama takımları"},
+	"forklift": {"name": "Forklift", "price": 40.0, "area": 0.0, "required": false, "note": "Depo & Sevkiyat sorun ihtimalini azaltır; OEE'ye yansır (test)"},
+	"olcum": {"name": "Kalite ölçüm seti", "price": 20.0, "area": 1.5, "required": false, "note": "Kalite sorun ihtimalini azaltır (test)"},
+	"vinc": {"name": "Köprü vinç", "price": 90.0, "area": 0.0, "required": false, "min_height": 5.0, "note": "Ağır parçalar; en az 5,0 m tavan gerekir (test)"}
 }
 const OPTIONAL_ORDER := ["forklift", "olcum", "vinc", "transpalet", "kasa", "raf"]
 
@@ -206,6 +208,7 @@ static func rebuild_offer(offer: Dictionary, reqs: Array, rng: RandomNumberGener
 		count += int(req["count"])
 		best = maxi(best, int(req["level"]))
 	offer["reqs"] = reqs
+	offer["title"] = TITLES[reqs[0]["kind"]][rng.randi_range(0, 2)]
 	offer["count"] = count
 	offer["best"] = best
 	offer["revenue"] = roundf(26.0 * revenue_scale * count * int(offer["months"]) * (1.0 + 0.15 * (best - 1)) * rng.randf_range(0.9, 1.1))

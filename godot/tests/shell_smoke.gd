@@ -152,6 +152,51 @@ func _run() -> void:
 		shell._on_tab("profil")
 		shell._open_detail(screen)
 		shell._back()
+	# abandon a job and sell a machine at any time (offers or report phase)
+	var g2 = shell.ShellBoss.new()
+	g2.default_setup(31)
+	g2.cash = 1000.0
+	g2.rent_factory("harbor", 12, false)
+	g2.buy_package()
+	g2.buy_listing(13)
+	g2.buy_listing(14)
+	g2.run_report()
+	g2.close_month()
+	g2.run_report()
+	g2.close_month()
+	var offer_to_take: Dictionary = {}
+	for candidate in g2.offers:
+		if g2.accept_block_reason(candidate["id"]) == "":
+			offer_to_take = candidate
+			break
+	if offer_to_take.is_empty():
+		return _fail("Expected a doable offer for the abandon test")
+	g2.accept_offer(offer_to_take["id"])
+	var held_uid: int = g2.jobs[0]["uids"][0]
+	if g2.sell_block_reason(held_uid) == "":
+		return _fail("A machine held by a job must not be sellable")
+	var cash_a: float = g2.cash
+	var penalty: float = g2.abandon_penalty(g2.jobs[0])
+	if g2.abandon_job(g2.jobs[0]["id"]) != "" or absf(cash_a - penalty - g2.cash) > 0.001 or not g2.jobs.is_empty():
+		return _fail("Abandoning must charge the penalty and drop the job")
+	if g2.free_machines().size() != 2:
+		return _fail("Abandoning must release the machines")
+	var cash_b: float = g2.cash
+	var expected_income: float = g2.sale_income(g2.machine_by_uid(held_uid))
+	g2.run_report()  # selling also works in the report phase
+	if g2.sell_machine_uid(held_uid) != "" or absf(g2.cash - cash_b - expected_income) > 0.001 or g2.machines.size() != 1:
+		return _fail("Selling a free machine must pay the sale income")
+	# summary details render
+	shell._reset_state(2)
+	shell.game.cash = 900.0
+	shell.game.rent_factory("harbor", 12, false)
+	shell.game.buy_package()
+	shell.game.buy_listing(13)
+	for kind in ["machines", "oee", "costs"]:
+		shell._on_tab("ozet")
+		shell._open_detail(kind)
+		if shell.content.get_child_count() < 2:
+			return _fail("Detail did not render: " + kind)
 	# save / load round trip: state equal and the future identical (RNG restored)
 	var ShellBossScript = shell.ShellBoss
 	var a = ShellBossScript.new()

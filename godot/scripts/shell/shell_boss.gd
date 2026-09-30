@@ -474,6 +474,76 @@ func accept_offer(id: int) -> String:
 	notice = "%s kabul edildi; hammadde %.0f düştü." % [job["title"], first]
 	return ""
 
+func abandon_penalty(job: Dictionary) -> float:
+	return roundf(float(job["revenue"]) * Data.ABANDON_PENALTY)
+
+func job_by_id(id: int) -> Dictionary:
+	for job in jobs:
+		if job["id"] == id:
+			return job
+	return {}
+
+func abandon_block_reason(id: int) -> String:
+	var job := job_by_id(id)
+	if job.is_empty():
+		return "İş bulunamadı."
+	if phase != "offers" and phase != "report":
+		return "İş şu an bırakılamaz."
+	if abandon_penalty(job) > cash:
+		return "Yetersiz nakit (ceza %.0f)" % abandon_penalty(job)
+	return ""
+
+# The job is dropped: penalty is paid, already-paid material is lost, machines are released.
+func abandon_job(id: int) -> String:
+	var reason := abandon_block_reason(id)
+	if reason != "":
+		return reason
+	var job := job_by_id(id)
+	var penalty := abandon_penalty(job)
+	cash -= penalty
+	for machine in machines:
+		if int(machine["job"]) == id:
+			machine["job"] = 0
+	jobs.erase(job)
+	history.append("Ay %d: iş bırakıldı: %s (ceza %.0f, ödenen hammadde yandı)." % [month, job["title"], penalty])
+	notice = "%s bırakıldı; ceza %.0f, ödenen hammadde kayıp." % [job["title"], penalty]
+	return ""
+
+func sale_income(machine: Dictionary) -> float:
+	return roundf(float(machine["reference"]) * Data.SALE_RATE)
+
+func machine_by_uid(uid: int) -> Dictionary:
+	for machine in machines:
+		if machine["uid"] == uid:
+			return machine
+	return {}
+
+func sell_block_reason(uid: int) -> String:
+	var machine := machine_by_uid(uid)
+	if machine.is_empty():
+		return "Makine bulunamadı."
+	if phase != "offers" and phase != "report":
+		return "Makine şu an satılamaz."
+	if int(machine["arrive"]) > month:
+		return "Henüz teslim alınmadı"
+	if machine["mortgaged"]:
+		return "İpotekli (kredi kapanmadan satılamaz)"
+	if int(machine["job"]) != 0:
+		return "İşe ayrılmış (önce işi bırak)"
+	return ""
+
+func sell_machine_uid(uid: int) -> String:
+	var reason := sell_block_reason(uid)
+	if reason != "":
+		return reason
+	var machine := machine_by_uid(uid)
+	var income := sale_income(machine)
+	cash += income
+	machines.erase(machine)
+	history.append("Ay %d: %s satıldı (+%.0f)." % [month, machine["model"], income])
+	notice = "%s satıldı; %.0f nakit girdi, kapasite %d azaldı." % [machine["model"], income, machine["capacity"]]
+	return ""
+
 # ---------------------------------------------------------------- report
 
 func run_report() -> String:

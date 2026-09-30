@@ -28,6 +28,7 @@
 
 ## Open design work
 
+- [IDEA-017 Teklif Süreci, Kapasite Yükü, Teslim Planı (Gantt) ve Tedarik](ideas/IDEA-017_teklif_kapasite_yuku_gantt_tedarik.md): iş yükü (x/ay) ve teslim tarihi, fiyat teklifi ve aciliyet, tedarikçi vadesi, Gantt/FIFO; Claude kısa notları yazıldı, Codex sentezi ve kullanıcı kararı bekleniyor.
 - [IDEA-016 Makine Pazarı, Makine Gerektiren İşler, Zorunlu Ekipman ve İpotekli Kredi](ideas/IDEA-016_makine_pazari_isler_ekipman_kredi.md): 4 tür × 3 seviye, yaş/indirim, makine ihtiyaç listeli işler ve hammadde formülü, zorunlu ekipman paketi, ipotekli kredi; Claude incelemesi bekleniyor. Mock arayüz `godot/factory_shell.tscn`.
 - [IDEA-015 Fabrika Kiralama Sözleşmesi ve Mobil Arayüz İskeleti](ideas/IDEA-015_fabrika_kiralama_ve_mobil_arayuz.md): kullanıcı kararları (6/12/24 ay kira, 2 kira erken çıkış, iflasta kira borcu 0, yükseklik, USD, çoklu iş) kaydedildi; Claude incelemesi bekleniyor. Arayüz iskeleti mock veriyle `godot/factory_shell.tscn` içinde.
 - [IDEA-014 Patron Operatörlüğünün Aylık Zaman Payı](ideas/IDEA-014_patron_operatorlugu_zaman_payi.md): kullanıcı FRZ-008 v2'nin sabit 8 saatini aylık toplam saatin yarısı olarak değiştirmeyi istedi. Claude incelemesi ve yeni FREEZE sürümü bekleniyor; FRZ-008 v2 CURRENT kalır.
