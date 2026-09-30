@@ -27,6 +27,8 @@ Tur 1 incelemesi bekleniyor.
 
 ## Açık Kararlar
 
+- Simülasyon (100 tohum, `godot/playtests/reports/_shell_ozet.md`): mock ilk ayarda hiçbir karakter kârlı değildi. Prototip ayarı: başlangıç parası $800k, iş geliri ×2, kiralar $15k–45k. Bu ayarda küçük park kârlı, orta başabaş, büyük zararda; FRZ-001 v3 erken erişim testi orta ikinci elde %61, büyükte %28 (para engeli; saat engeli 0). Bunlar test girdisidir.
+
 - Prototipte iş geliri = ilan geliri × teslimine kadarki aylık verimin ortalaması (verim = gerçekleşen/beklenen çıktı); beklenen çıktı, işe ayrılmış teslim edilmiş makinelerin kapasite toplamıdır. FRZ-002 v4 birim bazlı gelir kuralının çok aylı işe genellemesi olarak onay bekler.
 - Sabit gider (30) kiraya dönüştü ve makine başı gider (12) enerji + sarf + personel ile değişti; yeni ekonomi dengesi ölçülmedi.
 - Kuruluş güvencesi (FRZ-002 v3 §4) kiralamada ilk ay kirası + ölçeğin gizli Düzelt güvencesi olarak uygulanıyor; makine alımında ay gideri koruması BossState'teki gibi.

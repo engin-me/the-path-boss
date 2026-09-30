@@ -14,13 +14,13 @@ const WAGE := 3.0  # per person per month (mock; wage model is open in IDEA-013)
 # ---------------------------------------------------------------- factories
 
 const FACTORIES := [
-	{"id": "ridgeway", "name": "Ridgeway Workshop", "region": "Riverside District", "m2": 100, "height": 4.0, "rent": 30.0,
+	{"id": "ridgeway", "name": "Ridgeway Workshop", "region": "Riverside District", "m2": 100, "height": 4.0, "rent": 15.0,
 		"age": 34, "floor": "Beton, hafif yük", "ramps": 1, "kva": 150, "tint": Color("#2b3a4a")},
-	{"id": "harbor", "name": "Harbor Point Hall", "region": "Harbor Point", "m2": 150, "height": 5.0, "rent": 45.0,
+	{"id": "harbor", "name": "Harbor Point Hall", "region": "Harbor Point", "m2": 150, "height": 5.0, "rent": 22.5,
 		"age": 18, "floor": "Beton, orta yük", "ramps": 2, "kva": 250, "tint": Color("#2f4a45")},
-	{"id": "millbrook", "name": "Millbrook Bay Plant", "region": "Millbrook Bay", "m2": 200, "height": 6.0, "rent": 60.0,
+	{"id": "millbrook", "name": "Millbrook Bay Plant", "region": "Millbrook Bay", "m2": 200, "height": 6.0, "rent": 30.0,
 		"age": 25, "floor": "Takviyeli beton", "ramps": 2, "kva": 320, "tint": Color("#3a3f52")},
-	{"id": "ironvalley", "name": "Iron Valley Hangar", "region": "Iron Valley", "m2": 300, "height": 7.0, "rent": 90.0,
+	{"id": "ironvalley", "name": "Iron Valley Hangar", "region": "Iron Valley", "m2": 300, "height": 7.0, "rent": 45.0,
 		"age": 6, "floor": "Takviyeli beton, ağır yük", "ramps": 4, "kva": 600, "tint": Color("#4a3a2b")}
 ]
 
@@ -156,15 +156,18 @@ const TITLES := {
 	"Taşlama": ["Hassas rulman yatağı", "Piston taşlama serisi", "Valf yuvası"],
 	"Dövme": ["Krank mili dövme", "Flanş dövme partisi", "Aks dövme serisi"]
 }
+static var revenue_scale := 2.0  # calibration input for simulations (not a rule)
+static var rent_scale := 1.0  # kept at 1.0; rents in FACTORIES are already the calibrated values
+static var start_cash := 800.0
 const OFFER_MIX := [4, 4, 3, 3, 3, 3, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1]  # 2×4, 4×3, 5×2, 9×1 machines
 
 static func cost_share(count: int, best_level: int, jitter: float) -> float:
 	var score := 0.5 * float(count - 1) / 3.0 + 0.5 * float(best_level - 1) / 2.0
 	return clampf(0.75 - 0.45 * score + jitter, 0.30, 0.75)
 
-static func generate_offers(month: int) -> Array:
+static func generate_offers(month: int, salt := 0) -> Array:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 7919 * month + 13
+	rng.seed = 7919 * month + 13 + 104729 * salt
 	var mix: Array = OFFER_MIX.duplicate()
 	for i in range(mix.size() - 1, 0, -1):
 		var j := rng.randi_range(0, i)
@@ -188,13 +191,26 @@ static func generate_offers(month: int) -> Array:
 			best = maxi(best, int(req["level"]))
 		var months := rng.randi_range(count, 3 * count) if count > 1 else rng.randi_range(1, 3)
 		months = mini(months, 12)
-		var revenue := roundf(26.0 * count * months * (1.0 + 0.15 * (best - 1)) * rng.randf_range(0.9, 1.1))
+		var revenue := roundf(26.0 * revenue_scale * count * months * (1.0 + 0.15 * (best - 1)) * rng.randf_range(0.9, 1.1))
 		var share := cost_share(count, best, rng.randf_range(-0.04, 0.04))
 		offers.append({
 			"id": month * 100 + i, "title": TITLES[primary][rng.randi_range(0, 2)], "customer": CUSTOMERS[rng.randi_range(0, CUSTOMERS.size() - 1)],
 			"reqs": reqs, "count": count, "best": best, "months": months, "revenue": revenue, "share": share, "material": roundf(revenue * share)
 		})
 	return offers
+
+static func rebuild_offer(offer: Dictionary, reqs: Array, rng: RandomNumberGenerator) -> void:
+	var count := 0
+	var best := 1
+	for req in reqs:
+		count += int(req["count"])
+		best = maxi(best, int(req["level"]))
+	offer["reqs"] = reqs
+	offer["count"] = count
+	offer["best"] = best
+	offer["revenue"] = roundf(26.0 * revenue_scale * count * int(offer["months"]) * (1.0 + 0.15 * (best - 1)) * rng.randf_range(0.9, 1.1))
+	offer["share"] = cost_share(count, best, rng.randf_range(-0.04, 0.04))
+	offer["material"] = roundf(float(offer["revenue"]) * float(offer["share"]))
 
 static func _level(rng: RandomNumberGenerator) -> int:
 	var roll := rng.randf()

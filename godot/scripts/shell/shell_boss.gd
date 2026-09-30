@@ -12,6 +12,8 @@ const Data = preload("res://scripts/shell/shell_data.gd")
 # IDEA-016 proposal: machine age raises the chance that a Maintenance problem
 # is born (0-year park: fewer Maintenance rows). Test toggle.
 static var age_maintenance := true
+# FRZ-004 v2 §1A analogue: at least this many of the 20 offers fit the delivered park (0 = off).
+static var pool_floor := 12
 const PHYSICAL_DEPARTMENTS := ["Üretim", "Planlama", "Depo & Sevkiyat", "Bakım", "Kalite"]
 
 var factory_id := ""
@@ -25,6 +27,7 @@ var loan: Dictionary = {}
 var next_uid := 1
 var invested := 0.0
 var last_lines: Array = []
+var offer_salt := 0
 
 # ---------------------------------------------------------------- setup
 
@@ -32,7 +35,8 @@ func default_setup(rng_seed := -1) -> String:
 	var values := {}
 	for skill in SKILLS:
 		values[skill] = 60
-	var result := configure(values, 600, 400.0, "Manuel", rng_seed, "ikisi", true)
+	var result := configure(values, 600, Data.start_cash, "Manuel", rng_seed, "ikisi", true)
+	offer_salt = rng_seed if rng_seed >= 0 else int(Time.get_ticks_usec() % 100000)
 	if result == "":
 		phase = "invest"
 		notice = "Bir yer kirala; sonra ekipman, tezgah ve iş."
@@ -95,7 +99,7 @@ func max_gross_profit(park: Array[Dictionary]) -> float:
 func base_rent() -> float:
 	if factory_id == "":
 		return 0.0
-	return roundf(float(factory()["rent"]) * float(Data.term_by_months(term)["factor"]))
+	return roundf(float(factory()["rent"]) * Data.rent_scale * float(Data.term_by_months(term)["factor"]))
 
 func running_cost() -> float:
 	var cost := 0.0
@@ -187,7 +191,7 @@ func listing_by_uid(uid: int) -> Dictionary:
 func prepay_quote(id: String, months: int) -> Dictionary:
 	var target := Data.factory_by_id(id)
 	var period := Data.term_by_months(months)
-	var rent := roundf(float(target["rent"]) * float(period["factor"]))
+	var rent := roundf(float(target["rent"]) * Data.rent_scale * float(period["factor"]))
 	var half := months / 2
 	var discount := float(period["prepay_discount"])
 	return {"rent": rent, "half": half, "discount": discount, "amount": snappedf(rent * half * (1.0 - discount), 0.01)}
@@ -365,7 +369,40 @@ func _generate_offers() -> void:
 	offers.clear()
 	if factory_id == "":
 		return
-	offers.assign(Data.generate_offers(month))
+	offers.assign(Data.generate_offers(month, offer_salt))
+	_apply_pool_floor()
+
+func _feasible(reqs: Array) -> bool:
+	for req in reqs:
+		if owned_count(req) < int(req["count"]):
+			return false
+	return true
+
+# Rewrites infeasible offers so that at least `pool_floor` fit the delivered
+# park (any machine kind/level the player owns). Skipped while no machine has arrived.
+func _apply_pool_floor() -> void:
+	var park := delivered()
+	if pool_floor <= 0 or park.is_empty():
+		return
+	var feasible := 0
+	for offer in offers:
+		if _feasible(offer["reqs"]):
+			feasible += 1
+	for offer in offers:
+		if feasible >= pool_floor:
+			break
+		if _feasible(offer["reqs"]):
+			continue
+		var machine: Dictionary = park[rng.randi_range(0, park.size() - 1)]
+		var level := rng.randi_range(1, int(machine["level"]))
+		var req := {"kind": machine["kind"], "level": level, "count": 1}
+		var same := 0
+		for other in park:
+			if other["kind"] == machine["kind"] and int(other["level"]) >= level:
+				same += 1
+		req["count"] = mini(maxi(1, int(offer["count"])), same)
+		Data.rebuild_offer(offer, [req], rng)
+		feasible += 1
 
 func accept_block_reason(id: int) -> String:
 	if phase != "offers":
