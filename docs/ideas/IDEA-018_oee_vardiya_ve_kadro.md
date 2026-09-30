@@ -29,7 +29,13 @@ Bu bölüm kullanıcının mesajlarından ve Claude düzenlemelerinden derlendi;
 
 ## Notlar (Claude)
 
-Tur 1 incelemesi bekleniyor.
+Tur 1 · 2026-09-30 · Prototipte uygulandı (`shell_boss.gd`); sonuçlar `godot/playtests/reports/_shell_ozet.md`.
+
+- OEE (24 saat) = vardiya/3 × performans × (1 − hurda) × sorun çarpanı doğrulandı: Standart Torna, tek vardiya ≈ %22,6; üç vardiya ≈ %68.
+- Sorun satırları artık ayrı kayıp değil: Bakım/Planlama/Depo kullanılabilirliği, Üretim performansı, Kalite hurdayı düşürür; diğer alanlar OEE dışı net çıktıyı düşürür; her alan %20 ile sınırlı, toplam çarpan en az %33.
+- Patron vardiyası yönetim saatinden yarım toplam kadar (20 sa) alır, mesai +%50 (30 sa); gizli Düzelt saat güvencesi bozulursa reddedilir (orta ölçekte mesai reddedilir).
+- Vardiya sayısı kapasiteyi doğrusal artırıyor ve kârlılığı belirgin değiştiriyor (simülasyon).
+- Açık: orta/büyük parkta talep yetersizliği (kullanım %45–60) denge konusu.
 
 ## Açık Kararlar
 

@@ -1,33 +1,24 @@
-# Fabrika kabuğu simülasyonu (ShellBoss)
+# Fabrika kabuğu simülasyonu — Faz 1 (yük bazlı kapasite, vardiya, OEE, FIFO)
 
-Test girdisidir; denge kararı değildir. Motor: `godot/scripts/shell/shell_boss.gd`, koşucu: `godot/tests/shell_sim.gd`. Kural önerileri: IDEA-015 ve IDEA-016.
+Test girdisidir; denge kararı değildir. Motor: `godot/scripts/shell/shell_boss.gd`, koşucu: `godot/tests/shell_sim.gd`. Kurallar: IDEA-015..018 önerileridir.
 
-Koşullar: 100 tohum × 12 ay; başlangıç parası $800.000; iş geliri ×2; kiralar $15k / 22,5k / 30k / 45k (Ridgeway / Harbor / Millbrook / Iron Valley); parka uygun teklif tabanı 12/20; yaş → Bakım sorunu olasılığı açık; hammadde kabulde düşer (6 ayı aşan işte 6 aylık dilimler); gelir tesliminde verimle orantılı. Karakterler betiklidir (sabit tezgah alım planı, kâra göre açgözlü iş kabulü, görünür sorunlara Düzelt).
+Koşullar: 100 tohum × 12 ay; başlangıç parası $800k; `price_per_x` 0,13; kiralar $15k–45k; teorik kapasite Torna 2000x / Freze 1600x / Taşlama 1200x / Dövme 800x; performans %70/80/90; hurda %2–9; OEE = vardiya/3 × performans × (1 − hurda) × sorun çarpanı. Karakterler betiklidir: sabit tezgah planı, kapasiteye göre iş kabulü (vaat edilen yük, teslim tarihine kadar kapasitenin %85'ini aşmaz), "vardiyacı" karakterler birikim yüksekse vardiya açar.
 
 
-| Karakter | Kiralanamadı | Ayakta | Zorunlu kapanış | İflas | Ort. son net kasa | En düşük kasa (ort.) | İlk iş ayı | İşsiz makine-ay | Ort. verim | Düzelt/ay | Gizli satırlı ay | Danışmansız deneme mümkün | Para engeli | Saat engeli |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Küçük temkinli | 0 | 100 | 0 | 0 | 179 | 34 | 2.0 | 0.3 | %91 | 1.15 | 72 | 72 | 0 | 0 |
-| Orta ikinci el | 0 | 100 | 0 | 0 | -23 | -76 | 2.0 | 8.4 | %60 | 0.75 | 133 | 81 | 52 | 0 |
-| Orta peşinci | 0 | 100 | 0 | 0 | 66 | -36 | 2.0 | 0.9 | %74 | 0.68 | 103 | 97 | 6 | 0 |
-| Orta yeni makine | 0 | 100 | 0 | 0 | 74 | -38 | 4.0 | 0.8 | %78 | 0.47 | 0 | 0 | 0 | 0 |
-| Tek makine | 0 | 100 | 0 | 0 | 256 | 157 | 2.0 | 0.0 | %89 | 1.24 | 61 | 61 | 0 | 0 |
-| Büyük iddialı | 0 | 100 | 0 | 0 | -50 | -82 | 2.0 | 18.9 | %61 | 0.58 | 135 | 38 | 97 | 0 |
+| Karakter | Kiralanamadı | Ayakta | Zorunlu kapanış | İflas | Ort. son net kasa | En düşük kasa (ort.) | İlk iş ayı | OEE (24 sa, ort.) | Kapasite kullanımı | Ort. vardiya | Geç teslim / teslim | Bırakılan-iptal | Son skor | Gizli satırlı ay | Danışmansız deneme mümkün | Para engeli |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Tek makine | 0 | 98 | 0 | 2 | 178 | 55 | 1.1 | %24 | %95 | 1.0 | 77 / 300 | 0 | %83 | 63 | 63 | 0 |
+| Küçük temkinli | 0 | 85 | 0 | 15 | -66 | -167 | 1.0 | %22 | %67 | 1.0 | 132 / 262 | 32 | %71 | 73 | 48 | 25 |
+| Küçük vardiyacı | 0 | 96 | 0 | 4 | 165 | -111 | 1.0 | %45 | %80 | 2.0 | 68 / 648 | 4 | %88 | 79 | 25 | 54 |
+| Orta ikinci el | 0 | 99 | 0 | 1 | -104 | -227 | 1.0 | %24 | %56 | 1.3 | 161 / 368 | 28 | %72 | 139 | 4 | 135 |
+| Orta yeni makine | 0 | 90 | 0 | 10 | -27 | -155 | 1.0 | %28 | %66 | 1.3 | 172 / 381 | 30 | %73 | 42 | 0 | 42 |
+| Büyük iddialı | 0 | 98 | 0 | 2 | -199 | -294 | 1.0 | %21 | %45 | 1.1 | 133 / 298 | 36 | %71 | 140 | 0 | 140 |
 
-## Duyarlılık (aynı karakterler, 60 tohum; "ort. son net kasa" birimi $1.000)
-
-| Ayar | Küçük temkinli | Orta ikinci el | Orta peşinci | Orta yeni makine | Tek makine | Büyük iddialı |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Para 400, gelir ×1, kira ×1 (ilk mock) | -185 | -479 | -366 (100% iflas) | -496 | -146 | -734 |
-| Para 400, gelir ×3, kira ×1 | -135 | -493 | -366 (iflas) | -496 | -60 | -759 |
-| Para 400, gelir ×3, kira ×0,5 | 25 | -239 | -132 | -212 | 97 | -406 |
-| Para 800, gelir ×3, kira ×1 | 128 | -181 | -50 | -59 | 116 | -315 |
-| Para 800, gelir ×2, kira ×0,5 (seçilen) | 159 | -12 | 31 | 76 | 285 | -43 |
 
 ## Bulgular
 
-1. İlk mock ayarında (para 400, kira $30–90k) hiçbir karakter kârlı değildi; sebep gelirin küçüklüğünden çok kira ve peşin hammadde/makine sermayesi: gelir ×3 tek başına çözmüyor, çünkü hammadde geliri kadar büyüyüp kabulde peşin çıkıyor ve nakit ilk aylarda tükeniyor.
-2. Makine teslim süresi işletme sermayesini yiyor: yeni makine seçen karakter ilk işini ay 4'te alıyor, o zamana kadar kira ve ekipman nakdi eritiyor.
-3. Seçilen ayarda küçük park kârlı, orta park başabaş, büyük iddialı park zararda; büyümenin karşılığı henüz yok (işsiz makine-ay 19, tezgahlar arasında eşleşen iş az).
-4. FRZ-001 v3 §6 erken erişim testi (ay 2–3'te gizli Düzelt denemesi ≥ %90) küçük parkta sağlanıyor (72/72), orta ikinci elde %61 (81/133), büyükte %28 (38/135). Engel para: orta/büyük ölçeğin gizli sorun güvencesi ($105k / $280k) kasayı aşıyor. Saat engeli 0.
-5. Yaşlı park verimi düşürüyor (orta ikinci el %60, yeni makine %78): yaş → Bakım sorunu kuralı etkili. Orta yeni makine 0 gizli satırla başlıyor (makine gelene kadar sorun doğmuyor).
+1. Vardiya kararı gerçek bir kaldıraç: aynı parkla (Ridgeway + 2 ikinci el tezgah) "temkinli" (tek vardiya, OEE ≈ %22) zararda, "vardiyacı" (ortalama 2 vardiya, OEE ≈ %46) kârlı.
+2. Tek makine patron vardiyasıyla kârlı ama tavanı düşük (OEE ≈ %24, kullanım %95); büyümek vardiya ve personel ister.
+3. Orta ve büyük parklar hâlâ zararda: kapasite kullanımı %45–60. İş talebi parkın tür ve seviye dağılımına göre yetersiz; kira, ekipman ve personel sabit. Pazar büyüklüğü (teklif boyutu ve sayısı) parka göre ölçeklenmeli ya da maliyetler düşmeli (denge).
+4. Geç teslim oranı yüksek (yaklaşık %25–45): teslim süreleri dar. Skor bu yüzden %70–90 arasında.
+5. Gizli Düzelt erişimi (FRZ-001 v3 erken test) orta/büyük parkta para engelli; Faz 2'deki peşinat işletme sermayesini rahatlatacak.

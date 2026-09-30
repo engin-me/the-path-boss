@@ -41,8 +41,12 @@ const TYPE_PRICE := {"Torna": 80.0, "Freze": 120.0, "Taşlama": 140.0, "Dövme":
 const LEVEL_MULT := {1: 0.70, 2: 1.00, 3: 1.40}
 const BRANDS := {1: ["Brandt", "Halden"], 2: ["Novak Precision", "Meridian"], 3: ["Aurex", "Kessler"]}
 const MODEL_PREFIX := {"Torna": "T", "Freze": "F", "Taşlama": "G", "Dövme": "P"}
-const LEVEL_CAPACITY := {1: 40, 2: 55, 3: 70}
-const LEVEL_LETTER := {1: "A", 2: "B", 3: "C"}  # engine machine class (capacity 40 / 55 / 70)
+const NAMEPLATE := {"Torna": 2000, "Freze": 1600, "Taşlama": 1200, "Dövme": 800}  # x per month at 3 shifts (IDEA-018)
+const LEVEL_PERF := {1: 0.70, 2: 0.80, 3: 0.90}
+const SCRAP_BASE := {"Torna": 0.03, "Freze": 0.04, "Taşlama": 0.06, "Dövme": 0.09}  # Standart level
+const SCRAP_LEVEL_DELTA := {1: 0.0, 2: -0.005, 3: -0.01}
+const SCRAP_FLOOR := 0.02
+const LEVEL_LETTER := {1: "A", 2: "B", 3: "C"}  # engine machine class (BossState legacy key)
 const LEVEL_AREA := {1: 25.0, 2: 30.0, 3: 40.0}
 const TYPE_AREA := {"Torna": 1.0, "Freze": 1.2, "Taşlama": 1.1, "Dövme": 2.2}
 const LEVEL_HEIGHT := {1: 3.0, 2: 3.5, 3: 4.5}
@@ -98,7 +102,8 @@ static func _listing(uid: int, type: String, level: int, age: int, discount: flo
 		"model": "%s %s-%d" % [brand, MODEL_PREFIX[type], 100 + level * 100 + uid],
 		"age": age, "list_price": list, "base_price": base, "discount": discount,
 		"price": roundf(base * (1.0 - discount)),
-		"capacity": int(LEVEL_CAPACITY[level]),
+		"capacity": int(NAMEPLATE[type]), "nameplate": int(NAMEPLATE[type]), "perf": float(LEVEL_PERF[level]),
+		"scrap": maxf(SCRAP_FLOOR, float(SCRAP_BASE[type]) + float(SCRAP_LEVEL_DELTA[level])),
 		"area": area, "height": snappedf(float(LEVEL_HEIGHT[level]) + float(TYPE_HEIGHT[type]), 0.1),
 		"personnel": personnel_for(type, level),
 		"kw": int(list / 4.0), "energy": snappedf(list * ENERGY_RATE, 0.01),
@@ -158,7 +163,8 @@ const TITLES := {
 	"Taşlama": ["Hassas rulman yatağı", "Piston taşlama serisi", "Valf yuvası"],
 	"Dövme": ["Krank mili dövme", "Flanş dövme partisi", "Aks dövme serisi"]
 }
-static var revenue_scale := 2.0  # calibration input for simulations (not a rule)
+static var price_per_x := 0.13  # units (k$) per x for a Torna; other kinds scale with machine price and nameplate
+static var revenue_scale := 1.0  # calibration input for simulations (not a rule)
 static var rent_scale := 1.0  # kept at 1.0; rents in FACTORIES are already the calibrated values
 static var start_cash := 800.0
 const OFFER_MIX := [4, 4, 3, 3, 3, 3, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1]  # 2×4, 4×3, 5×2, 9×1 machines
@@ -166,6 +172,45 @@ const OFFER_MIX := [4, 4, 3, 3, 3, 3, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1] 
 static func cost_share(count: int, best_level: int, jitter: float) -> float:
 	var score := 0.5 * float(count - 1) / 3.0 + 0.5 * float(best_level - 1) / 2.0
 	return clampf(0.75 - 0.45 * score + jitter, 0.30, 0.75)
+
+# Good x per month of one Standart machine on one shift (reference size for jobs).
+static func ref_output(kind: String) -> float:
+	return float(NAMEPLATE[kind]) / 3.0 * float(LEVEL_PERF[1]) * (1.0 - float(SCRAP_BASE[kind]))
+
+static func price_x(kind: String) -> float:
+	return price_per_x * revenue_scale * float(TYPE_PRICE[kind]) / 80.0 * 2000.0 / float(NAMEPLATE[kind])
+
+static func difficulty(level: int, rng: RandomNumberGenerator) -> float:
+	var pool := {1: [1.0, 1.5], 2: [1.5, 2.0], 3: [2.0, 2.5]}
+	return float(pool[level][rng.randi_range(0, 1)])
+
+# Builds (or rebuilds) an offer's requirements and money from a spec:
+# specs = [{"kind", "level", "n"}], n = machine-equivalents of one-shift demand.
+static func fill_offer(offer: Dictionary, specs: Array, rng: RandomNumberGenerator) -> void:
+	var total_n := 0
+	var best := 1
+	var reqs: Array = []
+	var revenue := 0.0
+	for spec in specs:
+		var level: int = spec["level"]
+		var utilisation := rng.randf_range(0.55, 1.15)
+		var load_x: float = float(spec["n"]) * ref_output(spec["kind"]) * utilisation * float(offer["duration"])
+		var z := difficulty(level, rng)
+		var parts := maxi(10, int(roundf(load_x / z / 10.0)) * 10)
+		var workload := float(parts) * z
+		reqs.append({"kind": spec["kind"], "level": level, "count": int(spec["n"]), "parts": parts, "difficulty": z, "workload": workload, "remaining": workload})
+		revenue += workload * price_x(spec["kind"])
+		total_n += int(spec["n"])
+		best = maxi(best, level)
+	revenue = roundf(revenue * (1.0 + 0.15 * (best - 1)) * rng.randf_range(0.92, 1.08))
+	var share := cost_share(total_n, best, rng.randf_range(-0.04, 0.04))
+	offer["reqs"] = reqs
+	offer["count"] = total_n
+	offer["best"] = best
+	offer["revenue"] = revenue
+	offer["share"] = share
+	offer["material"] = roundf(revenue * share)
+	offer["title"] = TITLES[specs[0]["kind"]][rng.randi_range(0, 2)]
 
 static func generate_offers(month: int, salt := 0) -> Array:
 	var rng := RandomNumberGenerator.new()
@@ -180,40 +225,21 @@ static func generate_offers(month: int, salt := 0) -> Array:
 	for i in mix.size():
 		var count: int = mix[i]
 		var primary: String = TYPES[rng.randi_range(0, TYPES.size() - 1)]
-		var reqs: Array = []
+		var specs: Array = []
 		if count >= 2 and rng.randf() < 0.45:
 			var secondary: String = TYPES[(TYPES.find(primary) + rng.randi_range(1, 3)) % 4]
 			var first := int(ceil(count / 2.0))
-			reqs.append({"kind": primary, "level": _level(rng), "count": first})
-			reqs.append({"kind": secondary, "level": _level(rng), "count": count - first})
+			specs.append({"kind": primary, "level": _level(rng), "n": first})
+			specs.append({"kind": secondary, "level": _level(rng), "n": count - first})
 		else:
-			reqs.append({"kind": primary, "level": _level(rng), "count": count})
-		var best := 1
-		for req in reqs:
-			best = maxi(best, int(req["level"]))
-		var months := rng.randi_range(count, 3 * count) if count > 1 else rng.randi_range(1, 3)
-		months = mini(months, 12)
-		var revenue := roundf(26.0 * revenue_scale * count * months * (1.0 + 0.15 * (best - 1)) * rng.randf_range(0.9, 1.1))
-		var share := cost_share(count, best, rng.randf_range(-0.04, 0.04))
-		offers.append({
-			"id": month * 100 + i, "title": TITLES[primary][rng.randi_range(0, 2)], "customer": CUSTOMERS[rng.randi_range(0, CUSTOMERS.size() - 1)],
-			"reqs": reqs, "count": count, "best": best, "months": months, "revenue": revenue, "share": share, "material": roundf(revenue * share)
-		})
+			specs.append({"kind": primary, "level": _level(rng), "n": count})
+		var duration := mini(rng.randi_range(count, 3 * count) if count > 1 else rng.randi_range(1, 3), 10)
+		var delay := rng.randi_range(0, 2)
+		var offer := {"id": month * 100 + i, "customer": CUSTOMERS[rng.randi_range(0, CUSTOMERS.size() - 1)], "duration": duration,
+			"start_delay": delay, "months": delay + duration + rng.randi_range(0, 1)}
+		fill_offer(offer, specs, rng)
+		offers.append(offer)
 	return offers
-
-static func rebuild_offer(offer: Dictionary, reqs: Array, rng: RandomNumberGenerator) -> void:
-	var count := 0
-	var best := 1
-	for req in reqs:
-		count += int(req["count"])
-		best = maxi(best, int(req["level"]))
-	offer["reqs"] = reqs
-	offer["title"] = TITLES[reqs[0]["kind"]][rng.randi_range(0, 2)]
-	offer["count"] = count
-	offer["best"] = best
-	offer["revenue"] = roundf(26.0 * revenue_scale * count * int(offer["months"]) * (1.0 + 0.15 * (best - 1)) * rng.randf_range(0.9, 1.1))
-	offer["share"] = cost_share(count, best, rng.randf_range(-0.04, 0.04))
-	offer["material"] = roundf(float(offer["revenue"]) * float(offer["share"]))
 
 static func _level(rng: RandomNumberGenerator) -> int:
 	var roll := rng.randf()

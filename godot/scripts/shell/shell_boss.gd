@@ -15,6 +15,11 @@ static var age_maintenance := true
 # FRZ-004 v2 §1A analogue: at least this many of the 20 offers fit the delivered park (0 = off).
 static var pool_floor := 12
 const PHYSICAL_DEPARTMENTS := ["Üretim", "Planlama", "Depo & Sevkiyat", "Bakım", "Kalite"]
+const AVAILABILITY_DEPARTMENTS := ["Bakım", "Planlama", "Depo & Sevkiyat"]
+# Legacy problem scale: a problem's loss (2-6 units x scale factor) is measured against
+# this many units per delivered machine, so 6 units on one machine is 12 percent.
+const LOSS_UNITS_PER_MACHINE := 50.0
+const LATE_CANCEL_MONTHS := 3
 
 var factory_id := ""
 var term := 12
@@ -28,6 +33,8 @@ var next_uid := 1
 var invested := 0.0
 var last_lines: Array = []
 var offer_salt := 0
+var delivery_score := 0.8
+var patron_overtime := false
 
 # ---------------------------------------------------------------- save / load
 
@@ -35,7 +42,7 @@ const BASE_FIELDS := ["phase", "persona", "budget", "skills", "diploma", "start_
 	"offer_history", "accepted", "report", "problems", "next_id", "consultants", "candidates", "hours_left", "month_start_hours",
 	"prevented_this_month", "prevented_total", "history", "findings", "month_flags", "closure", "notice"]
 const SHELL_FIELDS := ["factory_id", "term", "months_left", "prepaid_months", "package_bought", "equip", "jobs", "loan", "next_uid",
-	"invested", "last_lines", "offer_salt"]
+	"invested", "last_lines", "offer_salt", "delivery_score", "patron_overtime"]
 
 func to_save() -> Dictionary:
 	var data := {}
@@ -87,14 +94,11 @@ func scale() -> Dictionary:
 		"medium": return SCALES[1]
 	return SCALES[0]
 
-func capacity_at_least(quality: int) -> int:
+# Legacy meaning for BossState's problem generator: problem-scale units, not x.
+func capacity_at_least(_quality: int) -> int:
 	if not package_bought:
 		return 0
-	var total := 0
-	for machine in delivered():
-		if int(machine["level"]) >= quality:
-			total += int(machine["capacity"])
-	return total
+	return int(LOSS_UNITS_PER_MACHINE * delivered().size())
 
 func ordinary_expense() -> float:
 	if factory_id == "":
@@ -118,13 +122,16 @@ func tranche_due(job: Dictionary) -> float:
 	return 0.0
 
 # FRZ-003 v2 / FRZ-004 v2: a machine counts toward profit potential only after
-# its first full operating month, i.e. once it has been delivered for a month.
+# its first full operating month. Potential = structural good output at the
+# current shifts x price per x x (1 - average material share).
 func max_gross_profit(park: Array[Dictionary]) -> float:
-	var eligible: Array[Dictionary] = []
+	var total := 0.0
 	for machine in park:
-		if int(machine.get("arrive", 0)) < month:
-			eligible.append(machine)
-	return super.max_gross_profit(eligible)
+		if int(machine.get("arrive", 0)) >= month or not package_bought:
+			continue
+		var good := float(machine["nameplate"]) * availability(machine) * float(machine["perf"]) * (1.0 - float(machine["scrap"]))
+		total += good * Data.price_x(machine["kind"]) * 0.5
+	return total
 
 # ---------------------------------------------------------------- queries
 
@@ -136,7 +143,7 @@ func base_rent() -> float:
 func running_cost() -> float:
 	var cost := 0.0
 	for machine in delivered():
-		cost += float(machine["energy"]) + float(machine["consumables"]) + Data.WAGE * int(machine["personnel"])
+		cost += machine_running_cost(machine)
 	return cost
 
 func delivered() -> Array:
@@ -146,12 +153,207 @@ func delivered() -> Array:
 			list.append(machine)
 	return list
 
-func free_machines() -> Array:
-	var list: Array = []
+# ---------------------------------------------------------------- shifts, patron, OEE (IDEA-018)
+
+func shift_equiv(machine: Dictionary) -> float:
+	var shifts := float(machine["shifts"])
+	if machine.get("patron", false) and patron_overtime:
+		shifts += 0.5
+	return minf(shifts, 3.0)
+
+func availability(machine: Dictionary) -> float:
+	return shift_equiv(machine) / 3.0
+
+func machine_running_cost(machine: Dictionary) -> float:
+	var wages := 0.0
+	for shift in range(1, int(machine["shifts"]) + 1):
+		if shift == 1 and machine.get("patron", false):
+			continue
+		wages += Data.WAGE * int(machine["personnel"])
+	return (float(machine["energy"]) + float(machine["consumables"])) * shift_equiv(machine) + wages
+
+func patron_machine() -> Dictionary:
+	for machine in machines:
+		if machine.get("patron", false):
+			return machine
+	return {}
+
+func patron_hours() -> int:
+	if patron_machine().is_empty():
+		return 0
+	var share: int = monthly_hours / 2
+	if patron_overtime:
+		share += share / 2
+	return share
+
+func _operator_share() -> int:
+	return patron_hours()
+
+func hidden_hour_cap() -> int:
+	return int(HOUR_BANDS[int(scale()["max_tier"])][1])
+
+func patron_block_reason(uid: int, overtime: bool) -> String:
+	var machine := machine_by_uid(uid)
+	if machine.is_empty():
+		return "Makine bulunamadı."
+	if int(machine["personnel"]) != 1:
+		return "Bu makine tek kişiyle çalışmaz"
+	var share: int = monthly_hours / 2
+	if overtime:
+		share += share / 2
+	if monthly_hours - share < hidden_hour_cap():
+		return "Gizli Düzelt için yönetim saati kalmaz (%d sa gerekli)" % hidden_hour_cap()
+	return ""
+
+func set_patron(uid: int, on: bool) -> String:
+	if phase != "offers":
+		return "Vardiya ay başında (rapordan önce) ayarlanır."
+	var machine := machine_by_uid(uid)
+	if machine.is_empty():
+		return "Makine bulunamadı."
+	if on:
+		var reason := patron_block_reason(uid, patron_overtime)
+		if reason != "":
+			return reason
+		for other in machines:
+			other["patron"] = false
+	machine["patron"] = on
+	if not on:
+		patron_overtime = false
+	return ""
+
+func set_overtime(on: bool) -> String:
+	if phase != "offers":
+		return "Mesai ay başında (rapordan önce) ayarlanır."
+	var machine := patron_machine()
+	if on and machine.is_empty():
+		return "Önce bir makineyi sen çalıştırmalısın."
+	if on:
+		var reason := patron_block_reason(machine["uid"], true)
+		if reason != "":
+			return reason
+	patron_overtime = on
+	return ""
+
+func set_shifts(uid: int, shifts: int) -> String:
+	if phase != "offers":
+		return "Vardiya ay başında (rapordan önce) ayarlanır."
+	var machine := machine_by_uid(uid)
+	if machine.is_empty():
+		return "Makine bulunamadı."
+	machine["shifts"] = clampi(shifts, 1, 3)
+	return ""
+
+# A solo patron runs the first single-operator machine that arrives.
+func _auto_patron() -> void:
+	if not patron_machine().is_empty():
+		return
 	for machine in delivered():
-		if int(machine["job"]) == 0:
-			list.append(machine)
-	return list
+		if int(machine["personnel"]) == 1 and patron_block_reason(machine["uid"], false) == "":
+			machine["patron"] = true
+			return
+
+func _enforce_patron() -> void:
+	var machine := patron_machine()
+	if machine.is_empty():
+		return
+	if patron_block_reason(machine["uid"], patron_overtime) != "":
+		patron_overtime = false
+		if patron_block_reason(machine["uid"], false) != "":
+			machine["patron"] = false
+			_find("Ay %d: yönetim saati yetmediği için patron vardiyası kapandı." % month)
+
+func loss_fractions() -> Dictionary:
+	var denom := LOSS_UNITS_PER_MACHINE * maxf(1.0, float(delivered().size()))
+	var by_dept := {}
+	for root in problems.values():
+		if root["active"]:
+			by_dept[root["department"]] = float(by_dept.get(root["department"], 0.0)) + float(root["loss"]) / denom
+	var capped := false
+	for department in by_dept:
+		if by_dept[department] > DEPARTMENT_CAP:
+			by_dept[department] = DEPARTMENT_CAP
+			capped = true
+	var avail := 0.0
+	var non := 0.0
+	for department in by_dept:
+		if AVAILABILITY_DEPARTMENTS.has(department):
+			avail += by_dept[department]
+		elif not PHYSICAL_DEPARTMENTS.has(department):
+			non += by_dept[department]
+	return {"by_dept": by_dept, "A": avail, "P": float(by_dept.get("Üretim", 0.0)), "Q": float(by_dept.get("Kalite", 0.0)), "N": non, "capped": capped}
+
+# Problem multipliers: physical (availability x performance x quality) and non-physical,
+# with the 33 percent realisation floor on their product.
+func problem_mults(fr: Dictionary) -> Dictionary:
+	var physical := (1.0 - float(fr["A"])) * (1.0 - float(fr["P"])) * (1.0 - float(fr["Q"]))
+	var non := 1.0 - float(fr["N"])
+	var total := maxf(REALIZATION_FLOOR, physical * non)
+	var non_eff := minf(1.0, total / maxf(physical, 0.0001))
+	return {"phys": physical, "non": non_eff, "a": 1.0 - float(fr["A"]), "p": 1.0 - float(fr["P"]), "q": 1.0 - float(fr["Q"])}
+
+func machine_steps(machine: Dictionary, mults: Dictionary) -> Dictionary:
+	var theoretical := float(machine["nameplate"])
+	var after_shift := theoretical * availability(machine)
+	var after_perf := after_shift * float(machine["perf"])
+	var after_scrap := after_perf * (1.0 - float(machine["scrap"]))
+	var after_phys := after_scrap * float(mults["phys"])
+	return {"theoretical": theoretical, "shift": after_shift, "perf": after_perf, "scrap": after_scrap, "phys": after_phys, "net": after_phys * float(mults["non"])}
+
+func machine_output(machine: Dictionary, mults: Dictionary) -> float:
+	if not package_bought or int(machine["arrive"]) > month:
+		return 0.0
+	return float(machine_steps(machine, mults)["net"])
+
+func effective_capacity(kind := "") -> float:
+	var mults := problem_mults(loss_fractions())
+	var total := 0.0
+	for machine in delivered():
+		if kind == "" or machine["kind"] == kind:
+			total += machine_output(machine, mults)
+	return total
+
+# Structural capacity waterfall for the delivered park at the current shifts and problems.
+func capacity_steps() -> Dictionary:
+	var mults := problem_mults(loss_fractions())
+	var sums := {"theoretical": 0.0, "shift": 0.0, "perf": 0.0, "scrap": 0.0, "phys": 0.0, "net": 0.0}
+	for machine in delivered():
+		var steps := machine_steps(machine, mults)
+		for key in sums:
+			sums[key] += float(steps[key]) if package_bought or key == "theoretical" else 0.0
+	sums["used"] = 0.0
+	sums["idle"] = sums["net"]
+	sums["oee"] = 0.0 if float(sums["theoretical"]) <= 0.0 else float(sums["phys"]) / float(sums["theoretical"])
+	return sums
+
+func oee_now() -> float:
+	var mults := problem_mults(loss_fractions())
+	var theoretical := 0.0
+	var good := 0.0
+	for machine in delivered():
+		var steps := machine_steps(machine, mults)
+		theoretical += float(steps["theoretical"])
+		good += float(steps["phys"])
+	return 0.0 if theoretical <= 0.0 else good / theoretical
+
+func machine_by_uid(uid: int) -> Dictionary:
+	for machine in machines:
+		if machine["uid"] == uid:
+			return machine
+	return {}
+
+func owns(req: Dictionary) -> bool:
+	for machine in machines:
+		if machine["kind"] == req["kind"] and int(machine["level"]) >= int(req["level"]):
+			return true
+	return false
+
+func owned_count(req: Dictionary) -> int:
+	var count := 0
+	for machine in machines:
+		if machine["kind"] == req["kind"] and int(machine["level"]) >= int(req["level"]):
+			count += 1
+	return count
 
 func package_info() -> Dictionary:
 	if factory_id == "":
@@ -171,36 +373,6 @@ func area_used() -> float:
 func hidden_guarantee() -> float:
 	var current := scale()
 	return float(MONEY_BANDS[int(current["max_tier"])][1]) * float(current["factor"])
-
-# Greedy assignment of free delivered machines to a job's requirement list.
-func assign(reqs: Array) -> Dictionary:
-	var pool: Array = free_machines().duplicate()
-	var ordered: Array = reqs.duplicate()
-	ordered.sort_custom(func(a, b): return int(a["level"]) > int(b["level"]))
-	var uids: Array = []
-	var missing: Array = []
-	for req in ordered:
-		var short := int(req["count"])
-		for _i in int(req["count"]):
-			var best: Dictionary = {}
-			for machine in pool:
-				if machine["kind"] == req["kind"] and int(machine["level"]) >= int(req["level"]):
-					if best.is_empty() or int(machine["level"]) < int(best["level"]):
-						best = machine
-			if not best.is_empty():
-				uids.append(best["uid"])
-				pool.erase(best)
-				short -= 1
-		if short > 0:
-			missing.append("%d× %s %s" % [short, Data.LEVELS[int(req["level"])], req["kind"]])
-	return {"ok": missing.is_empty(), "uids": uids, "missing": missing}
-
-func owned_count(req: Dictionary) -> int:
-	var count := 0
-	for machine in delivered():
-		if machine["kind"] == req["kind"] and int(machine["level"]) >= int(req["level"]):
-			count += 1
-	return count
 
 func first_payment(offer: Dictionary) -> float:
 	var months: int = offer["months"]
@@ -385,7 +557,10 @@ func buy_listing(uid: int) -> String:
 	machine["reference"] = float(listing["price"])
 	machine["bought_month"] = month
 	machine["arrive"] = month + int(listing["delivery"])
-	machine["job"] = 0
+	machine["shifts"] = 1
+	machine["patron"] = false
+	machine["used_last"] = 0.0
+	machine["output_last"] = 0.0
 	machine["mortgaged"] = false
 	next_uid += 1
 	cash -= float(listing["price"])
@@ -406,15 +581,14 @@ func _generate_offers() -> void:
 
 func _feasible(reqs: Array) -> bool:
 	for req in reqs:
-		if owned_count(req) < int(req["count"]):
+		if not owns(req):
 			return false
 	return true
 
-# Rewrites infeasible offers so that at least `pool_floor` fit the delivered
-# park (any machine kind/level the player owns). Skipped while no machine has arrived.
+# FRZ-004 v2 §1A analogue: rewrites infeasible offers so that at least `pool_floor`
+# fit the owned park (delivered or on order). Workload is sized to the park.
 func _apply_pool_floor() -> void:
-	var park := delivered()
-	if pool_floor <= 0 or park.is_empty():
+	if pool_floor <= 0 or machines.is_empty():
 		return
 	var feasible := 0
 	for offer in offers:
@@ -425,15 +599,13 @@ func _apply_pool_floor() -> void:
 			break
 		if _feasible(offer["reqs"]):
 			continue
-		var machine: Dictionary = park[rng.randi_range(0, park.size() - 1)]
+		var machine: Dictionary = machines[rng.randi_range(0, machines.size() - 1)]
 		var level := rng.randi_range(1, int(machine["level"]))
-		var req := {"kind": machine["kind"], "level": level, "count": 1}
 		var same := 0
-		for other in park:
+		for other in machines:
 			if other["kind"] == machine["kind"] and int(other["level"]) >= level:
 				same += 1
-		req["count"] = mini(maxi(1, int(offer["count"])), same)
-		Data.rebuild_offer(offer, [req], rng)
+		Data.fill_offer(offer, [{"kind": machine["kind"], "level": level, "n": mini(maxi(1, int(offer["count"])), same)}], rng)
 		feasible += 1
 
 func accept_block_reason(id: int) -> String:
@@ -444,9 +616,12 @@ func accept_block_reason(id: int) -> String:
 		return "İlan bulunamadı."
 	if not package_bought:
 		return "Zorunlu ekipman eksik"
-	var check := assign(offer["reqs"])
-	if not check["ok"]:
-		return "Eksik: " + ", ".join(check["missing"])
+	var missing: Array = []
+	for req in offer["reqs"]:
+		if not owns(req):
+			missing.append("%s %s" % [Data.LEVELS[int(req["level"])], req["kind"]])
+	if not missing.is_empty():
+		return "Makine yok: " + ", ".join(missing)
 	if first_payment(offer) > cash:
 		return "Yetersiz nakit"
 	return ""
@@ -456,18 +631,17 @@ func accept_offer(id: int) -> String:
 	if reason != "":
 		return reason
 	var offer := offer_by_id(id)
-	var check := assign(offer["reqs"])
 	var first := first_payment(offer)
 	cash -= first
 	var job: Dictionary = offer.duplicate(true)
 	job["elapsed"] = 0
-	job["eff_sum"] = 0.0
-	job["uids"] = check["uids"]
+	job["accepted_month"] = month
+	job["start_month"] = month + int(offer["start_delay"])
+	job["due_month"] = month + int(offer["months"]) - 1
+	job["produced"] = 0.0
+	job["yield"] = 1.0
 	job["material_left"] = float(offer["material"]) - first
 	job["material_tranche"] = roundf(float(offer["material"]) * 6.0 / float(offer["months"]))
-	for machine in machines:
-		if check["uids"].has(machine["uid"]):
-			machine["job"] = job["id"]
 	jobs.append(job)
 	offers.erase(offer)
 	history.append("Ay %d: iş kabul edildi: %s (hammadde %.0f)." % [month, job["title"], first])
@@ -493,7 +667,7 @@ func abandon_block_reason(id: int) -> String:
 		return "Yetersiz nakit (ceza %.0f)" % abandon_penalty(job)
 	return ""
 
-# The job is dropped: penalty is paid, already-paid material is lost, machines are released.
+# The job is dropped: penalty is paid, paid material is lost, the delivery score falls.
 func abandon_job(id: int) -> String:
 	var reason := abandon_block_reason(id)
 	if reason != "":
@@ -501,22 +675,18 @@ func abandon_job(id: int) -> String:
 	var job := job_by_id(id)
 	var penalty := abandon_penalty(job)
 	cash -= penalty
-	for machine in machines:
-		if int(machine["job"]) == id:
-			machine["job"] = 0
 	jobs.erase(job)
+	_score_event(0.0)
 	history.append("Ay %d: iş bırakıldı: %s (ceza %.0f, ödenen hammadde yandı)." % [month, job["title"], penalty])
-	notice = "%s bırakıldı; ceza %.0f, ödenen hammadde kayıp." % [job["title"], penalty]
+	notice = "%s bırakıldı; ceza %.0f, ödenen hammadde kayıp, teslimat skoru düştü." % [job["title"], penalty]
 	return ""
+
+# Delivery score in 0..1: on time pulls toward 1, late toward 0.4, dropped jobs toward 0.
+func _score_event(target: float) -> void:
+	delivery_score = clampf(delivery_score * 0.8 + target * 0.2, 0.0, 1.0)
 
 func sale_income(machine: Dictionary) -> float:
 	return roundf(float(machine["reference"]) * Data.SALE_RATE)
-
-func machine_by_uid(uid: int) -> Dictionary:
-	for machine in machines:
-		if machine["uid"] == uid:
-			return machine
-	return {}
 
 func sell_block_reason(uid: int) -> String:
 	var machine := machine_by_uid(uid)
@@ -528,8 +698,6 @@ func sell_block_reason(uid: int) -> String:
 		return "Henüz teslim alınmadı"
 	if machine["mortgaged"]:
 		return "İpotekli (kredi kapanmadan satılamaz)"
-	if int(machine["job"]) != 0:
-		return "İşe ayrılmış (önce işi bırak)"
 	return ""
 
 func sell_machine_uid(uid: int) -> String:
@@ -541,8 +709,89 @@ func sell_machine_uid(uid: int) -> String:
 	cash += income
 	machines.erase(machine)
 	history.append("Ay %d: %s satıldı (+%.0f)." % [month, machine["model"], income])
-	notice = "%s satıldı; %.0f nakit girdi, kapasite %d azaldı." % [machine["model"], income, machine["capacity"]]
+	notice = "%s satıldı; %.0f nakit girdi, etkin kapasite azaldı." % [machine["model"], income]
 	return ""
+
+# ---------------------------------------------------------------- production (FIFO load on machines)
+
+func material_ready(_job: Dictionary, _t: int) -> bool:
+	return true  # phase 2 replaces this with supplier delivery
+
+func _eligible(kind: String, level: int, t: int) -> Array:
+	var list: Array = []
+	for machine in machines:
+		if machine["kind"] == kind and int(machine["level"]) >= level and int(machine["arrive"]) <= t:
+			list.append(machine)
+	list.sort_custom(func(a, b): return int(a["level"]) < int(b["level"]))
+	return list
+
+# FIFO: jobs take capacity in acceptance order; each requirement draws from
+# eligible machines of its kind, lowest sufficient level first.
+func _allocate(job_list: Array, cap_left: Dictionary, t: int, record: bool) -> void:
+	for job in job_list:
+		if int(job["start_month"]) > t or not material_ready(job, t):
+			continue
+		var job_yield := float(job.get("yield", 1.0))
+		for req in job["reqs"]:
+			var need := float(req["remaining"])
+			if need <= 0.0001:
+				continue
+			for machine in _eligible(req["kind"], int(req["level"]), t):
+				if need <= 0.0001:
+					break
+				var available := float(cap_left.get(machine["uid"], 0.0))
+				if available <= 0.0:
+					continue
+				var use := minf(available, need / job_yield)
+				cap_left[machine["uid"]] = available - use
+				var got := use * job_yield
+				need -= got
+				req["remaining"] = maxf(0.0, need)
+				job["produced"] = float(job.get("produced", 0.0)) + got
+				if record:
+					machine["used_last"] = float(machine.get("used_last", 0.0)) + use
+
+func job_done(job: Dictionary) -> bool:
+	for req in job["reqs"]:
+		if float(req["remaining"]) > 0.5:
+			return false
+	return true
+
+func job_remaining(job: Dictionary) -> float:
+	var total := 0.0
+	for req in job["reqs"]:
+		total += float(req["remaining"])
+	return total
+
+func job_workload(job: Dictionary) -> float:
+	var total := 0.0
+	for req in job["reqs"]:
+		total += float(req["workload"])
+	return total
+
+# Projected finish month for each job at today's capacity (0 = not within a year).
+func projection() -> Dictionary:
+	var copy: Array = jobs.duplicate(true)
+	var mults := problem_mults(loss_fractions())
+	var finish := {}
+	for t in range(month, month + 13):
+		var cap_left := {}
+		for machine in machines:
+			if int(machine["arrive"]) <= t:
+				cap_left[machine["uid"]] = machine_output(machine, mults) if package_bought else 0.0
+		# machine_output gates on arrival <= current month; recompute for future arrivals
+		for machine in machines:
+			if int(machine["arrive"]) <= t and package_bought:
+				var steps := machine_steps(machine, mults)
+				cap_left[machine["uid"]] = float(steps["net"])
+		_allocate(copy, cap_left, t, false)
+		for job in copy:
+			if not finish.has(job["id"]) and job_done(job):
+				finish[job["id"]] = t
+	for job in copy:
+		if not finish.has(job["id"]):
+			finish[job["id"]] = 0
+	return finish
 
 # ---------------------------------------------------------------- report
 
@@ -551,43 +800,42 @@ func run_report() -> String:
 		return "Rapor ay başından sonra açılır."
 	if factory_id == "":
 		return "Önce bir yer kirala."
-	var expected := 0
+	_auto_patron()
+	_enforce_patron()
+	var fr := loss_fractions()
+	var mults := problem_mults(fr)
+	var cap_left := {}
+	var sums := {"theoretical": 0.0, "shift": 0.0, "perf": 0.0, "scrap": 0.0, "phys": 0.0, "net": 0.0}
 	for machine in delivered():
-		if int(machine["job"]) != 0 and package_bought:
-			expected += int(machine["capacity"])
-	var losses: Dictionary = {}
+		var steps := machine_steps(machine, mults)
+		var output := float(steps["net"]) if package_bought else 0.0
+		machine["used_last"] = 0.0
+		machine["output_last"] = output
+		cap_left[machine["uid"]] = output
+		for key in sums:
+			sums[key] += float(steps[key]) if package_bought or key == "theoretical" else 0.0
+	_allocate(jobs, cap_left, month, true)
+	var used := 0.0
+	for machine in delivered():
+		used += float(machine["used_last"])
 	for root in problems.values():
 		if root["active"]:
-			losses[root["department"]] = float(losses.get(root["department"], 0.0)) + root["loss"]
 			root["total_loss"] += root["loss"]
 			if is_visible(root):
 				root["ever_seen"] = true
-	var total_loss := 0.0
-	var physical_loss := 0.0
-	var capped := false
-	for department in losses:
-		var cap := expected * DEPARTMENT_CAP
-		if losses[department] > cap:
-			losses[department] = cap
-			capped = true
-		total_loss += losses[department]
-		if PHYSICAL_DEPARTMENTS.has(department):
-			physical_loss += losses[department]
-	var realized := maxf(expected - total_loss, expected * REALIZATION_FLOOR)
-	var efficiency := 1.0 if expected == 0 else realized / float(expected)
-	for job in jobs:
-		job["eff_sum"] = float(job["eff_sum"]) + efficiency
-	report = {"expected": expected, "loss": expected - realized, "realized": realized, "revenue": 0.0, "losses": losses,
-		"empty": capacity_at_least(1) - expected, "capped": capped, "undelivered": 0, "efficiency": efficiency,
-		"oee": 1.0 if expected == 0 else clampf(1.0 - physical_loss / float(expected), 0.0, 1.0), "physical_loss": physical_loss}
+	var theoretical: float = sums["theoretical"]
+	report = {"theoretical": theoretical, "shift": sums["shift"], "perf": sums["perf"], "scrap": sums["scrap"], "phys": sums["phys"], "net": sums["net"],
+		"used": used, "idle": maxf(0.0, float(sums["net"]) - used), "oee": 0.0 if theoretical <= 0.0 else float(sums["phys"]) / theoretical,
+		"by_dept": fr["by_dept"], "capped": fr["capped"], "revenue": 0.0, "undelivered": 0,
+		"mults": mults, "score": delivery_score}
 	hours_left = monthly_hours - _operator_share()
 	month_start_hours = hours_left
 	month_flags = {"fix_blocked_money": 0, "fix_blocked_hours": 0, "fixes": 0}
 	_generate_candidates()
 	phase = "report"
 	notice = "Ay raporu hazır. Düzelt ve danışman kararlarının etkisi gelecek ay görünür."
-	if expected == 0:
-		_find("Ay %d: hiç iş yapılmadı; bütün kapasite boş kaldı." % month)
+	if jobs.is_empty():
+		_find("Ay %d: kabul edilmiş iş yok; bütün kapasite boş kaldı." % month)
 	return ""
 
 func close_block_reason() -> String:
@@ -600,7 +848,6 @@ func close_month() -> String:
 		return close_block_reason()
 	var lines: Array = []
 	var finance := finance_due()
-	# rent
 	if prepaid_months > 0:
 		prepaid_months -= 1
 		lines.append("Kira: peşin ödenmişti")
@@ -610,7 +857,6 @@ func close_month() -> String:
 	var running := running_cost()
 	cash -= running
 	lines.append("Enerji, sarf ve personel: %s" % Data.usd(running))
-	# loan installment
 	if not loan.is_empty():
 		var interest := float(loan["balance"]) * float(loan["rate"])
 		var principal := float(loan["installment"]) - interest
@@ -624,7 +870,7 @@ func close_month() -> String:
 			_release_collateral()
 			loan = {}
 			lines.append("Kredi kapandı; ipotek kalktı.")
-	# jobs: tranches, then delivery paid by average efficiency
+	# jobs: material tranches, delivery when the workload is done, cancellation when very late
 	var running_jobs: Array = []
 	var delivered_revenue := 0.0
 	for job in jobs:
@@ -634,17 +880,19 @@ func close_month() -> String:
 			job["material_left"] = float(job["material_left"]) - tranche
 			lines.append("Hammadde dilimi: %s (%s)" % [Data.usd(tranche), job["title"]])
 		job["elapsed"] = int(job["elapsed"]) + 1
-		if int(job["elapsed"]) >= int(job["months"]):
-			var share := clampf(float(job["eff_sum"]) / float(job["months"]), 0.0, 1.0)
-			var earned := roundf(float(job["revenue"]) * share)
-			cash += earned
-			delivered_revenue += earned
-			lines.append("Teslim: %s (+%s%s)" % [job["title"], Data.usd(earned), "" if share >= 0.999 else ", verimle %%%d" % int(roundf(share * 100.0))])
-			if share < 0.999:
+		if job_done(job):
+			var on_time := month <= int(job["due_month"])
+			cash += float(job["revenue"])
+			delivered_revenue += float(job["revenue"])
+			_score_event(1.0 if on_time else 0.4)
+			lines.append("Teslim: %s (+%s)%s" % [job["title"], Data.usd(float(job["revenue"])), "" if on_time else " · GEÇ TESLİM (skor düştü)"])
+			if not on_time:
 				report["undelivered"] = int(report.get("undelivered", 0)) + 1
-			for machine in machines:
-				if int(machine["job"]) == int(job["id"]):
-					machine["job"] = 0
+		elif month > int(job["due_month"]) + LATE_CANCEL_MONTHS:
+			var penalty := abandon_penalty(job)
+			cash -= penalty
+			_score_event(0.0)
+			lines.append("İptal: %s müşteri tarafından iptal edildi (ceza %s, hammadde yandı)" % [job["title"], Data.usd(penalty)])
 		else:
 			running_jobs.append(job)
 	jobs = running_jobs
@@ -664,7 +912,7 @@ func close_month() -> String:
 	consultants = still_active
 	_grow_problems()
 	var status := solvency()
-	history.append("Ay %d: verim %%%d, gelir %.0f, kasa %.0f, borç açığı %.0f / eşik %.0f" % [month, int(roundf(float(report.get("efficiency", 1.0)) * 100.0)), delivered_revenue, cash, status["gap"], status["threshold"]])
+	history.append("Ay %d: OEE %%%d, gelir %.0f, kasa %.0f, borç açığı %.0f / eşik %.0f" % [month, int(roundf(float(report.get("oee", 0.0)) * 100.0)), delivered_revenue, cash, status["gap"], status["threshold"]])
 	_check_month()
 	notice = "%d. ay kapandı. Kasa %.0f. Borç açığı %.0f, kurtarma eşiği %.0f." % [month, cash, status["gap"], status["threshold"]]
 	last_lines = lines
@@ -680,6 +928,7 @@ func close_month() -> String:
 	for machine in machines:
 		if int(machine["arrive"]) == month:
 			last_lines.append("Teslim alındı: %s · %d personel işe başladı" % [machine["model"], machine["personnel"]])
+	_auto_patron()
 	if month > max_months:
 		phase = "end"
 		closure = {"type": "survived"}
