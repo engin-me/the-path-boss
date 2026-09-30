@@ -2,10 +2,10 @@
 
 ## Durum/Tur
 
-Durum: TUR 3 REVİZYONU — kullanıcı Tier başı tavanları taslak yönü olarak onayladı; [FRZ-007 v3 taslağı](../freeze/FRZ-007_v3_calisanlik_kariyeri.md) DRAFT, v2 CURRENT. Bu IDEA dosyası FREEZE değildir.
+Durum: KARARA BAĞLANDI — kullanıcı Tier başı tavanları ve Claude'un önerilerini onayladı; [FRZ-007 v3](../freeze/FRZ-007_v3_calisanlik_kariyeri.md) CURRENT. Bu IDEA dosyası FREEZE değildir.
 Tur: 3
 Tarih: 2026-09-29
-Bağımlılık: [FRZ-007 v2](../freeze/FRZ-007_v2_calisanlik_kariyeri.md) ve [FRZ-001](../freeze/FRZ-001_patron_yetkinlikleri.md). Önerilen sonuç: [FRZ-007 v3 DRAFT](../freeze/FRZ-007_v3_calisanlik_kariyeri.md).
+Bağımlılık: tarihsel [FRZ-007 v2](../freeze/FRZ-007_v2_calisanlik_kariyeri.md) ve güncel [FRZ-001 v2](../freeze/FRZ-001_v2_patron_yetkinlikleri.md). Onaylanan sonuç: [FRZ-007 v3 CURRENT](../freeze/FRZ-007_v3_calisanlik_kariyeri.md).
 
 ## Öneri (GPT)
 

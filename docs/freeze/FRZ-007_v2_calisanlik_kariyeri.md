@@ -1,6 +1,6 @@
 # FRZ-007 v2 — Çalışanlık Kariyeri, Üniversite ve Yetkinlik Yolları
 
-Status: CURRENT — supersedes [FRZ-007](FRZ-007_calisanlik_kariyeri.md) on 2026-09-29.
+Status: SUPERSEDED by [FRZ-007 v3](FRZ-007_v3_calisanlik_kariyeri.md) on 2026-09-30.
 Date: 2026-09-29
 Source: [IDEA-009](../ideas/IDEA-009_kariyer_egitim_ve_yetkinlik_yollari.md), Claude Tur 1–2 incelemeleri ve kullanıcının Tur 2 sonrası kararları.
 Depends on: [FRZ-001](FRZ-001_patron_yetkinlikleri.md), [FRZ-002 v3](FRZ-002_v3_fabrika_ekonomisi.md), [FRZ-003 v2](FRZ-003_v2_iflas_ve_fabrika_satisi.md).

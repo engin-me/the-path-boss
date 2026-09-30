@@ -15,11 +15,11 @@ Bağımlılık: [FRZ-002 v3](../freeze/FRZ-002_v3_fabrika_ekonomisi.md) §1–2 
 
 Bu öneri [IDEA-001](IDEA-001_patron_yetkinlikleri.md) içinde açık bırakılan “ertelenen sorunun büyüme hızı” sorusunu kapatmak içindir; geçerli FREEZE dosyalarını kendi başına değiştirmez.
 
-Büyüyen potansiyel kayıp rapora yazılmadan önce mevcut departman yaklaşık %20 kayıp tavanı ve fabrika genelinde en az %33 gerçekleşme tabanıyla sınırlanır. Rapor hâlâ FRZ-002 v3'teki çıktı eşdeğeri birimini kullanır; nakit ve rapor kaybı iki kez sayılmaz. Böylece gizli satırın büyüme oranı Tier'ini ele vermez ve eski ekonomik sınırlar korunur.
+Büyüyen **satır potansiyeli** ayrı ayrı saklanır; yaklaşık %20 tavan satırlara tek tek değil, departmanın **rapora geçen toplam gerçekleşen kaybına** uygulanır. Satır potansiyelleri tavana çarptığında, kartta potansiyel toplam ve tavan sonrası gerçekleşen departman kaybı ayrı gösterilip fark açıklanır. Fabrika genelinde en az %33 gerçekleşme tabanı da geçerlidir. Rapor FRZ-002 v3'teki çıktı eşdeğeri birimini kullanır; nakit ve rapor kaybı iki kez sayılmaz. Bütün Tier'lerde aynı büyüme oranı gizli derinliği ele vermez.
 
 ### Gerekçe ve test
 
-[Claude patron testi](../../godot/playtests/claude_bulgular.md) derin sorunu düzeltmenin çoğu zaman ekonomik olmadığını, gizli satırların biriktiğini ve danışmanın az kullanıldığını gösterdi. [ChatGPT patron testi](../../godot/playtests/chatgpt_bulgular.md) kör denemenin danışman yolundan güçlü kaldığını ve orta bilgi düzeyinin gizli sorun birikimini durdurmadığını gösterdi. Sayılar prototip girdileridir; sorun büyümesinin kesin denge etkisi yeniden oynanarak ölçülür.
+[Claude patron testi](../../godot/playtests/claude_bulgular.md) derin sorunu düzeltmenin çoğu zaman ekonomik olmadığını ve gizli satırların biriktiğini gösterdi. [ChatGPT patron testi](../../godot/playtests/chatgpt_bulgular.md) eski şans kuralında kör denemenin güçlü kaldığını ve orta bilgi düzeyinin gizli sorun birikimini durdurmadığını gösterdi. Sonraki eşlenmiş testte %5 büyüme beklemenin maliyetini artırdı; danışmanın ekonomik değerindeki artışın nedeni ise **ayrı danışman ücret ayarıydı**, büyüme değil. Büyüme danışman kullanan karakterin de net kasasını 109'dan 80'e düşürdü. Sayılar prototip girdileridir.
 
 ### Danışman fiyatı ayrı denge işi
 
@@ -72,7 +72,8 @@ Büyüme her rotayı yakıyor: Danışman Arayan 109 → 80, Kör Tamirci 38 →
 ## Açık Kararlar
 
 - %5 ve iki kat sınırının uzun oyunlarda nakit/iflas döngüsüne etkisi oynanarak sınanacak; değişmesi gerekirse yeni IDEA turu açılacak.
-- Birden çok satır departman tavanına çarptığında sınırlı rapor kaybının satırlara dağıtım ayrıntısı, toplam tavan ve Tier gizliliğini koruyacak biçimde uygulanacak.
+- Birden çok satır departman tavanına çarptığında satır potansiyelleri korunacak; tavan yalnız gerçekleşen departman toplamına uygulanacak ve fark raporda açıklanacak.
+- FRZ-002 v4, [IDEA-012 erken dönem ve teklif havuzu](IDEA-012_erken_donem_ve_teklif_havuzu.md) çözümüyle birlikte CURRENT yapılacak; tek başına dondurulmayacak.
 - Danışman fiyatının 1–2 aylık kayıp düzeyine göre kesin tutarı denge konusudur; FRZ-006 v2'yi bu IDEA değiştirmez.
 
 ## Karar Özeti
@@ -81,3 +82,5 @@ Büyüme her rotayı yakıyor: Danışman Arayan 109 → 80, Kör Tamirci 38 →
 - Kullanıcı aynı büyüme oranını bütün Tier'lere uygulamayı ve mevcut %20 departman ile %33 gerçekleşme sınırlarını korumayı onayladı; çünkü gizli Tier kayıp hızından anlaşılmamalı ve işletme kaybı sınırsızlaşmamalı.
 - Kullanıcı büyümenin yeni bağlı satır yaratmamasını onayladı; çünkü FRZ-001'in bütün bağlı satırların aynı olayda doğması kuralı korunmalı.
 - Kullanıcı danışman fiyatını büyümeden sonra tipik 1–2 aylık gizli zararla test etmeyi, fiyatı henüz FREEZE etmemeyi seçti; çünkü ekonomideki yeni kayıp hızı görülmeden kesin ücret dengelenemez.
+- Kullanıcı büyümeyi erken dönem teklif ve kasa erişimiyle birlikte karara bağlamayı onayladı; çünkü büyüme zayıf fabrikaların mevcut iflas baskısını artırıyor.
+- Kullanıcı tavanın satır potansiyeline değil, gerçekleşen departman toplamına uygulanmasını onayladı; çünkü satırın zamanla büyüyen riski kaybolmadan rapor sınırı korunmalı.

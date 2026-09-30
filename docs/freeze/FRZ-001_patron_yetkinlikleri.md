@@ -1,6 +1,6 @@
 # FRZ-001 — Patron Yetkinlikleri ve Fabrika Sorun Döngüsü
 
-Status: CURRENT
+Status: SUPERSEDED by [FRZ-001 v2](FRZ-001_v2_patron_yetkinlikleri.md) on 2026-09-30.
 Date: 2026-09-29
 Source: [IDEA-001](../ideas/IDEA-001_patron_yetkinlikleri.md), Tur 16 ve kullanıcı onayı.
 

@@ -1,6 +1,6 @@
 # Patron testi — nasıl oynanır, nasıl not düşülür
 
-Bu klasör **yalnızca patron bölümünün** oyun testleri içindir. Patron testi, CURRENT FREEZE'lere ek olarak onaylanmış ama henüz FREEZE olmayan **taslak kuralları** da uygular: diploma tavanları (IDEA-009 / FRZ-007 v2), puan başına %4 şans eğrisi (FRZ-001 v2), sorun büyümesi (IDEA-010). Ayrıntı: `claude_bulgular.md`, Tur 2. Kariyer atlanır: yetkinlikler doğrudan dağıtılır, cebe para konur, makine alınır, iş alınır, sorunlar yönetilir. Kurallar `docs/freeze/` altındaki CURRENT FREEZE'lere göre çalışır; bütün sayılar **test girdisidir**, denge kararı değildir.
+Bu klasör **yalnızca patron bölümünün** oyun testleri içindir. Patron testi, CURRENT [FRZ-001 v2](../../docs/freeze/FRZ-001_v2_patron_yetkinlikleri.md) şans eğrisi ve [FRZ-007 v3](../../docs/freeze/FRZ-007_v3_calisanlik_kariyeri.md) diploma tavanlarıyla birlikte henüz CURRENT olmayan [IDEA-010](../../docs/ideas/IDEA-010_sorun_buyumesi.md) sorun büyümesini de sınar. Ayrıntı: `claude_bulgular.md`, Tur 2. Kariyer atlanır: yetkinlikler doğrudan dağıtılır, cebe para konur, makine alınır, iş alınır, sorunlar yönetilir. Bütün sayılar **test girdisidir**, denge kararı değildir.
 
 Üç test eden aynı oyunu oynar:
 

@@ -1,11 +1,11 @@
 # FRZ-007 v3 — Çalışanlık Kariyeri, Üniversite ve Yetkinlik Yolları
 
-Status: DRAFT — önerilen yeni sürüm; [FRZ-007 v2](FRZ-007_v2_calisanlik_kariyeri.md) CURRENT kalır.
+Status: CURRENT — kullanıcının 2026-09-30 onayıyla [FRZ-007 v2](FRZ-007_v2_calisanlik_kariyeri.md) sürümünü supersede eder.
 Date: 2026-09-29
 Source: [IDEA-009](../ideas/IDEA-009_kariyer_egitim_ve_yetkinlik_yollari.md), kullanıcı onaylı Tier başı tavan revizyonu ve Claude patron testi değerlendirmesi.
-Depends on: [FRZ-001](FRZ-001_patron_yetkinlikleri.md), [FRZ-002 v3](FRZ-002_v3_fabrika_ekonomisi.md), [FRZ-003 v2](FRZ-003_v2_iflas_ve_fabrika_satisi.md). Companion draft: [FRZ-001 v2](FRZ-001_v2_patron_yetkinlikleri.md).
+Depends on: [FRZ-001 v2](FRZ-001_v2_patron_yetkinlikleri.md), [FRZ-002 v3](FRZ-002_v3_fabrika_ekonomisi.md), [FRZ-003 v2](FRZ-003_v2_iflas_ve_fabrika_satisi.md).
 
-## Taslak Kararlar
+## Onaylanan Kararlar
 
 ### 1. Kariyer bilgiyi, diploma derinlik tavanını belirler
 
@@ -19,7 +19,7 @@ Depends on: [FRZ-001](FRZ-001_patron_yetkinlikleri.md), [FRZ-002 v3](FRZ-002_v3_
 
 Eşdeğer deneyim, terfi veya sertifika öğrenme tavanını kaldırmaz. Tavan, ilgili diplomayla açılır; o ana kadar kazanılmış puan korunur. FRZ-003 v2 §5'teki tek seferlik “acı tecrübe” yetkinlik artışı da bu tavana tabidir ve onu aşamaz. Diploma yalnız öğrenme sınırını değiştirir, puanı kendiliğinden yükseltmez. Oyuncu arayüzü mevcut puanı, tavanı ve tavanı açan diplomayı gösterir. Fabrika kuruluşu için yetkinlik alt sınırı yoktur. Danışman FRZ-001 uyarınca geçici teşhis desteği verebilir, kalıcı patron puanı kazandırmaz.
 
-**Neden:** Mavi yaka ve köprü işleri anlamlı bilgi vermeli; derin T4–T5 uzmanlığı için iki yıllık eğitim seçimi de değer taşımalıdır. Eski 89/69/49 tavanlarına kadar kazanılan ek puanlar görünürlüğü genişletmezken önerilen FRZ-001 v2 eğrisinde sonraki Tier'in çözümünü neredeyse kesinleştirirdi. Tavanı Tier başına almak diplomanın değerini korur. İflas, diploma sınırını aşmanın kestirmesi olmamalı; tavanın görünmesi oyuncuya ilerlemenin neden durduğunu anlatır.
+**Neden:** Mavi yaka ve köprü işleri anlamlı bilgi vermeli; derin T4–T5 uzmanlığı için iki yıllık eğitim seçimi de değer taşımalıdır. Eski 89/69/49 tavanlarına kadar kazanılan ek puanlar görünürlüğü genişletmezken FRZ-001 v2 eğrisinde sonraki Tier'in çözümünü neredeyse kesinleştirirdi. Tavanı Tier başına almak diplomanın değerini korur. İflas, diploma sınırını aşmanın kestirmesi olmamalı; tavanın görünmesi oyuncuya ilerlemenin neden durduğunu anlatır.
 
 ### 2. Bölüm seçimi ve iki yıllık üniversite
 
@@ -74,7 +74,7 @@ Kurs oyun parası ve zaman kullanır, ilgili statı artırır ve ilgili sertifik
 - FRZ-007 §1–3'teki kursun doğrudan yetkinlik vermesi v2'de kaldırılır; kurs stat ve sertifika verir.
 - FRZ-007 §3'teki on alanın danışmandan bağımsız kalıcı öğrenme yolu ve fabrikaya girişte yetkinlik alt sınırı olmaması korunur; diplomasız tavanlar eklenir.
 - FRZ-007 §4'teki iş kaybı ve psikoloji koruması korunur.
-- Bu taslak yalnız 89/69/49 tavanlarını 70/50/30 olarak değiştirir. [FRZ-007 v2](FRZ-007_v2_calisanlik_kariyeri.md) dosyası değiştirilmez; bu taslak ayrıca onaylanıp yayımlanana kadar v2 CURRENT kalır.
+- Bu sürüm, FRZ-007 v2'deki 89/69/49 tavanlarını 70/50/30 olarak değiştirir. [FRZ-007 v2](FRZ-007_v2_calisanlik_kariyeri.md) tarihsel karar olarak korunur. Kullanıcının daha sonra önerdiği yetkinlik/departman birleşimleri ve Kalite'nin yalnız yan mesleklerden kazanılması bu sürümde işlenmez; yeni IDEA incelemesi gerektirir.
 
 ## Açık Denge ve Uygulama
 

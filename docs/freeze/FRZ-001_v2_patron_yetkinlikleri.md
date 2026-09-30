@@ -1,10 +1,10 @@
 # FRZ-001 v2 — Patron Yetkinlikleri ve Fabrika Sorun Döngüsü
 
-Status: DRAFT — önerilen yeni sürüm; [FRZ-001](FRZ-001_patron_yetkinlikleri.md) CURRENT kalır.
+Status: CURRENT — kullanıcının 2026-09-30 onayıyla [FRZ-001](FRZ-001_patron_yetkinlikleri.md) sürümünü supersede eder.
 Date: 2026-09-29
 Source: [IDEA-001](../ideas/IDEA-001_patron_yetkinlikleri.md) ve [IDEA-011 şans eğrisi taslağı](../ideas/IDEA-011_duzelt_sans_egrisi.md); kullanıcının yeni formül ve etiket kararı.
 
-## Taslak Kararlar
+## Onaylanan Kararlar
 
 ### 1. Patron yetkinliği bir bilgi modelidir
 
@@ -32,7 +32,7 @@ Source: [IDEA-001](../ideas/IDEA-001_patron_yetkinlikleri.md) ve [IDEA-011 şans
 
 **Ne:** Yetkinlik kökün eşiğinden düşükse başarı yüzdesi `max(5, 100 − 4 × (Tier eşiği − etkin yetkinlik))` olur; eşik veya üzerindeyse %100'dür. Örnekler: 89 yetkinlik ile T4 (%96), 70 ile T4 (%20), 50 ile T3 (%20). Eski prototipteki yaklaşık %80/%40/%15/%5 kademe hesabı kullanılmaz. Şansın hesabında patron ile aktif danışmanların en yüksek ilgili alan puanı kullanılır; statlar şansı değiştirmez.
 
-**Neden:** Kolay görünen bir satır gizli derin kökü kesin veya daha ucuza çözme yolu olmamalı. Bağlı satırdan tekrar deneme istismarı önlenirken başarısızlık oyuncuya bağlantı hakkında bilgi vermelidir. Sürekli şans eğrisi her yetkinlik puanına değer verir ve bilgi açığı büyükken kör denemeyi azaltır; kullanıcının aktardığı patron testinde Kör Tamirci başarısı %80'den %58'e, net kasa 191'den 106'ya düşmüştür. Bu test sonuçları denge kanıtı değil, değişiklik gerekçesidir.
+**Neden:** Kolay görünen bir satır gizli derin kökü kesin veya daha ucuza çözme yolu olmamalı. Bağlı satırdan tekrar deneme istismarı önlenirken başarısızlık oyuncuya bağlantı hakkında bilgi vermelidir. Sürekli şans eğrisi her yetkinlik puanına değer verir ve bilgi açığı büyükken kör denemeyi azaltır; tekrarlanabilir 100 tohumlu ve yalnız şans kuralını değiştiren testte Kör Tamirci başarısı %78'den %48'e, ortalama son net kasası 159'dan 9'a düşmüştür. Önceki %80 → %58 ve 191 → 106 ölçümü tohum hatası nedeniyle geçersizdir. Bu test sonuçları kesin denge değeri değildir.
 
 ### 5. Maliyet, zaman ve güvence
 
@@ -59,7 +59,7 @@ Source: [IDEA-001](../ideas/IDEA-001_patron_yetkinlikleri.md) ve [IDEA-011 şans
 
 ## Bağımlılıklar ve Kapsam Dışı Konular
 
-- Tier eşikleri ve Düzelt başarı formülü bu v2 taslağında tanımlanır. Para/saat bantlarının tam sayıları ve fabrika ölçeği sınırları ayrı denge ve ekonomi kararlarıdır.
+- Tier eşikleri ve Düzelt başarı formülü bu v2 sürümünde tanımlanır. Para/saat bantlarının tam sayıları ve fabrika ölçeği sınırları ayrı denge ve ekonomi kararlarıdır.
 - Danışman kart piyasası, sözleşme fiyatları ve gerçek para seçenekleri bu FREEZE kapsamında değildir; oyun parasıyla makul erişim ve monetizasyon dengesi ayrıca incelenir.
 - Departman kaybının fabrika çıktısına dönüşümü, %33 performans tabanı, iflas parametreleri, personel/müdür sistemi ve stratejik müdahaleler ayrıca tasarlanır.
 - `docs/03_GAME_OVERVIEW.md` içindeki müdür sistemi ve eski akış anlatımı, sonraki ilgili tasarım kararlarıyla uyum açısından gözden geçirilmelidir. Çelişki halinde bu FREEZE'in **kapsamındaki** kararlar geçerlidir.

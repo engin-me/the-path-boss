@@ -5,6 +5,7 @@
   "seed": 77,
   "budget": 600,
   "cash": 400,
+  "diploma": "ikisi",
   "months": 12,
   "skills": {
     "Üretim": 60, "Planlama": 35, "Depo & Sevkiyat": 40, "Bakım": 50, "Kalite": 40,
