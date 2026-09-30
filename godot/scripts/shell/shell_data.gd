@@ -167,6 +167,25 @@ static var price_per_x := 0.13  # units (k$) per x for a Torna; other kinds scal
 static var revenue_scale := 1.0  # calibration input for simulations (not a rule)
 static var rent_scale := 1.0  # kept at 1.0; rents in FACTORIES are already the calibrated values
 static var start_cash := 800.0
+# Suppliers (foreign names). price = factor on the job's material estimate; lead = months until
+# the material arrives; terms = months after ordering until payment is due; delay = chance of +1 month;
+# quality 1..3 changes the job's yield (scrap): 1 Ekonomik, 2 Standart, 3 Premium.
+const SUPPLIERS := [
+	{"id": "nord", "name": "Nordhaus Steel", "price": 0.95, "lead": 1, "terms": 1, "delay": 0.10, "quality": 2, "note": "Dengeli: 30 gün vade, hızlı"},
+	{"id": "pacific", "name": "Pacific Alloy", "price": 0.88, "lead": 2, "terms": 2, "delay": 0.25, "quality": 1, "note": "Ucuz ve uzun vadeli, yavaş ve riskli"},
+	{"id": "atlas", "name": "Atlas Premium", "price": 1.10, "lead": 1, "terms": 0, "delay": 0.03, "quality": 3, "note": "Pahalı, peşin, yüksek kalite"},
+	{"id": "midland", "name": "Midland Metals", "price": 1.00, "lead": 1, "terms": 1, "delay": 0.12, "quality": 2, "note": "Liste fiyatı, 30 gün vade"}
+]
+const QUALITY_NAMES := ["", "Ekonomik", "Standart", "Premium"]
+const QUALITY_YIELD := {1: 0.96, 2: 1.0, 3: 1.015}
+const ADVANCE_RATE := 0.30  # customer advance on acceptance (proposal; fixed in the first slice)
+
+static func supplier_by_id(id: String) -> Dictionary:
+	for supplier in SUPPLIERS:
+		if supplier["id"] == id:
+			return supplier
+	return SUPPLIERS[0]
+
 const OFFER_MIX := [4, 4, 3, 3, 3, 3, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1]  # 2×4, 4×3, 5×2, 9×1 machines
 
 static func cost_share(count: int, best_level: int, jitter: float) -> float:
@@ -236,7 +255,7 @@ static func generate_offers(month: int, salt := 0) -> Array:
 		var duration := mini(rng.randi_range(count, 3 * count) if count > 1 else rng.randi_range(1, 3), 10)
 		var delay := rng.randi_range(0, 2)
 		var offer := {"id": month * 100 + i, "customer": CUSTOMERS[rng.randi_range(0, CUSTOMERS.size() - 1)], "duration": duration,
-			"start_delay": delay, "months": delay + duration + rng.randi_range(0, 1)}
+			"start_delay": delay, "months": delay + duration + rng.randi_range(1, 2)}
 		fill_offer(offer, specs, rng)
 		offers.append(offer)
 	return offers

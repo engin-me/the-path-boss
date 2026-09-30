@@ -12,12 +12,12 @@ const Data = preload("res://scripts/shell/shell_data.gd")
 # 16 Taşlama-Has 5y, 17 Taşlama-Std 9y, 18 Dövme-Std 7y, 19 Dövme-Has 4y.
 # "grow": add a shift to machines whose backlog is high (when cash allows).
 const PERSONAS := [
-	{"name": "Tek makine", "factory": "ridgeway", "term": 12, "prepay": false, "buys": [[1, 13]], "grow": false},
-	{"name": "Küçük temkinli", "factory": "ridgeway", "term": 12, "prepay": false, "buys": [[1, 13], [1, 14]], "grow": false},
-	{"name": "Küçük vardiyacı", "factory": "ridgeway", "term": 12, "prepay": false, "buys": [[1, 13], [1, 14]], "grow": true},
-	{"name": "Orta ikinci el", "factory": "harbor", "term": 12, "prepay": false, "buys": [[1, 13], [1, 14], [1, 17]], "grow": true},
-	{"name": "Orta yeni makine", "factory": "harbor", "term": 12, "prepay": false, "buys": [[1, 1], [1, 4]], "grow": true},
-	{"name": "Büyük iddialı", "factory": "millbrook", "term": 24, "prepay": false, "buys": [[1, 13], [1, 14], [1, 16], [2, 12]], "grow": true}
+	{"name": "Tek makine", "factory": "ridgeway", "term": 12, "prepay": false, "buys": [[1, 13]], "grow": false, "supplier": "nord"},
+	{"name": "Küçük temkinli", "factory": "ridgeway", "term": 12, "prepay": false, "buys": [[1, 13], [1, 14]], "grow": false, "supplier": "pacific"},
+	{"name": "Küçük vardiyacı", "factory": "ridgeway", "term": 12, "prepay": false, "buys": [[1, 13], [1, 14]], "grow": true, "supplier": "nord"},
+	{"name": "Orta ikinci el", "factory": "harbor", "term": 12, "prepay": false, "buys": [[1, 13], [1, 14], [1, 17]], "grow": true, "supplier": "midland"},
+	{"name": "Orta yeni makine", "factory": "harbor", "term": 12, "prepay": false, "buys": [[1, 1], [1, 4]], "grow": true, "supplier": "atlas"},
+	{"name": "Büyük iddialı", "factory": "millbrook", "term": 24, "prepay": false, "buys": [[1, 13], [1, 14], [1, 16], [2, 12]], "grow": true, "supplier": "nord"}
 ]
 
 func _initialize() -> void:
@@ -72,6 +72,7 @@ func _play(persona: Dictionary, seed_value: int, months: int, agg: Dictionary) -
 	if game.rent_factory(persona["factory"], persona["term"], persona["prepay"]) != "":
 		agg["denied"] += 1
 		return
+	game.default_supplier = persona["supplier"]
 	game.buy_package()
 	var queue: Array = persona["buys"].duplicate(true)
 	var first_job := 0
@@ -102,7 +103,15 @@ func _play(persona: Dictionary, seed_value: int, months: int, agg: Dictionary) -
 		for offer in ranked:
 			if game.accept_block_reason(offer["id"]) != "":
 				continue
-			if game.cash - game.first_payment(offer) < game.ordinary_expense():
+			# cash after the advance, unpaid material of running jobs and this job must still cover a month
+			var outstanding := 0.0
+			for job in game.jobs:
+				if job["order"].is_empty():
+					outstanding += float(job["material"])
+				elif not job["order"]["paid"]:
+					outstanding += float(job["order"]["amount"])
+			var this_material: float = float(offer["material"]) * float(Data.supplier_by_id(game.default_supplier)["price"])
+			if game.cash + game.advance_of(offer) - outstanding - this_material < game.ordinary_expense():
 				continue
 			# plan: work already promised plus this job must fit the capacity until its due date
 			var capacity_now: float = game.effective_capacity()

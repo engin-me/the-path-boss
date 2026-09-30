@@ -126,8 +126,9 @@ func _run() -> void:
 	var cap_month: float = fresh.effective_capacity("Torna")
 	var req_a := {"kind": "Torna", "level": 1, "count": 1, "parts": 100, "difficulty": 1.0, "workload": cap_month * 0.8, "remaining": cap_month * 0.8}
 	var req_b := {"kind": "Torna", "level": 1, "count": 1, "parts": 100, "difficulty": 1.0, "workload": cap_month * 0.8, "remaining": cap_month * 0.8}
-	var base_job := {"elapsed": 0, "accepted_month": fresh.month, "start_month": fresh.month, "produced": 0.0, "yield": 1.0, "revenue": 50.0, "material": 10.0,
-		"material_left": 0.0, "material_tranche": 0.0, "months": 2, "customer": "Test", "title": "Test"}
+	var base_job := {"elapsed": 0, "accepted_month": fresh.month, "start_month": fresh.month, "produced": 0.0, "yield": 1.0, "revenue": 50.0, "material": 10.0, "advance": 0.0,
+		"order": {"supplier": "nord", "order_month": 0, "arrive_month": 0, "pay_month": 0, "amount": 0.0, "paid": true, "delayed": false},
+		"months": 2, "customer": "Test", "title": "Test"}
 	var job_a: Dictionary = base_job.duplicate(true)
 	job_a["id"] = 9001
 	job_a["reqs"] = [req_a]
@@ -150,6 +151,54 @@ func _run() -> void:
 	fresh.close_month()  # job B finishes after its due month -> late
 	if fresh.delivery_score >= score_mid or not fresh.jobs.is_empty():
 		return _fail("A late delivery must lower the score and finish the job")
+	# ---- phase 2: advance, supplier orders, payment terms, quality yield
+	var p2 = Boss.new()
+	p2.default_setup(77)
+	p2.cash = 1500.0
+	p2.rent_factory("ridgeway", 12, false)
+	p2.buy_package()
+	p2.buy_listing(13)
+	p2.run_report()
+	p2.close_month()
+	p2.run_report()
+	p2.close_month()
+	p2.problems.clear()
+	p2.auto_order = false
+	var pick: Dictionary = {}
+	for candidate in p2.offers:
+		if p2.accept_block_reason(candidate["id"]) == "":
+			pick = candidate
+			break
+	if pick.is_empty():
+		return _fail("Expected a doable offer for the supplier test")
+	var cash_p: float = p2.cash
+	if p2.accept_offer(pick["id"]) != "":
+		return _fail("Accept failed: " + p2.notice)
+	var advance: float = p2.advance_of(pick)
+	if not _near(p2.cash - cash_p, advance, 0.001) or not _near(advance, pick["revenue"] * 0.30, 1.0):
+		return _fail("Acceptance must bring a 30%% advance")
+	var job_p: Dictionary = p2.jobs[0]
+	p2.run_report()
+	if float(job_p["produced"]) > 0.0:
+		return _fail("A job without a material order must not be produced")
+	p2.close_month()
+	# order from Atlas (cash on order) and from a slow supplier; arrival and payment follow the terms
+	var atlas_quote: Dictionary = p2.material_quote(job_p, "atlas")
+	var cash_o: float = p2.cash
+	if p2.order_material(job_p["id"], "atlas") != "" or not _near(cash_o - atlas_quote["amount"], p2.cash, 0.001):
+		return _fail("Atlas is cash on order")
+	if int(job_p["order"]["arrive_month"]) < p2.month + 1 or not job_p["order"]["paid"] or not _near(job_p["yield"], 1.015, 0.0001):
+		return _fail("Order must arrive after the lead time, be paid and set the premium yield")
+	if p2.order_material(job_p["id"], "nord") == "":
+		return _fail("A job can be ordered only once")
+	var before_arrival: float = job_p["produced"]
+	p2.run_report()
+	if int(job_p["order"]["arrive_month"]) > p2.month and float(job_p["produced"]) != before_arrival:
+		return _fail("No production before the material arrives")
+	p2.close_month()
+	var terms_quote: Dictionary = p2.material_quote(job_p, "pacific")
+	if int(terms_quote["terms"]) != 2 or int(terms_quote["lead"]) != 2:
+		return _fail("Pacific Alloy has a 2-month lead and 2-month terms")
 	# ---- abandon and sell
 	var g2 = Boss.new()
 	g2.default_setup(31)
@@ -172,9 +221,10 @@ func _run() -> void:
 	g2.accept_offer(take["id"])
 	var cash_a: float = g2.cash
 	var penalty: float = g2.abandon_penalty(g2.jobs[0])
+	var refund: float = g2.jobs[0]["advance"]
 	var score_a: float = g2.delivery_score
-	if g2.abandon_job(g2.jobs[0]["id"]) != "" or not _near(cash_a - penalty, g2.cash, 0.001) or not g2.jobs.is_empty() or g2.delivery_score >= score_a:
-		return _fail("Abandoning must charge the penalty, drop the job and lower the score")
+	if g2.abandon_job(g2.jobs[0]["id"]) != "" or not _near(cash_a - penalty - refund, g2.cash, 0.001) or not g2.jobs.is_empty() or g2.delivery_score >= score_a:
+		return _fail("Abandoning must refund the advance, charge the penalty, drop the job and lower the score")
 	var sell_uid: int = g2.machines[0]["uid"]
 	var income: float = g2.sale_income(g2.machine_by_uid(sell_uid))
 	var cash_b: float = g2.cash

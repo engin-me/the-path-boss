@@ -44,6 +44,7 @@ Tur 1 · 2026-09-30 · Kısa özet; ayrıntı sohbette.
 
 ### Kafama Yatmayanlar
 
+- Prototipte Faz 2 uygulandı: müşteri peşinatı %30 kabulde, hammadde tedarikçiden sipariş edilir (temin süresi, ödeme vadesi, gecikme riski, kalite/verim), gelmeden üretim başlamaz, işi bırakmak peşinatı iade ettirir. Sonuçlar `godot/playtests/reports/_shell_ozet.md`.
 - Hammadde ödemesi başlangıca bağlandığında, işi erken kabul etmek ücretsiz bir seçenek olur; teslim ve iptal/bırakma kuralları bu açığı kapatmalı.
 
 ### Açık Sorular

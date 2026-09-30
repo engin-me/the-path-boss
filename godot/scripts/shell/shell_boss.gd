@@ -35,6 +35,8 @@ var last_lines: Array = []
 var offer_salt := 0
 var delivery_score := 0.8
 var patron_overtime := false
+var auto_order := true
+var default_supplier := "nord"
 
 # ---------------------------------------------------------------- save / load
 
@@ -42,7 +44,7 @@ const BASE_FIELDS := ["phase", "persona", "budget", "skills", "diploma", "start_
 	"offer_history", "accepted", "report", "problems", "next_id", "consultants", "candidates", "hours_left", "month_start_hours",
 	"prevented_this_month", "prevented_total", "history", "findings", "month_flags", "closure", "notice"]
 const SHELL_FIELDS := ["factory_id", "term", "months_left", "prepaid_months", "package_bought", "equip", "jobs", "loan", "next_uid",
-	"invested", "last_lines", "offer_salt", "delivery_score", "patron_overtime"]
+	"invested", "last_lines", "offer_salt", "delivery_score", "patron_overtime", "auto_order", "default_supplier"]
 
 func to_save() -> Dictionary:
 	var data := {}
@@ -108,18 +110,18 @@ func ordinary_expense() -> float:
 		expense += float(loan["installment"])
 	return expense
 
-# Known unpaid material tranches for this month-end.
+# Known unpaid material for this month-end (supplier payment terms).
 func accepted_cost() -> float:
 	var total := 0.0
 	for job in jobs:
-		total += tranche_due(job)
+		total += material_due(job)
 	return total
 
-func tranche_due(job: Dictionary) -> float:
-	var next_elapsed := int(job["elapsed"]) + 1
-	if next_elapsed % 6 == 0 and next_elapsed < int(job["months"]) and float(job["material_left"]) > 0.0:
-		return minf(float(job["material_left"]), float(job["material_tranche"]))
-	return 0.0
+func material_due(job: Dictionary) -> float:
+	var order: Dictionary = job.get("order", {})
+	if order.is_empty() or order["paid"]:
+		return 0.0
+	return float(order["amount"]) if int(order["pay_month"]) <= month else 0.0
 
 # FRZ-003 v2 / FRZ-004 v2: a machine counts toward profit potential only after
 # its first full operating month. Potential = structural good output at the
@@ -374,11 +376,23 @@ func hidden_guarantee() -> float:
 	var current := scale()
 	return float(MONEY_BANDS[int(current["max_tier"])][1]) * float(current["factor"])
 
+# Cash needed on acceptance: the material order of a cash-on-order supplier, net of the advance.
 func first_payment(offer: Dictionary) -> float:
-	var months: int = offer["months"]
-	if months <= 6:
-		return float(offer["material"])
-	return roundf(float(offer["material"]) * 6.0 / float(months))
+	if not auto_order:
+		return 0.0
+	var supplier := Data.supplier_by_id(default_supplier)
+	if int(supplier["terms"]) > 0:
+		return 0.0
+	return maxf(0.0, float(offer["material"]) * float(supplier["price"]) - advance_of(offer))
+
+func advance_of(offer: Dictionary) -> float:
+	return roundf(float(offer["revenue"]) * Data.ADVANCE_RATE)
+
+func material_quote(job_or_offer: Dictionary, supplier_id: String) -> Dictionary:
+	var supplier := Data.supplier_by_id(supplier_id)
+	var amount := roundf(float(job_or_offer["material"]) * float(supplier["price"]))
+	return {"supplier": supplier, "amount": amount, "lead": int(supplier["lead"]), "terms": int(supplier["terms"]), "delay": float(supplier["delay"]),
+		"quality": int(supplier["quality"]), "yield": float(Data.QUALITY_YIELD[int(supplier["quality"])])}
 
 func offer_by_id(id: int) -> Dictionary:
 	for offer in offers:
@@ -631,8 +645,8 @@ func accept_offer(id: int) -> String:
 	if reason != "":
 		return reason
 	var offer := offer_by_id(id)
-	var first := first_payment(offer)
-	cash -= first
+	var advance := advance_of(offer)
+	cash += advance
 	var job: Dictionary = offer.duplicate(true)
 	job["elapsed"] = 0
 	job["accepted_month"] = month
@@ -640,12 +654,48 @@ func accept_offer(id: int) -> String:
 	job["due_month"] = month + int(offer["months"]) - 1
 	job["produced"] = 0.0
 	job["yield"] = 1.0
-	job["material_left"] = float(offer["material"]) - first
-	job["material_tranche"] = roundf(float(offer["material"]) * 6.0 / float(offer["months"]))
+	job["advance"] = advance
+	job["order"] = {}
 	jobs.append(job)
 	offers.erase(offer)
-	history.append("Ay %d: iş kabul edildi: %s (hammadde %.0f)." % [month, job["title"], first])
-	notice = "%s kabul edildi; hammadde %.0f düştü." % [job["title"], first]
+	history.append("Ay %d: iş kabul edildi: %s (peşinat %.0f)." % [month, job["title"], advance])
+	notice = "%s kabul edildi; %.0f peşinat kasaya girdi." % [job["title"], advance]
+	if auto_order:
+		var result := order_material(job["id"], default_supplier)
+		if result != "":
+			notice += " Hammadde otomatik sipariş edilemedi: " + result
+	return ""
+
+func order_block_reason(job_id: int, supplier_id: String) -> String:
+	var job := job_by_id(job_id)
+	if job.is_empty():
+		return "İş bulunamadı."
+	if not job["order"].is_empty():
+		return "Hammadde zaten sipariş edildi."
+	if phase != "offers" and phase != "report":
+		return "Şu an sipariş verilemez."
+	var quote := material_quote(job, supplier_id)
+	if int(quote["terms"]) == 0 and float(quote["amount"]) > cash:
+		return "Yetersiz nakit (peşin %.0f)" % float(quote["amount"])
+	return ""
+
+# Orders the job's material from a supplier: it arrives after the lead time (+1 month when delayed),
+# is paid after the payment terms, and its quality grade sets the job's yield.
+func order_material(job_id: int, supplier_id: String) -> String:
+	var reason := order_block_reason(job_id, supplier_id)
+	if reason != "":
+		return reason
+	var job := job_by_id(job_id)
+	var quote := material_quote(job, supplier_id)
+	var delayed := rng.randf() < float(quote["delay"])
+	var order := {"supplier": supplier_id, "order_month": month, "arrive_month": month + int(quote["lead"]) + (1 if delayed else 0),
+		"pay_month": month + int(quote["terms"]), "amount": float(quote["amount"]), "paid": false, "delayed": delayed}
+	job["order"] = order
+	job["yield"] = float(quote["yield"])
+	if int(quote["terms"]) == 0:
+		cash -= float(quote["amount"])
+		order["paid"] = true
+	history.append("Ay %d: hammadde siparişi: %s ← %s (%.0f, gelir Ay %d)." % [month, job["title"], quote["supplier"]["name"], quote["amount"], order["arrive_month"]])
 	return ""
 
 func abandon_penalty(job: Dictionary) -> float:
@@ -663,22 +713,23 @@ func abandon_block_reason(id: int) -> String:
 		return "İş bulunamadı."
 	if phase != "offers" and phase != "report":
 		return "İş şu an bırakılamaz."
-	if abandon_penalty(job) > cash:
-		return "Yetersiz nakit (ceza %.0f)" % abandon_penalty(job)
+	if abandon_penalty(job) + float(job["advance"]) > cash:
+		return "Yetersiz nakit (ceza + peşinat iadesi %.0f)" % (abandon_penalty(job) + float(job["advance"]))
 	return ""
 
-# The job is dropped: penalty is paid, paid material is lost, the delivery score falls.
+# The job is dropped: the advance is refunded, the penalty is paid, material already
+# paid or ordered is lost, and the delivery score falls.
 func abandon_job(id: int) -> String:
 	var reason := abandon_block_reason(id)
 	if reason != "":
 		return reason
 	var job := job_by_id(id)
 	var penalty := abandon_penalty(job)
-	cash -= penalty
+	cash -= penalty + float(job["advance"])
 	jobs.erase(job)
 	_score_event(0.0)
-	history.append("Ay %d: iş bırakıldı: %s (ceza %.0f, ödenen hammadde yandı)." % [month, job["title"], penalty])
-	notice = "%s bırakıldı; ceza %.0f, ödenen hammadde kayıp, teslimat skoru düştü." % [job["title"], penalty]
+	history.append("Ay %d: iş bırakıldı: %s (ceza %.0f, peşinat iade %.0f, hammadde yandı)." % [month, job["title"], penalty, job["advance"]])
+	notice = "%s bırakıldı; ceza %.0f, peşinat iade edildi, ödenen hammadde kayıp, teslimat skoru düştü." % [job["title"], penalty]
 	return ""
 
 # Delivery score in 0..1: on time pulls toward 1, late toward 0.4, dropped jobs toward 0.
@@ -714,8 +765,9 @@ func sell_machine_uid(uid: int) -> String:
 
 # ---------------------------------------------------------------- production (FIFO load on machines)
 
-func material_ready(_job: Dictionary, _t: int) -> bool:
-	return true  # phase 2 replaces this with supplier delivery
+func material_ready(job: Dictionary, t: int) -> bool:
+	var order: Dictionary = job.get("order", {})
+	return not order.is_empty() and int(order["arrive_month"]) <= t
 
 func _eligible(kind: String, level: int, t: int) -> Array:
 	var list: Array = []
@@ -870,29 +922,30 @@ func close_month() -> String:
 			_release_collateral()
 			loan = {}
 			lines.append("Kredi kapandı; ipotek kalktı.")
-	# jobs: material tranches, delivery when the workload is done, cancellation when very late
+	# jobs: supplier payments, delivery when the workload is done, cancellation when very late
 	var running_jobs: Array = []
 	var delivered_revenue := 0.0
 	for job in jobs:
-		var tranche := tranche_due(job)
-		if tranche > 0.0:
-			cash -= tranche
-			job["material_left"] = float(job["material_left"]) - tranche
-			lines.append("Hammadde dilimi: %s (%s)" % [Data.usd(tranche), job["title"]])
+		var due := material_due(job)
+		if due > 0.0:
+			cash -= due
+			job["order"]["paid"] = true
+			lines.append("Hammadde ödemesi: %s (%s)" % [Data.usd(due), job["title"]])
 		job["elapsed"] = int(job["elapsed"]) + 1
 		if job_done(job):
 			var on_time := month <= int(job["due_month"])
-			cash += float(job["revenue"])
+			var remainder := float(job["revenue"]) - float(job["advance"])
+			cash += remainder
 			delivered_revenue += float(job["revenue"])
 			_score_event(1.0 if on_time else 0.4)
-			lines.append("Teslim: %s (+%s)%s" % [job["title"], Data.usd(float(job["revenue"])), "" if on_time else " · GEÇ TESLİM (skor düştü)"])
+			lines.append("Teslim: %s (+%s kalan bakiye)%s" % [job["title"], Data.usd(remainder), "" if on_time else " · GEÇ TESLİM (skor düştü)"])
 			if not on_time:
 				report["undelivered"] = int(report.get("undelivered", 0)) + 1
 		elif month > int(job["due_month"]) + LATE_CANCEL_MONTHS:
 			var penalty := abandon_penalty(job)
-			cash -= penalty
+			cash -= penalty + float(job["advance"])
 			_score_event(0.0)
-			lines.append("İptal: %s müşteri tarafından iptal edildi (ceza %s, hammadde yandı)" % [job["title"], Data.usd(penalty)])
+			lines.append("İptal: %s müşteri tarafından iptal edildi (ceza %s, peşinat iade %s, hammadde yandı)" % [job["title"], Data.usd(penalty), Data.usd(float(job["advance"]))])
 		else:
 			running_jobs.append(job)
 	jobs = running_jobs

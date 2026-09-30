@@ -679,7 +679,8 @@ func _page_isler() -> void:
 	_chips(content, [
 		{"id": "tum", "title": "Tümü (%d)" % game.offers.size()},
 		{"id": "yapabilir", "title": "Yapabileceklerim (%d)" % doable},
-		{"id": "kabul", "title": "Kabul edilenler (%d)" % game.jobs.size()}],
+		{"id": "kabul", "title": "Kabul edilenler (%d)" % game.jobs.size()},
+		{"id": "tedarik", "title": "Tedarikçiler"}],
 		subtab["isler"], func(id: String) -> void:
 			subtab["isler"] = id
 			_render())
@@ -695,6 +696,9 @@ func _page_isler() -> void:
 	box.add_child(_label("Zorunlu ekipman: %s · Teslim skoru %%%d" % ["tamam" if game.package_bought else "EKSİK", int(roundf(float(game.delivery_score) * 100.0))], 12, MUTED if game.package_bought else RED))
 	if game.phase != "offers":
 		content.add_child(_label("İş kabulü ay başında, rapor açılmadan önce yapılır.", 12, GOLD))
+	if subtab["isler"] == "tedarik":
+		_page_suppliers()
+		return
 	if subtab["isler"] == "kabul":
 		if game.jobs.is_empty():
 			content.add_child(_label("Henüz kabul edilmiş iş yok.", 14, MUTED))
@@ -714,15 +718,36 @@ func _job_card(job: Dictionary, finish_month: int) -> void:
 	_row(card, "Müşteri", job["customer"])
 	var total: float = game.job_workload(job)
 	var remaining: float = game.job_remaining(job)
-	var stage := "Başlamadı · Ay %d" % job["start_month"] if int(job["start_month"]) > game.month else "Üretimde"
-	_row(card, "Aşama", stage, GREEN)
+	var stage := "Üretimde"
+	var stage_color := GREEN
+	if job["order"].is_empty():
+		stage = "Hammadde bekleniyor (sipariş yok)"
+		stage_color = RED
+	elif int(job["order"]["arrive_month"]) > game.month:
+		stage = "Hammadde yolda · Ay %d" % job["order"]["arrive_month"]
+		stage_color = GOLD
+	elif int(job["start_month"]) > game.month:
+		stage = "Başlamadı · Ay %d" % job["start_month"]
+		stage_color = GOLD
+	_row(card, "Aşama", stage, stage_color)
 	card.add_child(_bar(total - remaining, total))
 	_row(card, "Kalan yük", "%s / %s" % [_xfmt(remaining), _xfmt(total)], TEXT, 14)
 	for req in job["reqs"]:
 		_row(card, "%s %s" % [Data.LEVELS[int(req["level"])], req["kind"]], "%s kaldı" % _xfmt(float(req["remaining"])), MUTED, 13)
 	_row(card, "Teslim tarihi", Data.month_label(int(job["due_month"])), TEXT, 14)
 	_row(card, "Tahmini bitiş", "Bu kapasiteyle yetişmiyor" if finish_month == 0 else Data.month_label(finish_month), RED if late else GREEN, 14)
-	_row(card, "Hammadde", "ödenen %s · kalan %s" % [Data.usd(float(job["material"]) - float(job["material_left"])), Data.usd(float(job["material_left"]))], MUTED, 13)
+	var order: Dictionary = job["order"]
+	if order.is_empty():
+		_row(card, "Hammadde", "Sipariş verilmedi", RED, 14)
+		card.add_child(_button("Hammadde sipariş ver", _open_detail.bind("order", str(job["id"])), true))
+	else:
+		var supplier: Dictionary = Data.supplier_by_id(order["supplier"])
+		var arrived: bool = int(order["arrive_month"]) <= game.month
+		_row(card, "Hammadde", "%s · %s" % [supplier["name"], "geldi" if arrived else "Ay %d gelir" % order["arrive_month"]], GREEN if arrived else GOLD, 14)
+		_row(card, "Ödeme", "ödendi" if order["paid"] else "Ay %d · %s" % [order["pay_month"], Data.usd(float(order["amount"]))], MUTED, 13)
+		if order["delayed"]:
+			card.add_child(_label("Tedarikçi bu siparişi geciktirdi (+1 ay).", 12, RED))
+	_row(card, "Peşinat alındı", Data.usd(float(job["advance"])), MUTED, 13)
 	_row(card, "Gelir (tesliminde)", Data.usd(float(job["revenue"])), GREEN, 14)
 	var reason: String = game.abandon_block_reason(job["id"])
 	card.add_child(_button("İşi bırak · ceza %s" % Data.usd(game.abandon_penalty(job)) if reason == "" else reason, _ask_abandon.bind(job["id"]), false, reason != ""))
@@ -731,9 +756,11 @@ func _ask_abandon(id: int) -> void:
 	var job: Dictionary = game.job_by_id(id)
 	if job.is_empty():
 		return
+	var paid: float = float(job["order"]["amount"]) if not job["order"].is_empty() and job["order"]["paid"] else 0.0
 	_confirm("İşi bırak", [job["title"] + " · " + job["customer"],
 		"Ceza: %s" % Data.usd(game.abandon_penalty(job)),
-		"Şimdiye kadar ödenen hammadde (%s) yanar." % Data.usd(float(job["material"]) - float(job["material_left"])),
+		"Peşinat iade edilir: %s" % Data.usd(float(job["advance"])),
+		"Ödenen/siparişteki hammadde yanar (%s ödendi)." % Data.usd(paid),
 		"Gelir yazılmaz; teslimat skoru düşer."], "İşi bırak", _abandon_job.bind(id), "Bu işlem geri alınamaz.")
 
 func _abandon_job(id: int) -> void:
@@ -750,12 +777,13 @@ func _offer_card(offer: Dictionary, reason: String) -> void:
 	_row(box, "Teslim süresi", "%d ay" % offer["months"])
 	_row(box, "En erken başlangıç", "hemen" if int(offer["start_delay"]) == 0 else "%d ay sonra" % offer["start_delay"], MUTED)
 	_row(box, "Gelir", Data.usd(float(offer["revenue"])), GREEN)
-	_row(box, "Hammadde maliyeti (%%%d)" % int(roundf(float(offer["share"]) * 100.0)), Data.usd(float(offer["material"])))
-	var payment: float = game.first_payment(offer)
-	if payment < float(offer["material"]):
-		box.add_child(_label("Kabulde %s düşer; kalanı her 6 ayın başında." % Data.usd(payment), 12, GOLD))
+	_row(box, "Peşinat (%%%d, kabulde gelir)" % int(Data.ADVANCE_RATE * 100.0), Data.usd(game.advance_of(offer)), GREEN, 14)
+	_row(box, "Tahmini hammadde (%%%d)" % int(roundf(float(offer["share"]) * 100.0)), Data.usd(float(offer["material"])), TEXT, 14)
+	if game.auto_order:
+		var supplier: Dictionary = Data.supplier_by_id(game.default_supplier)
+		box.add_child(_label("Hammadde kabulde %s'ten otomatik sipariş edilir; %d ay sonra gelir." % [supplier["name"], supplier["lead"]], 12, GOLD))
 	else:
-		box.add_child(_label("Hammadde kabulde düşer.", 12, GOLD))
+		box.add_child(_label("Hammaddeyi kabulden sonra sen sipariş edersin; gelmeden üretim başlamaz.", 12, GOLD))
 	box.add_child(_button("Kabul et" if reason == "" else reason, _ask_accept.bind(offer["id"]), reason == "", reason != ""))
 
 func _ask_accept(id: int) -> void:
@@ -765,19 +793,83 @@ func _ask_accept(id: int) -> void:
 	var reqs_text: Array = []
 	for req in offer["reqs"]:
 		reqs_text.append("%s %s: %s" % [Data.LEVELS[int(req["level"])], req["kind"], _xfmt(float(req["workload"]))])
-	_confirm("İşi kabul et", [
+	var lines: Array = [
 		offer["title"] + " · " + offer["customer"],
 		"Yük: " + ", ".join(reqs_text),
 		"Teslim süresi: %d ay (en erken başlangıç: %s)" % [offer["months"], "hemen" if int(offer["start_delay"]) == 0 else "%d ay sonra" % offer["start_delay"]],
-		"Kabulde bakiyeden düşen hammadde: %s" % Data.usd(game.first_payment(offer)),
-		"Gelir tesliminde yazılır: %s. Geç teslim veya bırakma teslimat skorunu düşürür." % Data.usd(float(offer["revenue"]))
-	], "Kabul et", _accept_offer.bind(id))
+		"Kabulde gelen peşinat: %s" % Data.usd(game.advance_of(offer)),
+		"Teslimde kalan bakiye: %s" % Data.usd(float(offer["revenue"]) - game.advance_of(offer)),
+	]
+	if game.auto_order:
+		var quote: Dictionary = game.material_quote(offer, game.default_supplier)
+		lines.append("Hammadde: %s'ten %s, %d ay sonra gelir, ödeme %s." % [quote["supplier"]["name"], Data.usd(float(quote["amount"])), quote["lead"], "peşin" if int(quote["terms"]) == 0 else "%d ay sonra" % quote["terms"]])
+	else:
+		lines.append("Hammaddeyi sen sipariş edeceksin.")
+	_confirm("İşi kabul et", lines, "Kabul et", _accept_offer.bind(id), "Bırakırsan peşinat iade edilir ve ceza ödersin; geç teslim skoru düşürür.")
 
 func _accept_offer(id: int) -> void:
 	var result: String = game.accept_offer(id)
 	if result != "":
 		_say(result)
 	_render()
+
+# ------------------------------------------------------------------ Tedarik
+
+func _supplier_card(supplier: Dictionary, quote: Dictionary, job_id := 0) -> void:
+	var is_default: bool = supplier["id"] == game.default_supplier
+	var card := _card(content, supplier["name"] + ("  (varsayılan)" if is_default and job_id == 0 else ""), GREEN if is_default and job_id == 0 else BORDER, true)
+	card.add_child(_label(supplier["note"], 13, MUTED))
+	if not quote.is_empty():
+		_row(card, "Hammadde bedeli", Data.usd(float(quote["amount"])), TEXT, 16)
+		_row(card, "Gelir", "Ay %d" % (game.month + int(quote["lead"])), TEXT, 15)
+	_row(card, "Fiyat", "%%%d" % int(roundf(float(supplier["price"]) * 100.0)), GREEN if float(supplier["price"]) < 1.0 else RED if float(supplier["price"]) > 1.0 else TEXT, 15)
+	_row(card, "Temin süresi", "%d ay" % supplier["lead"], TEXT, 15)
+	_row(card, "Ödeme", "peşin" if int(supplier["terms"]) == 0 else "%d ay vadeli" % supplier["terms"], TEXT, 15)
+	_row(card, "Gecikme riski", "%%%d (+1 ay)" % int(roundf(float(supplier["delay"]) * 100.0)), TEXT, 15)
+	_row(card, "Kalite", "%s (verim %%%.1f)" % [Data.QUALITY_NAMES[int(supplier["quality"])], float(Data.QUALITY_YIELD[int(supplier["quality"])]) * 100.0], TEXT, 15)
+	if job_id != 0:
+		var reason: String = game.order_block_reason(job_id, supplier["id"])
+		card.add_child(_button("Sipariş ver" if reason == "" else reason, _order_material.bind(job_id, supplier["id"]), reason == "", reason != "", true))
+	else:
+		card.add_child(_button("Varsayılan yap" if not is_default else "Varsayılan", _set_default_supplier.bind(supplier["id"]), false, is_default))
+
+func _page_suppliers() -> void:
+	var box := _card(content, "Hammadde tedarikçileri")
+	box.add_child(_label("Hammadde, işin üretimi başlamadan gelmelidir. Uzun vadeli ve ucuz tedarikçi yavaş ve riskli; peşin tedarikçi pahalı ama hızlı ve kaliteli.", 12, MUTED))
+	var auto := CheckBox.new()
+	auto.text = "Kabulde varsayılan tedarikçiden otomatik sipariş ver"
+	auto.add_theme_font_size_override("font_size", 14)
+	auto.custom_minimum_size = Vector2(0, 48)
+	auto.button_pressed = game.auto_order
+	auto.toggled.connect(_toggle_auto_order)
+	box.add_child(auto)
+	for supplier in Data.SUPPLIERS:
+		_supplier_card(supplier, {})
+
+func _toggle_auto_order(on: bool) -> void:
+	game.auto_order = on
+	_render()
+
+func _set_default_supplier(id: String) -> void:
+	game.default_supplier = id
+	_render()
+
+func _order_material(job_id: int, supplier_id: String) -> void:
+	var result: String = game.order_material(job_id, supplier_id)
+	if result != "":
+		_say(result)
+	detail = ""
+	_render()
+
+func _detail_order() -> void:
+	var job: Dictionary = game.job_by_id(int(detail_arg))
+	if job.is_empty():
+		content.add_child(_label("İş bulunamadı.", 14, MUTED))
+		return
+	var head := _card(content, "Hammadde siparişi", GOLD)
+	head.add_child(_label("%s · işin en erken başlangıcı Ay %d, teslim tarihi Ay %d. Hammadde ondan önce gelmezse üretim başlamaz." % [job["title"], job["start_month"], job["due_month"]], 13, MUTED))
+	for supplier in Data.SUPPLIERS:
+		_supplier_card(supplier, game.material_quote(job, supplier["id"]), int(job["id"]))
 
 # ------------------------------------------------------------------ Tezgah
 
@@ -1062,6 +1154,9 @@ func _render_detail() -> void:
 		"costs":
 			title.text = "  Aylık gider"
 			_detail_costs()
+		"order":
+			title.text = "  Hammadde"
+			_detail_order()
 
 func _detail_factory(factory: Dictionary) -> void:
 	var hero := _card(content, "", BORDER, true)
