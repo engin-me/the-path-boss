@@ -17,7 +17,39 @@ Sürekli eğri her puanı anlamlı kılar. Kullanıcının aktardığı patron t
 
 ## Notlar (Claude)
 
-Yeni tur incelemesi henüz yapılmadı. Claude'un güncel patron testi bu bölümde kaydedilebilir.
+Tur 1 incelemesi. FRZ-001 ve FRZ-001 v2 taslağı ile karşılaştırıldı; kural patron testinde uygulanıp ölçüldü. Bu turda yalnızca bu bölüm değişti.
+
+**Ölçüm yöntemi:** Aynı kod, aynı 100 tohum, kendi makine parkları. Yalnız şans kuralı değiştirildi (eski %80/%40/%15/%5 kademe ↔ yeni puan başına −%4, en az %5).
+
+| Karakter | Eski kural: başarı / net kasa | Yeni kural: başarı / net kasa |
+| --- | --- | --- |
+| Kör Tamirci (gizli satırları da dener) | %78 / 159 | **%48 / 9** |
+| Finansçı Kumarbaz (kör dener) | %82 / 722 | %53 / 587 |
+| Yalnız görünür sorunu düzeltenler | değişmedi | değişmedi |
+| İflas sayıları | değişmedi | değişmedi |
+
+### Aldığım Notlar
+
+- Taslak, patron testindeki uygulamayla birebir aynı: `max(5, 100 − 4 × (eşik − etkin yetkinlik))`, etiketler Kesin / Yüksek ≥%80 / Orta %40–79 / Düşük <%40.
+- **Hedef tuttu.** Kör denemenin aşırı ödülü kalktı; eğri yalnız eşik altında deneme yapan oyuncuyu etkiliyor, iflas sayılarını değiştirmiyor.
+- Görünürlük, bağlı kök ve statların şansa etkisizliği değişmeden korunmuş. Kural FRZ-001'in "bilgi açığı imkânsız değil, riskli" ilkesiyle uyumlu, çünkü şans hiç sıfır olmuyor.
+
+### Bulduğum Sakıncalar
+
+**1. Öneri metnindeki kanıt sayısı eski ve tekrarlanamaz (düzeltilmeli).**
+"Kör Tamirci %80 → %58, 191 → 106" sayıları, tohum hatası düzeltilmeden önceki 40 tohumlu bir koşudan geliyor. O sürümde danışman adayları tohumdan bağımsız karıştırılıyordu ve aynı tohum farklı sonuç verebiliyordu. Tekrarlanabilir, 100 tohumlu değerler yukarıdaki tabloda: **%78 → %48 ve 159 → 9** (yalnız şans kuralının etkisi). Açık Karar 2'deki "tekrarlanabilirlik doğrulanacak" maddesi bu düzeltmeyle kapandı.
+
+### Kafama Yatmayanlar
+
+- **Etiket dağılımı:** "Yüksek" etiketi yalnız eşiğin en fazla 5 puan altında görünüyor (≥%80). Bir Tier aşağıdan bakan patron (20 puan fark) her zaman "Düşük" görüyor. Bu kasıtlıysa sorun yok. Ama oyuncu görünür satırların çoğunda yalnız "Kesin" ya da "Düşük" görecek; "Orta" ancak 6–15 puan farkta çıkıyor. Arayüz testinde etiketlerin yeterince bilgi verip vermediği gözlenmeli.
+- **Erken dönem:** Tier başındaki patron bir üst Tier sorununa %20 ile giriyor (eski kuralda %80). Erken Kurucu'nun iflası bu kuralla değişmedi (100'de 94, ikisinde de). Ama erken dönemde gizli sorunları denemek artık daha az cazip. IDEA-010'daki erken dönem sorunu çözülünce yeniden ölçülmeli.
+
+### Açık Sorular
+
+1. Öneri metnindeki kanıt sayıları tekrarlanabilir değerlerle (%78 → %48, 159 → 9) güncellensin mi?
+2. Etiket eşikleri (Yüksek ≥%80) bu haliyle mi kalsın?
+
+**FREEZE durumu:** 1. madde düzeltilirse FRZ-001 v2 onaya hazır.
 
 ## Açık Kararlar
 

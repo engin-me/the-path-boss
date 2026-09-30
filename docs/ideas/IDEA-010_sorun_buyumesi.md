@@ -27,7 +27,47 @@ Büyüme uygulandıktan sonra tipik bir departmanın 1–2 aylık gizli zararı,
 
 ## Notlar (Claude)
 
-Yeni tur incelemesi henüz yapılmadı. Claude'un patron testi kod ve sonuç çalışması bu bölümde tasarım değerlendirmesi olarak kaydedilebilir.
+Tur 1 incelemesi. FRZ-001, FRZ-002 v3 ve FRZ-002 v4 taslağı ile karşılaştırıldı; kural patron testinde uygulanıp ölçüldü (`godot/playtests/claude_bulgular.md`, Tur 2). Bu turda yalnızca bu bölüm değişti.
+
+**Ölçüm yöntemi:** Aynı kod, aynı 100 tohum ve kendi makine parkları. Yalnız büyüme açılıp kapatıldı (`GROWTH_RATE` 0,05 ↔ 0). Tohum hatası düzeltildiği için sonuçlar tekrarlanabilir: aynı koşu iki kez birebir aynı özeti üretiyor.
+
+| Karakter | Büyüme yok: iflas / net kasa | Büyüme var: iflas / net kasa |
+| --- | --- | --- |
+| Temkinli Patron (yalnız görünür sorunu düzeltir) | 0 / 23 | 0 / **−15** |
+| Teknik Usta (diplomasız, A×2) | **42** / −212 | **54** / −224 |
+| Erken Kurucu (diplomasız, A×2, 300 para) | **89** / −251 | **94** / −256 |
+| Kör Tamirci | 0 / 38 | 0 / 9 |
+| Danışman Arayan | 0 / 109 | 0 / 80 |
+
+### Aldığım Notlar
+
+- Taslak, patron testindeki uygulamayla birebir aynı: %5 artış, başlangıcın 2 katında durma, bütün Tier'lerde aynı oran, yeni bağlı satır yok, %20 ve %33 sınırları geçerli.
+- **Hedef tuttu: beklemek artık bedava değil.** Yalnız görünür sorunu düzelten Temkinli Patron'un net kasası büyümeyle 23'ten −15'e düşüyor; gizli sorunu hiç denememek bir bedel taşıyor.
+- Aynı oranın Tier'i sızdırmaması doğru kurulmuş.
+
+### Bulduğum Sakıncalar
+
+**1. Büyüme zayıf fabrikaların iflasını artırıyor; asıl sorun ise büyümeden önce de vardı (FREEZE öncesi kapanmalı).**
+Teknik Usta'nın iflası 100'de 42'den 54'e, Erken Kurucu'nunki 89'dan 94'e çıkıyor. Ama Erken Kurucu büyüme olmadan da 100'de 89 batıyor. Bunun iki kök nedeni var ve ikisi de büyümeden bağımsız:
+- **Teklif havuzu makinelere uymuyor.** `reports/05_erken_kurucu.md`'de 2., 5. ve 6. aylarda beklenen çıktı 20 / 0 / 20; yalnız A tezgâhı olan fabrikaya uygun iş gelmediği için gelir çöküyor.
+- **Erken dönem güvencesi yalnız ilk ay var.** FRZ-002 v3 §4 kuruluş kasasını sadece açılış ayı için garanti ediyor. 4–9. aylarda her ay 1–3 Düzelt denemesi nakit güvencesine takılıyor (raporda "engel").
+
+Büyüme bu iki soruna eklenince erken fabrika daha hızlı batıyor. **Öneri:** FRZ-002 v4, erken dönem ve teklif havuzu için açılacak ayrı bir IDEA'yla **birlikte** CURRENT yapılsın; tek başına dondurulursa erken oyunun zaten kırık olan kısmı daha da sertleşir.
+
+**2. Danışmanın kazandığı değer büyümeden değil, ücret ayarından geliyor.**
+Büyüme her rotayı yakıyor: Danışman Arayan 109 → 80, Kör Tamirci 38 → 9. Danışmanın kör denemeye üstünlüğü, esas olarak ücretin düşürülmesinden (aynı kodla eski ücrette 12'ye 9, yeni ücrette 80'e 9) ve IDEA-011'deki şans eğrisinden geliyor. Öneri metnindeki "danışman az kullanıldı → büyüme" gerekçesi bu yüzden eksik; ücret dengesinin ayrı bir karar olduğu açıkça yazılmalı.
+
+### Kafama Yatmayanlar
+
+- **Tavana çarpan departmanda satır değerleri (Açık Karar 2).** Testte rapor tavanı yalnız departman toplamına uygulandı; satırlar kendi büyüyen "potansiyel" kayıplarını koruyor ve Düzelt satırın potansiyelini kaldırıyor. Bu, Tier gizliliğini korur ve basittir. Öneri: kural böyle yazılsın ve arayüzde "departman tavanı uygulandı" notu görünsün.
+- **Danışman sürekli kullanılıyor.** Danışman Arayan 12 ayda ortalama 4,1 sözleşme yapıyor; iki yuva neredeyse hiç boş kalmıyor. FRZ-006 v2'nin "sürekli danışman kariyerin yerini almamalı" gerekçesiyle gerilim olabilir. 24–36 aylık testte izlenmeli.
+- **Danışman ücreti için testin seçtiği değer:** aylık 2 + (en yüksek iki puan)/30; 3 aylık sözleşme ≈ 15–24. Bu, taslaktaki "1–2 aylık departman zararı" hedefine denk geliyor. FREEZE değil, denge girdisi.
+
+### Açık Sorular
+
+1. FRZ-002 v4, erken dönem güvencesi ve teklif havuzu için açılacak yeni IDEA ile birlikte mi onaylansın (Claude önerisi), yoksa tek başına mı?
+2. Tavana çarpan departmanda kural: tavan yalnız departman toplamına uygulanır, satırlar potansiyel kaybını korur. Kabul mü?
+3. Danışman ücreti için test değeri (2 + en iyi iki puan/30) denge girdisi olarak kayda geçsin mi?
 
 ## Açık Kararlar
 
