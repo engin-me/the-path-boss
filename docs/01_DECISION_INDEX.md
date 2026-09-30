@@ -28,6 +28,7 @@
 
 ## Open design work
 
+- [IDEA-015 Fabrika Kiralama Sözleşmesi ve Mobil Arayüz İskeleti](ideas/IDEA-015_fabrika_kiralama_ve_mobil_arayuz.md): kullanıcı kararları (6/12/24 ay kira, 2 kira erken çıkış, iflasta kira borcu 0, yükseklik, USD, çoklu iş) kaydedildi; Claude incelemesi bekleniyor. Arayüz iskeleti mock veriyle `godot/factory_shell.tscn` içinde.
 - [IDEA-014 Patron Operatörlüğünün Aylık Zaman Payı](ideas/IDEA-014_patron_operatorlugu_zaman_payi.md): kullanıcı FRZ-008 v2'nin sabit 8 saatini aylık toplam saatin yarısı olarak değiştirmeyi istedi. Claude incelemesi ve yeni FREEZE sürümü bekleniyor; FRZ-008 v2 CURRENT kalır.
 - [IDEA-013 Fabrika Kuruluşu ve Operasyon Çekirdeği](ideas/IDEA-013_fabrika_kurulusu_ve_operasyon_cekirdegi.md): OEE'nin etkiye göre eşlemesi, eksik operatörün kapasite etkisi, 8 saatlik patron operatörlüğü ve iş bazlı ekonomi ilkesi FRZ-008 v2 ile donduruldu. Aylık toplam saat, kira, katalog ve diğer ücret grupları açık.
 - Kullanıcının önerdiği yeni yetkinlik/departman listesi, Kalite'nin yalnız yan mesleklerden kazanılması, İK Asistanı İnsan Yönetimi v2 ve Strateji & Karar yetkinliğinin diploma tavanı/şans bonusu henüz yeni IDEA/Claude incelemesi ile FREEZE yapılmadı. Strateji için konuşulan taslak: diplomasız tavan 50, iki bölümden biri tavanı açar, %100 puanda şans ×1,5 ve zar gereken sonuçlarda %95 üst sınır. FRZ-001 v3 ve FRZ-007 v3 bu değişiklikleri içermez.

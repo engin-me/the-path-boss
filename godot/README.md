@@ -13,6 +13,15 @@ Kontroller:
 & '...\Godot_v4.7.2-stable_win64_console.exe' --headless --path godot --script res://tests/persona_run.gd -- seeds=40
 ```
 
+## Mobil fabrika arayüzü (iskelet)
+
+`factory_shell.tscn` dikey mobil (540×960) fabrika kabuğudur: sabit üst şerit, beş ana sekme (Özet, İşler, Tezgah, Fabrika, Profil), fabrika kiralama (6/12/24 ay, 2 kira erken çıkış), tezgah alma (alan ve yükseklik kontrolü), birden çok iş kabulü ve Profil. **Mock veridir; kurallar BossState'e bağlı değildir.** Öneriler için `docs/ideas/IDEA-015`. Önizlemeler `ui_previews/` altında.
+
+```powershell
+# Sahneyi Godot editöründe factory_shell.tscn açıp F6 ile çalıştırın; başsız kontrol:
+... --headless --path godot --script res://tests/shell_smoke.gd
+```
+
 ## Eski kariyer dilimi
 
 Patron testi ekranındaki "Eski kariyer dilimini aç" düğmesiyle açılır (`main.tscn`).
