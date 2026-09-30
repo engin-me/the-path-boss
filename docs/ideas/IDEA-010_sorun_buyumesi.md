@@ -2,7 +2,7 @@
 
 ## Durum/Tur
 
-Durum: DRAFT — kullanıcı taslak yönünü onayladı; [FRZ-002 v4 taslağı](../freeze/FRZ-002_v4_fabrika_ekonomisi.md) henüz CURRENT değildir.
+Durum: KARARA BAĞLANDI — [FRZ-002 v4](../freeze/FRZ-002_v4_fabrika_ekonomisi.md), kullanıcı tarafından [IDEA-012](IDEA-012_erken_donem_ve_teklif_havuzu.md) teklif çözümüyle birlikte onaylandı ve CURRENT yapıldı.
 Tur: 1
 Tarih: 2026-09-29
 Bağımlılık: [FRZ-002 v3](../freeze/FRZ-002_v3_fabrika_ekonomisi.md) §1–2 ve [FRZ-001](../freeze/FRZ-001_patron_yetkinlikleri.md) §4.

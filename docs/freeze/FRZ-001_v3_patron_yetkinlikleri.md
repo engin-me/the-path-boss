@@ -1,8 +1,8 @@
-# FRZ-001 v2 — Patron Yetkinlikleri ve Fabrika Sorun Döngüsü
+# FRZ-001 v3 — Patron Yetkinlikleri ve Fabrika Sorun Döngüsü
 
-Status: SUPERSEDED by [FRZ-001 v3](FRZ-001_v3_patron_yetkinlikleri.md); bu sürüm [FRZ-001](FRZ-001_patron_yetkinlikleri.md) sürümünü supersede etmişti.
-Date: 2026-09-29
-Source: [IDEA-001](../ideas/IDEA-001_patron_yetkinlikleri.md) ve [IDEA-011 şans eğrisi taslağı](../ideas/IDEA-011_duzelt_sans_egrisi.md); kullanıcının yeni formül ve etiket kararı.
+Status: CURRENT — kullanıcının 2026-09-30 onayıyla [FRZ-001 v2](FRZ-001_v2_patron_yetkinlikleri.md) sürümünü supersede eder.
+Date: 2026-09-30
+Source: [IDEA-001](../ideas/IDEA-001_patron_yetkinlikleri.md), [IDEA-011](../ideas/IDEA-011_duzelt_sans_egrisi.md) ve Claude incelemesi sonrası [IDEA-012](../ideas/IDEA-012_erken_donem_ve_teklif_havuzu.md); kullanıcının erken erişim kabul testi kararı.
 
 ## Onaylanan Kararlar
 
@@ -44,9 +44,9 @@ Source: [IDEA-001](../ideas/IDEA-001_patron_yetkinlikleri.md) ve [IDEA-011 şans
 
 ### 6. Fabrika ölçeği ve erken erişim
 
-**Ne:** Görünür fabrika ölçeği, yeni sorunların ulaşabileceği en derin Tier'i sınırlar. Satır doğduktan sonra fabrika büyüse veya küçülse de Tier'i ve oluşum ölçeğine bağlı güvence tavanı değişmez. İlk oyun örneğinde, ilk üç ayın her birinde gizli sorun varsa oyuncu danışman tutmadan en az bir gizli satırı oyun parası ve patron zamanıyla deneyebilmelidir.
+**Ne:** Görünür fabrika ölçeği, yeni sorunların ulaşabileceği en derin Tier'i sınırlar. Satır doğduktan sonra fabrika büyüse veya küçülse de Tier'i ve oluşum ölçeğine bağlı güvence tavanı değişmez. İlk oyun örneğinin kabul testinde, gizli sorun varsa ilk ay danışmansız en az bir gizli satırın para ve patron saati güvencesiyle denenebilmesi %100 sağlanır. İkinci ve üçüncü aylarda gizli satır bulunan ayların en az %90'ında bu deneme mümkün olmalıdır. Oyuncunun önceki harcamaları nedeniyle kalan aylarda güvence yetersiz kalabilir; bilinen iş maliyeti, olağan giderler ve vadesi gelen finansman yükümlülükleri kullanılabilir paradan düşülmeye devam eder. Ölçüm, aynı koşullarda çoklu oyun/tohum üzerinden yapılır; bu oran tek bir oyuna otomatik kaynak veya başarı şansı eklemez.
 
-**Neden:** Büyüme yeni sorun derinliği getirebilir; mevcut sorunların kuralları sessizce değişmemeli. Bilgi açığı erken fabrikada çözümü imkânsızlaştırmamalı veya danışmanı fiilen zorunlu kılmamalıdır.
+**Neden:** Büyüme yeni sorun derinliği getirebilir; mevcut sorunların kuralları sessizce değişmemeli. Bilgi açığı erken fabrikada danışmanı fiilen zorunlu kılmamalı; oyuncunun ikinci ve üçüncü ay kaynak harcamaları ise sonuç doğurabilmelidir. Teklif havuzu iyileştirildiğinde prototipte gizli satırlı 272 ayın 245'inde (%90) danışmansız deneme mümkündü; patron saati engeli görülmedi.
 
 ## Reddedilen Yollar
 

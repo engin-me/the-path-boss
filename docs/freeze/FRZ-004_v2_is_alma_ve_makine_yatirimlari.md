@@ -1,9 +1,9 @@
-# FRZ-004 — İş Alma ve Makine Yatırımları
+# FRZ-004 v2 — İş Alma ve Makine Yatırımları
 
-Status: SUPERSEDED by [FRZ-004 v2](FRZ-004_v2_is_alma_ve_makine_yatirimlari.md).
-Date: 2026-09-29
-Source: [IDEA-004](../ideas/IDEA-004_is_alma_ve_makine_yatirimlari.md), Tur 2; Claude Tur 1 incelemesi ve kullanıcının üç öneriyi kabulü.
-Depends on: [FRZ-001](FRZ-001_patron_yetkinlikleri.md), [FRZ-002 v3](FRZ-002_v3_fabrika_ekonomisi.md), [FRZ-003 v2](FRZ-003_v2_iflas_ve_fabrika_satisi.md).
+Status: CURRENT — [FRZ-004](FRZ-004_is_alma_ve_makine_yatirimlari.md) sürümünü supersede eder.
+Date: 2026-09-30
+Source: [IDEA-004](../ideas/IDEA-004_is_alma_ve_makine_yatirimlari.md) ve Claude incelemesi sonrası [IDEA-012](../ideas/IDEA-012_erken_donem_ve_teklif_havuzu.md); kullanıcının aylık teklif havuzu kararı.
+Depends on: [FRZ-001 v3](FRZ-001_v3_patron_yetkinlikleri.md), [FRZ-002 v4](FRZ-002_v4_fabrika_ekonomisi.md), [FRZ-003 v2](FRZ-003_v2_iflas_ve_fabrika_satisi.md).
 
 ## Onaylanan Kararlar
 
@@ -13,9 +13,15 @@ Depends on: [FRZ-001](FRZ-001_patron_yetkinlikleri.md), [FRZ-002 v3](FRZ-002_v3_
 
 **Neden:** İş seçimi makine yatırımlarını anlamlı kılmalı, fakat ilk akış pazarlık ve parça parça iş bölme yüküyle ağırlaşmamalıdır.
 
+### 1A. Her ay makine parkına uygun teklif tabanı
+
+**Ne:** Çalışabilir makine kapasitesi olan her ayın beş teklifinden en az üçü, mevcut parkın karşılayabildiği makine niteliğinde ve tek başına tamamlayabileceği miktarda **tam iş** olmalıdır. Diğer iki teklif serbest çekilir. Uygunluk teklifin kârlı olduğunu, birlikte seçilen bütün uygun işlerin aynı anda yapılabileceğini veya oyuncunun maliyeti ödeyebileceğini garanti etmez. Çalışabilir makine yoksa uygun iş garantisi uygulanmaz; teslim/kurulumu bitmeyen makine gelir veya kapasite yaratmaz. Teklif fiyatı ve miktarı uygun aralık içinde değişken kalır. Oluşan gerçek teklif listesi mevcut teklif geçmişine girer; azami kâr potansiyeli [FRZ-003 v2](FRZ-003_v2_iflas_ve_fabrika_satisi.md) uyarınca yalnız ay sonunda güncellenir.
+
+**Neden:** Yalnız düşük nitelikli parkın aylarca sıfır alınabilir işle karşılaşması, yatırım ve nakit kararından bağımsız yapısal iflas yaratıyordu. Her ay 3/5 tabanıyla 100 tohumluk prototipte Erken Kurucu'nun ayakta kalması 6'dan 87'ye yükseldi; 2/5 tabanında 70'ti. Kalan serbest teklifler, fiyat değişimi ve kapasite sınırı pazar riskini korur.
+
 ### 2. Rapor, kapasite ve teslim
 
-**Ne:** FRZ-002 v3 uyarınca beklenen çıktı, o ay kabul edilmiş işlerin kapasite içindeki hedefidir. Kullanılmayan kapasite raporda ayrı **boş kapasite** olarak görünür ve departman sorun kaybına eklenmez. %33 gerçekleşme tabanı ve yaklaşık %20 departman kayıp tavanı kabul edilmiş iş hedefine uygulanır. Teklif ekranı son rapordaki toplam kaybı ihtiyat payı olarak düşen bir boş kapasite tahmini sunar; raporun ortak kayıp birimi fiziksel makine kapasitesiyle bire bir eşit sayılmaz.
+**Ne:** FRZ-002 v4 uyarınca beklenen çıktı, o ay kabul edilmiş işlerin kapasite içindeki hedefidir. Kullanılmayan kapasite raporda ayrı **boş kapasite** olarak görünür ve departman sorun kaybına eklenmez. %33 gerçekleşme tabanı ve yaklaşık %20 departman kayıp tavanı kabul edilmiş iş hedefine uygulanır. Teklif ekranı son rapordaki toplam kaybı ihtiyat payı olarak düşen bir boş kapasite tahmini sunar; raporun ortak kayıp birimi fiziksel makine kapasitesiyle bire bir eşit sayılmaz.
 
 **Ne:** İlk sürümde ayrı teslim gecikmesi cezası yoktur. Teslim edilmeyen iş gelir yazılmaz; sorundan doğan kayıp ilgili tek rapor satırında kalır. Gelecekte ceza eklenirse aynı kayıp ikinci kez yazılmaz, cezanın çıktı eşdeğeri ilgili sorun satırına bağlanır.
 
@@ -23,7 +29,7 @@ Depends on: [FRZ-001](FRZ-001_patron_yetkinlikleri.md), [FRZ-002 v3](FRZ-002_v3_
 
 ### 3. İşin nakit zamanı
 
-**Ne:** İş kabulü ayın karar adımında yapılır. Kabul edilen işin bu ay ödenecek bilinen malzeme ve benzeri maliyetleri FRZ-002 v3'ün kullanılabilir kasa hesabında ayrılır; olağan giderlere zaten dahil edilmiş tutar tekrar ayrılmaz. Gelir yalnızca iş teslim edildiği ayın fiili satışına girer; teklif veya kabul tek başına gelir yaratmaz.
+**Ne:** İş kabulü ayın karar adımında yapılır. Kabul edilen işin bu ay ödenecek bilinen malzeme ve benzeri maliyetleri FRZ-002 v4'ün kullanılabilir kasa hesabında ayrılır; olağan giderlere zaten dahil edilmiş tutar tekrar ayrılmaz. Gelir yalnızca iş teslim edildiği ayın fiili satışına girer; teklif veya kabul tek başına gelir yaratmaz.
 
 **Neden:** Düzelt güvencesi bilinen iş maliyetini harcamamalı ve henüz teslim edilmemiş işin parasıyla müdahale yapılmamalıdır.
 

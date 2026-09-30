@@ -1,6 +1,6 @@
 # FRZ-002 v3 — Fabrika Ekonomisi, İş Hedefi ve Kasa Olayları
 
-Status: CURRENT — supersedes [FRZ-002 v2](FRZ-002_v2_fabrika_ekonomisi.md) on 2026-09-29.
+Status: SUPERSEDED by [FRZ-002 v4](FRZ-002_v4_fabrika_ekonomisi.md); bu sürüm [FRZ-002 v2](FRZ-002_v2_fabrika_ekonomisi.md) sürümünü supersede etmişti.
 Date: 2026-09-29
 Source: [FRZ-002 v2](FRZ-002_v2_fabrika_ekonomisi.md) ve [IDEA-004](../ideas/IDEA-004_is_alma_ve_makine_yatirimlari.md), Tur 2.
 Depends on: [FRZ-001](FRZ-001_patron_yetkinlikleri.md). Companion decisions: [FRZ-003 v2](FRZ-003_v2_iflas_ve_fabrika_satisi.md), [FRZ-004](FRZ-004_is_alma_ve_makine_yatirimlari.md).

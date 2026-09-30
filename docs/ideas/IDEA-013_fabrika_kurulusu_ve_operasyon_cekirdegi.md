@@ -2,7 +2,7 @@
 
 ## Durum/Tur
 
-Durum: DRAFT — Claude Tur 1 notları yazıldı; kullanıcı kararı bekleniyor; FREEZE değildir.
+Durum: DRAFT — Claude Tur 1 sonrası OEE, eksik kadro ve patron operatörlüğü kararları kullanıcı tarafından onaylanıp [FRZ-008 v2](../freeze/FRZ-008_v2_fabrika_operasyon_cekirdegi.md) ile donduruldu; diğer kararlar açıktır. Bu IDEA bütünüyle FREEZE değildir.
 Tur: 1
 Tarih: 2026-09-30
 Bağımlılıklar: [FRZ-001](../freeze/FRZ-001_patron_yetkinlikleri.md), [FRZ-002 v3](../freeze/FRZ-002_v3_fabrika_ekonomisi.md), [FRZ-003 v2](../freeze/FRZ-003_v2_iflas_ve_fabrika_satisi.md), [FRZ-004](../freeze/FRZ-004_is_alma_ve_makine_yatirimlari.md), [FRZ-005 v2](../freeze/FRZ-005_v2_personel_ve_insan_yonetimi.md).
@@ -93,15 +93,22 @@ Tur 1 · 2026-09-30 · Ölçüm: `godot/` patron testi, 100 tohum, %5 büyüme a
 
 ## Açık Kararlar
 
-- Fiziksel sağlam ürün hesabı ile FRZ-002 v3 çıktı eşdeğeri ve sorun satırlarının kesin uzlaştırması; gerekirse FRZ-002'nin yeni sürümü.
-- Patron operatörlüğünün aylık yönetim saati maliyeti ve vardiya sınırı.
-- Beş ücret grubunun başlangıç maaşları, ücret politikasının işe alım/devir etkisi ve eksik kadronun üretime etkisi.
+- Etkiye göre OEE eşlemesinin rapor sunumu ve fiziksel ürün/çıktı eşdeğeri uzlaştırmasının prototipte doğrulanması; kural [FRZ-008 v2](../freeze/FRZ-008_v2_fabrika_operasyon_cekirdegi.md) içindedir.
+- Aylık toplam patron saati ve vardiya uygulamasının ayrıntısı; operatörlüğün 8 saatlik aylık bedeli ve gizli Düzelt güvencesi FRZ-008 v2 ile karara bağlandı.
+- Beş ücret grubunun başlangıç maaşları ve operatör dışındaki grupların ölçek tetikleyicileri; eksik operatörün kapasiteye etkisi ve ücret politikasının ilk dilimde yalnız kadro doluluğu ile gideri etkilemesi FRZ-008 v2 ile karara bağlandı.
+- Tek makinenin farklı iş havuzlarında yaşayabilirlik dengesi ve alan kirasının mevcut sabit giderle ilişkisi; sonuç alınan işe göre değerlendirilecektir.
 - Başlangıç makinelerinin tam listesi ve sayısal fiyat/alan/kapasite/teslim değerleri; kiralık alan ilanları ve kira eğrisi.
 - İlk dilimde hangi operasyon politika kartlarının bulunacağı ve bunların süre/maliyet/etki sınırları.
 - Leasing, teşvik, kendi bina yatırımı ve Ar-Ge ürün satışı ayrı tasarım turlarıdır; bu dosyadan kendiliğinden onay çıkmaz.
 
 ## Karar Özeti
 
+- Kullanıcı OEE bileşeninin departman adına değil kaybın fiziksel etkisine göre belirlenmesini onayladı; çünkü duruş, düşük hız ve kusur farklı biçimde açıklanmalı, yalnız sevk/satış kaybı fiziksel OEE'yi düşürmemeli.
+- Kullanıcı patronun ilk makinedeki tek vardiya operatörlüğünün aylık yönetim zamanından 8 saat tüketmesini onayladı; çünkü ücret tasarrufunun somut zaman bedeli olmalı ve gizli Düzelt erişimi korunmalı.
+- Kullanıcı tek makinenin yaşayabilirliğinin alınan işin gelir ve maliyetine göre değerlendirilmesini onayladı; çünkü kârlılık patronun operatörlüğüne peşinen bağlanmamalı.
+- Kullanıcı OEE'nin mevcut fiziksel sorun kayıplarını raporda açıklamasını ve ikinci üretim/kasa hesabı yaratmamasını onayladı; çünkü aynı zarar iki kez yazılmamalı ve FRZ-002 v4'ün toplamsal hesabı korunmalı.
+- Kullanıcı eksik operatörün iş seçimi öncesinde çalışabilir kapasiteyi düşürmesini ve ilk dilimde ücretin yalnız kadro doluluğu ile gideri etkilemesini onayladı; çünkü tek kadro açığı sorun satırı, OEE ve gecikme üzerinden tekrar cezalandırılmamalı.
+- Kullanıcı patronun ilk makinenin tek vardiyasında operatör olarak ücret tasarrufu karşılığında yönetim zamanı harcamasını ve gizli Düzelt için azami saat güvencesinin korunmasını onayladı; çünkü bu seçim yönetim fırsat maliyeti taşımalı fakat erken Düzelt erişimini kapatmamalı.
 - Kullanıcı kiralık yer seçimini ve makinenin kapladığı alanı fabrika kuruluşunun parçası olarak istedi; çünkü alan hem kira giderini hem büyüme sınırını belirlemeli.
 - Kullanıcı makine çeşitleri ve her makinenin fiyat, alan, personel, kapasite gibi gereksinimlerinin katalogda görünmesini istedi; çünkü yatırım kararı ilerideki iş ve kapasite seçeneklerini değiştirmeli.
 - Kullanıcı sahnede yerleşim optimizasyonu istemedi; çünkü bunun gerektirdiği iş planı mekaniği çekirdek kararı güçlendirmeden kapsamı büyütür.

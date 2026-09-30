@@ -1,11 +1,11 @@
 # FRZ-002 v4 — Fabrika Ekonomisi, İş Hedefi ve Kasa Olayları
 
-Status: DRAFT — önerilen yeni sürüm; [FRZ-002 v3](FRZ-002_v3_fabrika_ekonomisi.md) CURRENT kalır.
-Date: 2026-09-29
-Source: [FRZ-002 v3](FRZ-002_v3_fabrika_ekonomisi.md) ve [IDEA-010 çözülmeyen sorunların büyümesi](../ideas/IDEA-010_sorun_buyumesi.md).
-Depends on: [FRZ-001 v2](FRZ-001_v2_patron_yetkinlikleri.md). Companion decisions: [FRZ-003 v2](FRZ-003_v2_iflas_ve_fabrika_satisi.md), [FRZ-004](FRZ-004_is_alma_ve_makine_yatirimlari.md).
+Status: CURRENT — kullanıcının [IDEA-012](../ideas/IDEA-012_erken_donem_ve_teklif_havuzu.md) teklif ve erken erişim çözümü onayıyla [FRZ-002 v3](FRZ-002_v3_fabrika_ekonomisi.md) sürümünü supersede eder.
+Date: 2026-09-30
+Source: [FRZ-002 v3](FRZ-002_v3_fabrika_ekonomisi.md), [IDEA-010 çözülmeyen sorunların büyümesi](../ideas/IDEA-010_sorun_buyumesi.md) ve [IDEA-012](../ideas/IDEA-012_erken_donem_ve_teklif_havuzu.md).
+Depends on: [FRZ-001 v3](FRZ-001_v3_patron_yetkinlikleri.md). Companion decisions: [FRZ-003 v2](FRZ-003_v2_iflas_ve_fabrika_satisi.md), [FRZ-004 v2](FRZ-004_v2_is_alma_ve_makine_yatirimlari.md).
 
-## Taslak Kararlar
+## Onaylanan Kararlar
 
 ### 1. Ortak rapor birimi ve kayıp hesabı
 
@@ -23,11 +23,11 @@ Depends on: [FRZ-001 v2](FRZ-001_v2_patron_yetkinlikleri.md). Companion decision
 
 ### 2A. Çözülmeyen sorun kaybının büyümesi
 
-**Ne:** Her sorun satırının oluştuğu aydaki başlangıç aylık kaybı saklanır. Ayın kararlarında çözülmeden kalan satırın sonraki aylık potansiyel kaybı bir önceki aya göre **%5 artar**, fakat **başlangıç kaybının iki katını** aşmaz. Aynı oran ve tavan bütün Tier'lere uygulanır. Başarılı Düzelt ilgili kökün bağlı bütün satırlarını kapatır; etkisi mevcut FRZ-002 v3 §4 sırasıyla sonraki raporda görünür. Büyüme mevcut satırların kaybını değiştirir, köke sonradan yeni bağlı satır doğurmaz; FRZ-001 §4'teki bağlı satırların birlikte oluşma kuralı korunur.
+**Ne:** Her sorun satırının oluştuğu aydaki başlangıç aylık kaybı saklanır. Ayın kararlarında çözülmeden kalan satırın sonraki aylık potansiyel kaybı bir önceki aya göre **%5 artar**, fakat **başlangıç kaybının iki katını** aşmaz. Aynı oran ve tavan bütün Tier'lere uygulanır. Başarılı Düzelt ilgili kökün bağlı bütün satırlarını kapatır; etkisi bu sürümün §4 sırasıyla sonraki raporda görünür. Büyüme mevcut satırların kaybını değiştirir, köke sonradan yeni bağlı satır doğurmaz; FRZ-001 v3 §4'teki bağlı satırların birlikte oluşma kuralı korunur.
 
 **Ne:** Her sorun satırı tavan öncesi **potansiyel kaybını** saklar. Yaklaşık %20 tavan satırlara tek tek değil, büyüyen potansiyeller toplandıktan sonra **departmanın rapora geçen gerçekleşen toplam kaybına** uygulanır; fabrika genelinde en az %33 gerçekleşme tabanı da korunur. Bu yüzden satır potansiyellerinin toplamı gerçekleşen departman kaybını aşabilir; kart iki toplamı ve tavan farkını ayrı açıklar. Sınıra ulaşmış departmanda yeni sorun üretilmez. Kayıp aynı çıktı eşdeğeri biriminde raporlanır ve aynı gerçek para/gider olayı ikinci kez kasadan düşülmez. Büyüme oranı Tier'e göre değişmediği için gizli sorunun derinliği artış yüzdesinden çıkarılamaz.
 
-**Neden:** Sabit zararlı derin sorunları bekletmek bedelsiz bir stratejiye dönüşüyordu ve gizli sorunlar birikiyordu. Büyüme beklemenin bedelini görünür kılar; iki kat sınırı ve mevcut rapor tavanları kaybın sınırsız artmasını önler. Danışmanın ekonomik değerindeki test artışı **ayrı ücret ayarından** kaynaklandı; büyüme danışman kullanan karakterin de kasasını düşürdü. Tier'den bağımsız oran gizli bilginin rapordan sızmasını engeller. Bu taslak, [IDEA-012](../ideas/IDEA-012_erken_donem_ve_teklif_havuzu.md) erken dönem açığı çözülmeden CURRENT yapılmaz.
+**Neden:** Sabit zararlı derin sorunları bekletmek bedelsiz bir stratejiye dönüşüyordu ve gizli sorunlar birikiyordu. Büyüme beklemenin bedelini görünür kılar; iki kat sınırı ve mevcut rapor tavanları kaybın sınırsız artmasını önler. Danışmanın ekonomik değerindeki test artışı **ayrı ücret ayarından** kaynaklandı; büyüme danışman kullanan karakterin de kasasını düşürdü. Tier'den bağımsız oran gizli bilginin rapordan sızmasını engeller. Erken fabrikanın yapısal teklif açığı [FRZ-004 v2](FRZ-004_v2_is_alma_ve_makine_yatirimlari.md) ile giderildikten sonra bu büyüme kuralı birlikte CURRENT yapılmıştır.
 
 ### 3. Ay akışı ve kullanılabilir nakit
 
@@ -45,7 +45,7 @@ Depends on: [FRZ-001 v2](FRZ-001_v2_patron_yetkinlikleri.md). Companion decision
 
 ### 4. Müdahale faydası ve erken erişim
 
-**Ne:** Düzelt sonucu ve bedeli anında belli olur; kaldırılan kaybın rapor etkisi **sonraki ay** görünür. Tier fiyat bantları fabrika ölçeğinin aylık birim değeriyle orantılı tutulur. Kuruluş sonrasındaki kasa en az **ilk ayın bilinen olağan giderleri + küçük ölçekteki olası en derin Tier'in üst güvence bedeli** kadar olmalıdır. FRZ-001'in ilk üç ay danışmansız gizli sorun deneme testi ayrıca sınanır.
+**Ne:** Düzelt sonucu ve bedeli anında belli olur; kaldırılan kaybın rapor etkisi **sonraki ay** görünür. Tier fiyat bantları fabrika ölçeğinin aylık birim değeriyle orantılı tutulur. Kuruluş sonrasındaki kasa en az **ilk ayın bilinen olağan giderleri + küçük ölçekteki olası en derin Tier'in üst güvence bedeli** kadar olmalıdır. [FRZ-001 v3](FRZ-001_v3_patron_yetkinlikleri.md) §6'daki ilk ay %100, ikinci ve üçüncü ay en az %90 danışmansız gizli Düzelt erişim testi ayrıca ölçülür; kabul edilen iş maliyetinin güvenceden düşülmemesi gibi bir istisna eklenmez.
 
 **Neden:** Geçmiş raporlar yeniden yazılmamalı; küçük fabrikada da bilgi açığını oyun parasıyla deneme yolu açık kalmalıdır.
 
