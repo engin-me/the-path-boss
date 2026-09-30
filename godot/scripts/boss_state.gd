@@ -29,7 +29,7 @@ const DIPLOMAS := {
 
 # IDEA-010 DRAFT: an unsolved problem's monthly loss grows at the same rate
 # for every Tier (so the amount does not reveal depth), up to a cap.
-const GROWTH_RATE := 0.05
+static var growth_rate := 0.05  # test toggle; FRZ-002 v4 draft value
 const GROWTH_CAP := 2.0
 
 # FRZ-004: machine type sets capacity and the jobs it qualifies for.
@@ -70,6 +70,14 @@ const MAX_CONSULTANTS := 2
 const CONSULTANT_MONTHS := 3
 const CONSULTANT_HOUR_FACTOR := 0.7
 const DEFAULT_MARGINS := {1: 0.9, 2: 1.2, 3: 1.6}
+
+# IDEA-012 test toggles (prototype only; not rules). Defaults reproduce the
+# FRZ-002 v3 behaviour so older reports stay comparable.
+static var pool_min := 0        # min offers (of 5) the current park can actually take
+static var pool_months := 3     # how many months the pool floor applies
+static var open_buffer := 1     # months of ordinary expense kept after opening
+static var operator_hours := 0  # IDEA-013 stress test: patron hours spent as operator each month
+static var early_months := 0    # months in which accepted job cost is not reserved from Düzelt cash
 
 var phase := "setup"
 var persona := "Manuel"
@@ -178,7 +186,8 @@ func finance_due() -> float:
 
 # FRZ-002 v3 §3: usable cash excludes this month's known unpaid costs.
 func available_cash() -> float:
-	return cash - ordinary_expense() - accepted_cost() - finance_due()
+	var reserved_jobs := 0.0 if month <= early_months else accepted_cost()
+	return cash - ordinary_expense() - reserved_jobs - finance_due()
 
 # ---------------------------------------------------------------- setup
 
@@ -229,8 +238,9 @@ func opening_requirement(counts: Dictionary) -> Dictionary:
 	var chosen := scale_for_count(count)
 	var first_expense := BASE_EXPENSE + MACHINE_EXPENSE * count
 	var guarantee: float = MONEY_BANDS[chosen["max_tier"]][1] * chosen["factor"]
+	var needed: float = first_expense * open_buffer + guarantee
 	return {"price": price, "count": count, "scale": chosen, "expense": first_expense, "guarantee": guarantee,
-		"cash_after": cash - price, "needed": first_expense + guarantee, "ok": count > 0 and cash - price >= first_expense + guarantee}
+		"cash_after": cash - price, "needed": needed, "ok": count > 0 and cash - price >= needed}
 
 func open_factory(counts: Dictionary) -> String:
 	if phase != "invest":
@@ -263,8 +273,9 @@ func _generate_offers() -> void:
 	var top_quality := 1
 	for machine in machines:
 		top_quality = maxi(top_quality, int(MACHINES[machine["type"]]["quality"]))
+	var floor_count := pool_min if month <= pool_months else 0
 	for i in 5:
-		var quality := rng.randi_range(1, 3)
+		var quality := rng.randi_range(1, top_quality) if i < floor_count else rng.randi_range(1, 3)
 		var quantity := rng.randi_range(3, 9) * 5
 		var price: float = snappedf(rng.randf_range(1.2, 1.6) + (quality - 1) * 0.5, 0.05)
 		var unit_cost: float = snappedf(rng.randf_range(0.3, 0.45) + (quality - 1) * 0.1, 0.05)
@@ -397,7 +408,7 @@ func accept_jobs(selection: Array) -> String:
 			undelivered += 1
 	report = {"expected": expected, "loss": expected - realized, "realized": realized, "revenue": revenue,
 		"losses": losses, "empty": capacity_at_least(1) - expected, "capped": capped, "undelivered": undelivered}
-	hours_left = MONTHLY_HOURS
+	hours_left = MONTHLY_HOURS - operator_hours
 	month_flags = {"fix_blocked_money": 0, "fix_blocked_hours": 0, "fixes": 0}
 	_generate_candidates()
 	phase = "report"
@@ -702,7 +713,7 @@ func finish_month() -> String:
 func _grow_problems() -> void:
 	for root in problems.values():
 		if root["active"]:
-			root["loss"] = minf(root["base_loss"] * GROWTH_CAP, snappedf(root["loss"] * (1.0 + GROWTH_RATE), 0.01))
+			root["loss"] = minf(root["base_loss"] * GROWTH_CAP, snappedf(root["loss"] * (1.0 + growth_rate), 0.01))
 
 func _close_factory(status: Dictionary) -> void:
 	var proceeds := roundf(investment_value() * FORCED_SALE)

@@ -32,7 +32,13 @@ Notlar `godot/playtests/notes/notes.md` dosyasına eklenir (Godot editöründen 
 ... --script res://tests/persona_run.gd -- author=ChatGPT seeds=40
 # Herkese aynı makine parkı (makine etkisini ayıklamak için; reports/_ozet_ayni_makine.md)
 ... --script res://tests/persona_run.gd -- seeds=40 machines=A:1,B:1
+# Kural anahtarı denemesi (raporlara dokunmaz, yalnız ekrana yazar; IDEA-012/013 ölçümleri)
+... --script res://tests/persona_run.gd -- exp=deneme seeds=100 pool=3:99          # her ay 5 tekliften 3'ü parka uyumlu
+... --script res://tests/persona_run.gd -- exp=deneme seeds=100 pool=3:3 growth=0   # ilk 3 ay, büyüme kapalı
+... --script res://tests/persona_run.gd -- exp=deneme seeds=100 early=3 operator=24 buffer=2
 ```
+
+`pool=K:M` (ilk M ayda en az K teklif parka uyumlu), `growth=r` (aylık büyüme), `buffer=N` (kuruluşta N aylık gider tamponu), `early=N` (ilk N ayda kabul edilmiş iş maliyeti Düzelt güvencesinden ayrılmaz), `operator=H` (patron her ay H saatini operatörlüğe harcar). Varsayılanlar eski davranıştır. `exp=` çıktısı ayrıca ilk üç aydaki danışmansız gizli Düzelt erişimini ve patron saati kullanımını özetler.
 
 ## Karakter dosyası
 

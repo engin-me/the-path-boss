@@ -10,6 +10,10 @@ const Log = preload("res://scripts/playtest_log.gd")
 const CHANCE_RANK := {"Belirsiz": 0, "Düşük": 1, "Orta": 2, "Yüksek": 3, "Kesin": 4}
 
 var machine_override := {}
+var experiment := ""          # exp=label: print-only run; no report files touched
+var diag_lines: Array[String] = []
+var hours_agg := {}
+var diag := {}                # IDEA-012 early-period counters for the seed being played
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -22,6 +26,20 @@ func _run() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("seeds="):
 			seeds = int(arg.trim_prefix("seeds="))
+		elif arg.begins_with("exp="):
+			experiment = arg.trim_prefix("exp=")
+		elif arg.begins_with("pool="):
+			# pool=K:M -> at least K of 5 offers fit the park for the first M months
+			BossState.pool_min = int(arg.trim_prefix("pool=").get_slice(":", 0))
+			BossState.pool_months = int(arg.trim_prefix("pool=").get_slice(":", 1))
+		elif arg.begins_with("growth="):
+			BossState.growth_rate = float(arg.trim_prefix("growth="))
+		elif arg.begins_with("operator="):
+			BossState.operator_hours = int(arg.trim_prefix("operator="))
+		elif arg.begins_with("buffer="):
+			BossState.open_buffer = int(arg.trim_prefix("buffer="))
+		elif arg.begins_with("early="):
+			BossState.early_months = int(arg.trim_prefix("early="))
 		elif arg.begins_with("machines="):
 			# machines=A:1,B:1 gives every persona the same park for fair comparison.
 			machine_override = {}
@@ -45,8 +63,8 @@ func _run() -> void:
 			continue
 		if author_filter != "" and persona.get("author", "") != author_filter:
 			continue
-		var summary := play(persona, months)
-		print(summary)
+		if experiment == "":
+			print(play(persona, months))
 		ran += 1
 		if seeds > 0:
 			summary_lines.append(_many(persona, months, seeds))
@@ -56,7 +74,12 @@ func _run() -> void:
 		var summary_name := "_ozet.md" if machine_override.is_empty() else "_ozet_ayni_makine.md"
 		if author_filter != "":
 			summary_name = "_ozet_%s.md" % author_filter.to_lower() if machine_override.is_empty() else "_ozet_%s_ayni_makine.md" % author_filter.to_lower()
-		print(Log.write_report(summary_name, "\n".join(summary_lines) + "\n"))
+		if experiment != "":
+			print("\n".join(summary_lines))
+			print("\n| Karakter | Oynanan | İlk 3 ay doluluk (iş/kapasite) | İşsiz ay | Gizli satırlı ay | Danışmansız deneme mümkün ay | Yalnız para engeli ay | Yalnız saat engeli ay |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
+			print("\n".join(diag_lines))
+		else:
+			print(Log.write_report(summary_name, "\n".join(summary_lines) + "\n"))
 	if ran == 0:
 		printerr("Persona bulunamadı: " + only)
 		quit(1)
@@ -70,6 +93,7 @@ func _many(persona: Dictionary, months_override: int, seeds: int) -> String:
 	var wins := 0.0
 	var hires := 0.0
 	var hidden_share := 0.0
+	var sums := {"hidden_months": 0, "hidden_ok": 0, "hidden_money": 0, "hidden_hours": 0, "expected": 0.0, "capacity": 0.0, "no_job": 0, "months": 0, "m1": 0, "m2": 0, "m3": 0, "seed_blocked": 0}
 	for i in seeds:
 		var copy := persona.duplicate(true)
 		copy["seed"] = int(persona.get("seed", 1)) * 1000 + i
@@ -77,6 +101,11 @@ func _many(persona: Dictionary, months_override: int, seeds: int) -> String:
 		if game.phase == "invest" or game.phase == "setup":
 			outcomes["not_opened"] += 1
 			continue
+		for key in sums:
+			sums[key] += diag[key]
+		for key in ["hours_sum", "hours_n", "h15", "h20", "h25", "h30"]:
+			hours_agg[key] = int(hours_agg.get(key, 0)) + int(diag.get(key, 0))
+		hours_agg["hours_max"] = maxi(int(hours_agg.get("hours_max", 0)), int(diag.get("hours_max", 0)))
 		outcomes[game.closure.get("type", "stuck")] += 1
 		cash += game.cash - game.debt
 		var total := 0.0
@@ -93,9 +122,13 @@ func _many(persona: Dictionary, months_override: int, seeds: int) -> String:
 			if event.contains("tutuldu"):
 				hires += 1
 	var played := maxi(1, seeds - outcomes["not_opened"])
+	diag_lines.append("saat %s: ort %.1f/ay · >15: %d · >20: %d · >25: %d · >30: %d · azami %d · ay %d" % [persona["name"], float(hours_agg.get("hours_sum", 0)) / maxf(1.0, hours_agg.get("hours_n", 0)), hours_agg.get("h15", 0), hours_agg.get("h20", 0), hours_agg.get("h25", 0), hours_agg.get("h30", 0), hours_agg.get("hours_max", 0), hours_agg.get("hours_n", 0)])
+	hours_agg = {}
+	diag_lines.append("| %s | %d | %.0f%% | %d | %d | %d | %d | %d | ay1/2/3: %d/%d/%d · tohum %d |" % [persona["name"], played, 100.0 * sums["expected"] / maxf(1.0, sums["capacity"]), sums["no_job"], sums["hidden_months"], sums["hidden_ok"], sums["hidden_money"], sums["hidden_hours"], sums["m1"], sums["m2"], sums["m3"], sums["seed_blocked"]])
 	return "| %s | %d | %d | %d | %d | %.0f | %.1f | %%%.0f | %.1f | %%%.0f |" % [persona["name"], outcomes["survived"], outcomes["forced"], outcomes["bankrupt"] + outcomes["stuck"], outcomes["not_opened"], cash / played, tries / played, 100.0 * wins / maxf(1.0, tries), hires / played, 100.0 * hidden_share / played]
 
 func _simulate(persona: Dictionary, months_override: int):
+	diag = {"hidden_months": 0, "hidden_ok": 0, "hidden_money": 0, "hidden_hours": 0, "expected": 0.0, "capacity": 0.0, "no_job": 0, "months": 0, "m1": 0, "m2": 0, "m3": 0, "seed_blocked": 0}
 	var game = BossState.new()
 	var policy: Dictionary = persona.get("policy", {})
 	game.max_months = months_override if months_override > 0 else int(persona.get("months", 12))
@@ -150,6 +183,34 @@ func _play_month(game, policy: Dictionary) -> String:
 				visible += 1
 			else:
 				hidden += 1
+	if month <= 3 and not diag.is_empty():
+		diag["months"] += 1
+		diag["expected"] += float(game.report["expected"])
+		diag["capacity"] += float(game.capacity_at_least(1))
+		diag["no_job"] += 1 if int(game.report["expected"]) == 0 else 0
+		var any_hidden := false
+		var any_ok := false
+		var money := false
+		var hours := false
+		for department in BossState.SKILLS:
+			for row in game.active_rows(department):
+				if row["visible"]:
+					continue
+				any_hidden = true
+				var why: String = game.fix_block_reason(row["id"])
+				if why == "":
+					any_ok = true
+				elif why.begins_with("Kullanılabilir"):
+					money = true
+				elif why.begins_with("Kalan"):
+					hours = true
+		diag["hidden_months"] += 1 if any_hidden else 0
+		diag["hidden_ok"] += 1 if any_ok else 0
+		diag["hidden_money"] += 1 if (any_hidden and not any_ok and money) else 0
+		if any_hidden and not any_ok and money:
+			diag["m%d" % month] = int(diag.get("m%d" % month, 0)) + 1
+			diag["seed_blocked"] = 1
+		diag["hidden_hours"] += 1 if (any_hidden and not any_ok and hours and not money) else 0
 	_hire(game, policy)
 	var tries := 0
 	var successes := 0
@@ -168,6 +229,14 @@ func _play_month(game, policy: Dictionary) -> String:
 	var line := "| %d | %d/%d | %.0f | %.0f | %d görünür / %d gizli | %d/%d (engel %d) | %s | %d |" % [
 		month, int(report["realized"]), int(report["expected"]), report["loss"], report["revenue"],
 		visible, hidden, successes, tries, blocked, ", ".join(consultants) if not consultants.is_empty() else "—", game.prevented_this_month]
+	if not diag.is_empty():
+		var used: int = BossState.MONTHLY_HOURS - BossState.operator_hours - game.hours_left
+		diag["hours_sum"] = int(diag.get("hours_sum", 0)) + used
+		diag["hours_n"] = int(diag.get("hours_n", 0)) + 1
+		for limit in [15, 20, 25, 30]:
+			if used > limit:
+				diag["h%d" % limit] = int(diag.get("h%d" % limit, 0)) + 1
+		diag["hours_max"] = maxi(int(diag.get("hours_max", 0)), used)
 	game.finish_month()
 	var status: Dictionary = game.solvency()
 	return line + " %.0f | %.0f / %.0f |" % [game.cash, status["gap"], status["threshold"]]

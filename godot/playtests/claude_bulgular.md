@@ -83,3 +83,12 @@ Kendi makineleriyle ayakta kalma (100 tohum): Teknik Usta (A×2) 46, İnsan Yön
 6. **Makine baskınlığı sürüyor (Tur 1 bulgu 3).** A×2 ile Teknik Usta 46/100, İnsan Yöneticisi 41/100 ayakta; A+B ile hepsi 100/100.
 7. **Genel ekonomi sıkılaştı.** Dengeli ve Temkinli karakterler 12 ayı sıfır civarında net kasayla bitiriyor. Bu bir denge işi: iş fiyatları ve giderler, taslak kurallar kesinleşince yeniden ayarlanmalı.
 8. **ChatGPT karakterlerinde diploma yok.** Diploma alanı olmayan karakterler diplomasız sayıldı ve tavana kırpıldı (ör. Temkinli Patron'un Finans, Yatırım, Ar-Ge değerleri 60 → 30). `reports/06–08` bu koşuda yeniden üretildi; `_ozet_chatgpt.md` ve `chatgpt_bulgular.md` eski kurallara göredir. ChatGPT kendi karakterlerine `"diploma"` alanı eklemeli.
+
+## Tur 3 — IDEA-012 / IDEA-013 ölçümleri (100 tohum, %5 büyüme)
+
+Ayrıntı ve tablolar IDEA-012 ve IDEA-013 dosyalarındaki `Notlar (Claude)` bölümlerindedir; kuralları değiştirmeden `exp=` anahtarlarıyla ölçüldü (bkz. `README.md`).
+
+1. Erken Kurucu iflasının sebebi teklif havuzu: park bakılmadan çekilen kalite. Her ay 5 tekliften 3'ünü parka uyumlu yapmak 6/94 → 87/13; yalnız ilk 3 ay 25/75.
+2. Danışmansız gizli Düzelt: ay 1'de hiçbir karakterde para engeli yok; ay 2–3'te taban kuralıyla gizli satırlı ayların %90'ında mümkün; patron saati hiç engel değil.
+3. Tek A tezgâhı kendi sabit giderini karşılamıyor (≈41 < 42): operatör maaşı eklenirse patron operatör olmak zorunda kalır.
+4. Patron operatör saati 0–32 saat bedelsiz, 33+ saatte bütün gizli denemeler kilitleniyor (FRZ-001 üst saat güvencesi): kademeli değil, uçurum.

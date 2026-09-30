@@ -2,7 +2,7 @@
 
 ## Durum/Tur
 
-Durum: DRAFT — Claude incelemesi ve kullanıcı kararı bekleniyor; FREEZE değildir.
+Durum: DRAFT — Claude Tur 1 notları yazıldı; kullanıcı kararı bekleniyor; FREEZE değildir.
 Tur: 1
 Tarih: 2026-09-30
 Bağımlılıklar: [FRZ-001](../freeze/FRZ-001_patron_yetkinlikleri.md), [FRZ-002 v3](../freeze/FRZ-002_v3_fabrika_ekonomisi.md), [FRZ-003 v2](../freeze/FRZ-003_v2_iflas_ve_fabrika_satisi.md), [FRZ-004](../freeze/FRZ-004_is_alma_ve_makine_yatirimlari.md), [FRZ-005 v2](../freeze/FRZ-005_v2_personel_ve_insan_yonetimi.md).
@@ -54,7 +54,42 @@ Oyuncu fabrikayı bir rapor tablosu olarak değil, kiraladığı alanın, aldı�
 
 ## Notlar (Claude)
 
-Tur 1 incelemesi bekleniyor.
+Tur 1 · 2026-09-30 · Ölçüm: `godot/` patron testi, 100 tohum, %5 büyüme açık, taban 3/5 teklif kuralı açık (IDEA-012 önerisi; kapalıyken sonuçlar aynı yönde). Sayılar prototip girdisidir; denge kararı değildir. Prototipte henüz alan/kira/maaş/vardiya yok; yalnız patron saati ve sabit gider davranışı ölçülebildi (`operator=H` stres anahtarı).
+
+### Aldığım Notlar
+
+- Sıralı örnek (100→90→85,5; kayıp 14,5) FRZ-002 v3 ile tutarlı: toplam kayıp 14,5, gerçekleşen 85,5. Yön doğru: OEE ayrı bir hesap değil, aynı sorun satırlarının fiziksel okunuşu olmalı.
+- Kapsam ayrımı (yerleşim optimizasyonu yok, müdür karakteri yok, leasing/bina/Ar-Ge sonraya) doğru ve FRZ-005 v2 ile uyumlu.
+- Teslim/kurulum ve ilk tam faaliyet ayı kuralı prototipte korunuyor (azami kâr potansiyeli yalnız ay sonu ve yalnız bir tam ay çalışmış makineyle). Alan/kira eklenirse bu kural değişmemeli.
+
+### Bulduğum Sakıncalar
+
+1. **OEE çarpımsal, FRZ-002 çarpımsal kullanmıyor.** Örnek A×P×K sıralı çarpım (14,5); FRZ-002 v3 §1 ve v4 §1 toplamsal (5 kalite kaybı 100 üzerinden 5, toplam 15). Paralel ikinci formül kendi tavan (%20) ve taban (%33) kuralını ister. **En küçük köprü:** kayıp yalnız sorun satırlarından doğar; OEE bunun fabrika düzeyinde bir *okuma lensi*dir: fiziksel bölümlerin (Bakım → kullanılabilirlik, Planlama/Depo & Sevkiyat/Üretim → performans, Kalite → kalite) gerçekleşen kaybı beklenen çıktıya bölünür; Finans, Satın Alma, Yatırım, Ar-Ge, İnsan Yönetimi kaybı "para/fırsat" olarak OEE dışında ayrı satırdır. Böylece OEE = 1 − fiziksel kayıp/beklenen ve gerçekleşen çıktı ile birebir toplanır, çift sayım yolu kalmaz. Hangi bölümün hangi bileşene gittiği açık karar.
+2. **OEE'yi ikinci bir karar katmanına çevirme riski.** Sarf kalitesi, vardiya, ücret, eğitim kartları "OEE çarpanı" olursa aynı kayıp hem satırda hem çarpanda yazılır. **Tek kanal ilkesi:** her politika yalnızca (a) tek bir bölümün yeni satır olasılığı/miktarı, (b) kapasite (payda), ya da (c) kasa giderinden birini etkiler; birden fazlasını değil. Kalite kaybı "fiziksel ürün ve sorun raporunda iki ayrı ceza olmaz" cümlesi bu ilkenin özel hâli.
+3. **Personel eksiği kayıp değil, kapasite olmalı.** Ücret düşük → boş kadro → çalışabilir kapasite düşer; bu payda azalmasıdır ve FRZ-002 "boş kapasite" ile aynı çizgidedir (sorun satırı açmaz). Aynı olay bir de "devir sorunu" satırı, ayrıca OEE performans düşüşü açarsa üç kez yazılır. Kadro değerlendirmesi ay başı iş seçiminden önce yapılmalı; işten sonra eksilen kadro FRZ-004'ün "ayrı gecikme cezası yok" kuralını fiilen ihlal eder. Ücretin İnsan Yönetimi önlemesiyle (FRZ-005 v2, kişi kaynaklı %30 pay) üst üste binmemesi için ücret yalnız kadro doluluğunu etkilemeli, yeni kişi sorunu olasılığını değil.
+4. **Beş ücret grubundan yalnız operatörün tetikleyicisi var.** Operatör makine × vardiyadan türüyor; saha yöneticisi, beyaz yaka, ofis yöneticisi, üst düzey yönetici için tetikleyici (kaç operatörde/hangi ölçekte) yok. Tetikleyicisiz gruplar süs kalır ya da "ayrı müdür karakteri"ni arka kapıdan getirir (FRZ-005 v2 reddi). İlk dilimde yalnız operatör grubu ve ölçeğe bağlı tek sabit "yönetim kadrosu" gider satırı yeter; kalan gruplar tetikleyici tanımlanınca açılsın.
+5. **Tek makine kendi sabit giderini karşılamıyor.** Prototipte A: kapasite 40, ortalama birim marj ≈ 1,02 → tam doluluk en iyi hâlde ≈41; sabit gider 30+12 = 42. Taban kuralıyla bile A×1'de Dengeli ve İnsan Yöneticisi 0/100 (hepsi iflas), Teknik Usta 90/10. Buna gerçek operatör maaşı eklenirse ilk makine tek başına yaşayamaz; patron operatör olmak zorunda kalır. Bu bilinçli bir tasarım ("ilk makineyi kendin çalıştır") olabilir, ama "tercih" değil zorunluluk olur ve patron saati bunu telafi etmezse çıkış yok. Alan kirası mevcut sabit giderin yerine mi üstüne mi geldiği kararlaştırılmalı.
+6. **Patron operatörlüğü şu hâliyle tercih değil, uçurum.** Ölçülen aylık patron saati kullanımı ortalama 1,2–7,7 saat (azami 27) / 40. Operatöre 16, 24 ve 32 saat verildiğinde hayatta kalma ve danışmansız gizli Düzelt erişimi **değişmiyor** (saat engeli 0); 36 saatte **bütün** gizli denemeler kilitleniyor (Erken Kurucu 265/272 gizli ay saat engelli; diğer karakterlerde para engeli dışında hepsi). Sebep FRZ-001'in gizli satır "en fazla saat" güvencesi: küçük ölçek T3 tavanı 8 saat, kalan süre bunun altına düşünce deneme hiç başlamıyor. Yani 0–32 saat bedelsiz, 33+ çıkışsız; kademeli fırsat maliyeti yok. FRZ-001 §6'nın ilk üç ay danışmansız deneme testi de 32 saat üstünde kırılır.
+7. **Operatör verimi ve OEE.** Patron operatörse Üretim yetkinliği çıktıyı etkiliyor mu? Etkilerse Üretim sorun satırıyla çift sayım, etkilemezse "kendi çalış" tek bedel olarak ücret tasarrufu. Yalnız ikincisini öneriyorum.
+
+### Kafama Yatmayanlar
+
+- Tek IDEA'da alan, kira, 9 makine tipi, vardiya, beş maaş grubu, politika kartları, OEE ve üç gelecek konu: kapsam büyüyor. Öneri: (a) alan + kira + katalog, (b) otomatik kadro + operatör, (c) OEE okuma lensi ayrı dilimler; politika kartları (b) ve (c) bittikten sonra.
+- Kullanıcının "iyi ürün üretme becerisi belirleyici olsun" hedefi OEE'siz de sağlanıyor: kayıp zaten Bakım/Kalite/Üretim satırlarından gelir ve Düzelt bilgisiyle çözülür. OEE ancak oyuncuya "hangi bölümüm üretimi kaybettiriyor" sorusunu daha iyi söyletiyorsa ek değer taşır; yeni bir para mekaniği olarak değil.
+- Ücret politikası "istikrar faydası" (yüksek ücret) net değil; kadro doluluğu dışında bir fayda tanımlanırsa üçüncü kanal açılır.
+
+### Önerilen sonraki sınama
+
+1. Prototipe **operatör saati** ve **kadro doluluğu (payda)** ekle: patron seçtiği tek vardiyada ilk makineyi çalıştırır (aylık saat kesilir, ücret gideri düşer); operatör saati seçimi `40 − mevcut ölçeğin hidden T tavan saati` ile sınırlanır (küçük ölçek 32) — kalan saat güvenceyi asla bozmasın.
+2. Operatör saati 16 / 24 / 32'de ve A×1, A×2, A+B parklarıyla 100 tohum: hayatta kalma, Düzelt erişimi, saat engeli ay sayısı. Operatör olmayan fabrikayı aynı sayıyla karşılaştır.
+3. OEE lensi yalnız rapor: fiziksel bölüm kaybı / beklenen ve gerçekleşen/beklenen ile çakıştığını (fark 0) tohumlarda doğrula.
+
+### Açık Sorular
+
+1. OEE bileşenleri için bölüm eşlemesi: Depo & Sevkiyat performans mı, kullanılabilirlik mi? Üretim nereye?
+2. Operatörlük: sabit saat mi (ör. 24), yoksa vardiya sayısına bağlı mı; tavan `40 − tavan saati` kuralı kabul mü?
+3. Alan kirası mevcut 30 sabit giderin yerine mi geçer, üstüne mi eklenir; tek A makinenin yaşayabilmesi tasarım hedefi mi?
+4. Ücret politikası yalnız kadro doluluğunu mu etkiler (önerim), yoksa yeni sorun olasılığını da mı?
 
 ## Açık Kararlar
 
