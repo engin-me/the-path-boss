@@ -15,7 +15,9 @@ Bu bölüm kullanıcının mesajlarından Claude tarafından derlendi; Codex rev
 
 **Teklif verme.** İlanda fiyat yoktur; oyuncu fiyat, peşinat (%30 sabit veya seçilebilir) ve teslim süresi teklif eder. Oyun işin maliyetini bilir (örn. hammadde 100k + %15 hurda, genel gider payı 25k, personel 30k = 170k) ve iş seviyesine/makineye bağlı kâr marjıyla müşterinin hedef fiyat aralığını belirler (ör. 250–290k). Gizli aciliyet zarı (1–10) aralığın neresinden ödeneceğini belirler. Cevap e-postayla gelir: kabul, "fiyatı 280k'ya çekebilir misiniz?", "2 ayda teslim istiyoruz" veya ret. Retten sonra not: oyunun hesapladığı maliyet ve aciliyet durumu yazılır ki oyuncu mekaniği öğrensin. Aciliyet için ipuçları verilir (örn. "A firmasından Mary hanım 4 kez aradı").
 
-**Planlama.** Kabul edilen işler bir Gantt görünümünde makine şeritlerine dizilir; oyuncu düzenlemezse oyun FIFO ile peş peşe dizer. İşler gelecekte başlayabilir; bu, makine teslimini beklerken de iş kabul etmeyi mümkün kılar.
+**Kullanıcı kararları (2. tur):** Teklif revizyonunu müşteri ister; oyuncunun yanıtı yalnız evet/hayır (karşı teklif yok). Gantt telefonda pahalı olduğu için **FIFO** kabul edildi; bu durumda operasyon sırasının anlamı kalmaz: bir iş aynı anda ilgili bütün tezgahlarda yük oluşturur ve her tezgah türü kendi kuyruğunu FIFO ile eritir. Bırakılan iş ve geç teslim zamanında-teslimat skorunu düşürür, skor müşteri fiyat toleransını etkiler. Yük (x) işin özelliğidir: adet × zorluk çarpanı; tezgah seviyesi yükü değil, hızı (performans), hurdayı ve hangi işlerin alınabildiğini (en az seviye) belirler. Sıra: (1) yük + teslim tarihi + FIFO havuz + OEE/vardiya ([IDEA-018](IDEA-018_oee_vardiya_ve_kadro.md)), (2) tedarik, (3) teklif.
+
+**Planlama (eski öneri, yerine FIFO geçti).** Kabul edilen işler bir Gantt görünümünde makine şeritlerine dizilir; oyuncu düzenlemezse oyun FIFO ile peş peşe dizer. İşler gelecekte başlayabilir; bu, makine teslimini beklerken de iş kabul etmeyi mümkün kılar.
 
 **Tedarik.** İş alırken hammadde peşin düşmez. Hammadde kataloğu ve tedarikçiler vardır (A firması: 30 gün ödeme vadesi, %5 düşük fiyat, 7 gün gecikme riski vb.). Oyuncu, işin başlangıcına göre hammaddeyi ne zaman sipariş edeceğini Gantt'a göre planlar; temin süresi plana girer.
 
@@ -56,7 +58,7 @@ Tur 1 · 2026-09-30 · Kısa özet; ayrıntı sohbette.
 - Yük modeli (x/ay), iş zorluk çarpanı ve çok makineli işlerin temsili.
 - Teklif mekaniği (aralık, aciliyet zarı, revizyon sınırı, ret notu).
 - Tedarikçi modeli (vade, fiyat, gecikme) ve stok.
-- Gantt'ın dokunmatik sürümü ve FIFO kuralı.
+- FIFO havuz kuralı (tezgah türü başına kuyruk, en az seviye kapısı, aynı anda çok türlü iş yükü) ve sonradan Gantt.
 - Zamanında teslimat skorunun fiyat toleransına etkisi.
 
 ## Karar Özeti
