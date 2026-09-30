@@ -19,6 +19,6 @@ Proje mobil için hazır: dikey (portrait) yönelim, 540×960 taban çözünürl
 
 - Yazı ve düğme boyutları 540 genişlikte tasarlandı; telefonda yaklaşık 2× büyür.
 - Ana sekme çubuğu sabit; Geri tuşu önce onay penceresini, sonra detay ekranını kapatır, sonra Özet'e döner.
-- Oyun durumu kaydedilmez (yeni oyun her açılışta). Kaydetme sonraki iş.
+- Oyun her adımda otomatik kaydedilir (`user://savegame.dat`) ve açılışta yüklenir. **Profil → Kayıt → "Kaydı sil ve yeni oyun"** ile silinir (onay ister). Kayıt uygulama verisidir; uygulamayı kaldırmak da siler. Kayıt sürümü uyuşmazsa yok sayılır.
 - Görseller `res://art/factories/<id>.png` ve `res://art/machines/<tür>_<seviye>.png` yollarına konursa APK'ya girer.
 - Release/Play Store için AAB, gradle build ve release keystore gerekir; bu dosya yalnız test APK'sını kapsar.

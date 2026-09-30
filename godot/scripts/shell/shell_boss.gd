@@ -29,6 +29,38 @@ var invested := 0.0
 var last_lines: Array = []
 var offer_salt := 0
 
+# ---------------------------------------------------------------- save / load
+
+const BASE_FIELDS := ["phase", "persona", "budget", "skills", "diploma", "start_cash", "cash", "debt", "credit_used", "month", "max_months",
+	"offer_history", "accepted", "report", "problems", "next_id", "consultants", "candidates", "hours_left", "month_start_hours",
+	"prevented_this_month", "prevented_total", "history", "findings", "month_flags", "closure", "notice"]
+const SHELL_FIELDS := ["factory_id", "term", "months_left", "prepaid_months", "package_bought", "equip", "jobs", "loan", "next_uid",
+	"invested", "last_lines", "offer_salt"]
+
+func to_save() -> Dictionary:
+	var data := {}
+	for field in BASE_FIELDS + SHELL_FIELDS:
+		data[field] = get(field)
+	data["machines"] = machines.duplicate(true)
+	data["offers"] = offers.duplicate(true)
+	data["rng_seed"] = rng.seed
+	data["rng_state"] = rng.state
+	return data.duplicate(true)
+
+# Returns "" on success, else the reason the save was rejected.
+func from_save(data: Dictionary) -> String:
+	for field in BASE_FIELDS + SHELL_FIELDS + ["machines", "offers", "rng_seed", "rng_state"]:
+		if not data.has(field):
+			return "Kayıtta '%s' alanı yok." % field
+	var copy: Dictionary = data.duplicate(true)
+	for field in BASE_FIELDS + SHELL_FIELDS:
+		set(field, copy[field])
+	machines.assign(copy["machines"])
+	offers.assign(copy["offers"])
+	rng.seed = int(copy["rng_seed"])
+	rng.state = int(copy["rng_state"])
+	return ""
+
 # ---------------------------------------------------------------- setup
 
 func default_setup(rng_seed := -1) -> String:

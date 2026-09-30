@@ -152,5 +152,36 @@ func _run() -> void:
 		shell._on_tab("profil")
 		shell._open_detail(screen)
 		shell._back()
+	# save / load round trip: state equal and the future identical (RNG restored)
+	var ShellBossScript = shell.ShellBoss
+	var a = ShellBossScript.new()
+	a.default_setup(21)
+	a.rent_factory("ridgeway", 12, false)
+	a.buy_package()
+	a.buy_listing(13)
+	a.buy_listing(14)
+	for i in 3:
+		a.run_report()
+		a.close_month()
+	var snapshot: Dictionary = a.to_save()
+	var b = ShellBossScript.new()
+	if b.from_save(snapshot) != "":
+		return _fail("Save must load")
+	if b.cash != a.cash or b.month != a.month or b.machines.size() != a.machines.size() or b.problems.size() != a.problems.size():
+		return _fail("Loaded state differs from the saved one")
+	for i in 3:
+		a.run_report()
+		a.close_month()
+		b.run_report()
+		b.close_month()
+	if absf(a.cash - b.cash) > 0.001 or a.problems.size() != b.problems.size() or a.month != b.month:
+		return _fail("A loaded game must continue exactly like the original")
+	var broken: Dictionary = snapshot.duplicate()
+	broken.erase("cash")
+	if ShellBossScript.new().from_save(broken) == "":
+		return _fail("A save with missing fields must be refused")
+	var Store = shell.SaveStore
+	if Store.active():
+		return _fail("Saving must be off in headless runs")
 	print("Shell smoke passed")
 	quit(0)

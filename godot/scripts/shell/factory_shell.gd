@@ -7,6 +7,7 @@ extends Control
 const Data = preload("res://scripts/shell/shell_data.gd")
 const BossState = preload("res://scripts/boss_state.gd")
 const ShellBoss = preload("res://scripts/shell/shell_boss.gd")
+const SaveStore = preload("res://scripts/shell/save_store.gd")
 
 const BG := Color("#0f1720")
 const PANEL := Color("#1a232e")
@@ -60,12 +61,22 @@ var area_preview_bar: ProgressBar
 
 func _ready() -> void:
 	_reset_state()
+	if SaveStore.exists():
+		var loaded := ShellBoss.new()
+		var reason: String = loaded.from_save(SaveStore.read())
+		if reason == "":
+			game = loaded
+			flash = "Kayıt yüklendi · %s" % Data.month_label(int(game.month))
+		else:
+			flash = "Kayıt okunamadı; yeni oyun başladı."
 	_build()
 	_apply_safe_area()
 	_render()
 
 # Android back key: close a dialog, then a detail screen, then go to Özet.
 func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST:
+		_autosave()
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
 		if overlay != null and overlay.get_child_count() > 0:
 			_confirm_no()
@@ -361,10 +372,15 @@ func _back() -> void:
 	detail = ""
 	_render()
 
+func _autosave() -> void:
+	if game != null and game.phase != "setup":
+		SaveStore.write(game.to_save())
+
 func _say(message: String) -> void:
 	flash = message
 
 func _render() -> void:
+	_autosave()
 	header_date.text = Data.month_label(int(game.month))
 	header_money.text = Data.usd(float(game.cash))
 	header_hours.text = "⏱ %d/%d sa" % [game.hours_left, game.monthly_hours] if game.phase == "report" else ""
@@ -576,7 +592,20 @@ func _page_end() -> void:
 		box.add_child(_label("• " + lesson, 13, TEXT))
 	box.add_child(_button("Yeniden başla", _restart, true, false, true))
 
+func _ask_wipe() -> void:
+	_confirm("Kaydı sil", ["Kayıtlı oyun kalıcı olarak silinir ve yeni oyun başlar.", "Bu işlem geri alınamaz."], "Sil ve yeni oyun", _wipe_save)
+
+func _wipe_save() -> void:
+	SaveStore.erase()
+	_reset_state()
+	page = "ozet"
+	detail = ""
+	subtab["ozet"] = "genel"
+	_say("Kayıt silindi; yeni oyun.")
+	_render()
+
 func _restart() -> void:
+	SaveStore.erase()
 	_reset_state()
 	page = "ozet"
 	detail = ""
@@ -895,6 +924,9 @@ func _page_profil() -> void:
 	var actions := _card(content, "Yönetim")
 	actions.add_child(_button("Danışman Ara", _open_detail.bind("consultant")))
 	actions.add_child(_button("Kredi", _open_detail.bind("credit")))
+	var save := _card(content, "Kayıt")
+	save.add_child(_label("Oyun her adımda otomatik kaydedilir." if SaveStore.active() else "Bu ortamda kayıt kapalı.", 13, MUTED))
+	save.add_child(_button("Kaydı sil ve yeni oyun", _ask_wipe, false, not SaveStore.active() and game.phase == "setup"))
 
 # ------------------------------------------------------------------ detail screens
 
