@@ -15,9 +15,9 @@ Bu bölüm kullanıcının sohbetteki kararlarından Claude tarafından derlendi
 
 **Para birimi.** Oyun parası USD gösterilir. İlk denemede yalnız gösterim çarpanıdır (1 oyun birimi = $1.000); kural ve denge değişmez.
 
-**Fabrika ilanı.** Kullanılabilir m², tavan yüksekliği, aylık kira, sözleşme süresi (6/12/24 ay; uzun sözleşme daha ucuz kira), bölge adı (mekanik etkisi yok) ve görsel. Erken çıkışta 2 kira ceza ödenir; çıkarken hatırlatılır. İflasta kalan kira borcu 0 olur. Makineye de yükseklik gereksinimi eklenir; makine yükseklik ve alan yetmezse kurulamaz. Kira ve alan değerleri örnektir; kiranın mevcut sabit giderle ilişkisi IDEA-013'te açıktır.
+**Fabrika ilanı.** Kullanılabilir m², tavan yüksekliği, aylık kira, sözleşme süresi (6/12/24 ay; uzun sözleşme daha ucuz kira), bölge adı (mekanik etkisi yok) ve görsel. Erken çıkışta 2 kira ceza ödenir; ceza "Kirala" onay ekranında ve çıkarken yazılır, ilan detayında tekrarlanmaz. İsteğe bağlı peşin ödeme: sözleşmenin ilk yarısının kirası peşin ödenir; indirim sözleşme süresine göre %5 / %8 / %12 (6 / 12 / 24 ay); peşin kira iade edilmez. İflasta kalan kira borcu 0 olur. Makineye de yükseklik gereksinimi eklenir; makine yükseklik ve alan yetmezse kurulamaz. Kira ve alan değerleri örnektir; kiranın mevcut sabit giderle ilişkisi IDEA-013'te açıktır.
 
-**İş ilanı.** Ayrı gecikme cezası gösterilmez (FRZ-004 v2 korunur). İlan riski şöyle yazar: teslim edilemezse gelir yazılmaz, malzeme maliyeti gider. Oyuncu kapasitesi elverdiği sürece aynı anda birden çok iş alır (FRZ-004 v2 ile uyumlu; kapasiteyi aşma sonradan yeniden ele alınacak). Kabul öncesi önizleme boş kapasiteyi gösterir.
+**İş ilanı.** Ayrı gecikme cezası ve teslim riski metni gösterilmez (FRZ-004 v2 korunur). Oyuncu kapasitesi elverdiği sürece aynı anda birden çok iş alır (FRZ-004 v2 ile uyumlu; kapasiteyi aşma sonradan yeniden ele alınacak). Kabul öncesi önizleme boş kapasiteyi gösterir.
 
 **Kapsam dışı.** Teşvik, depozito, altyapı/elektrik, bölgenin mekanik etkisi, yerleşim.
 

@@ -1,40 +1,206 @@
 extends RefCounted
 
-# Mock data and helpers for the mobile factory shell. Every number here is an
-# illustrative UI input, not balance and not a rule (see docs/ideas/IDEA-015).
+# Mock data and generators for the mobile factory shell. Every number here is
+# an illustrative UI input, not balance and not a rule (see docs/ideas/IDEA-015
+# and IDEA-016). Money is in game units; 1 unit = $1.000 when displayed.
 
-const MONEY_UNIT_USD := 1000.0  # display only: 1 game unit = $1.000
+const MONEY_UNIT_USD := 1000.0
+
+const LEVELS := ["", "Standart", "Hassas", "Nitelikli"]
+const TYPES := ["Torna", "Freze", "Taşlama", "Dövme"]
+const STATS_LIST := ["Zeka", "Dikkat", "Hız", "Güç", "Yaratıcılık", "Sosyallik", "Görünüm"]
+const WAGE := 3.0  # per person per month (mock; wage model is open in IDEA-013)
+
+# ---------------------------------------------------------------- factories
 
 const FACTORIES := [
-	{"id": "kucuk", "name": "Tuzla Küçük Atölye", "region": "Tuzla", "m2": 100, "height": 4.0, "rent": 30.0, "tint": Color("#2b3a4a")},
-	{"id": "orta", "name": "Gebze Orta Hol", "region": "Gebze", "m2": 150, "height": 5.0, "rent": 45.0, "tint": Color("#2f4a45")},
-	{"id": "buyuk", "name": "Dilovası Büyük Hangar", "region": "Dilovası", "m2": 300, "height": 7.0, "rent": 90.0, "tint": Color("#4a3a2b")}
+	{"id": "ridgeway", "name": "Ridgeway Workshop", "region": "Riverside District", "m2": 100, "height": 4.0, "rent": 30.0,
+		"age": 34, "floor": "Beton, hafif yük", "ramps": 1, "kva": 150, "tint": Color("#2b3a4a")},
+	{"id": "harbor", "name": "Harbor Point Hall", "region": "Harbor Point", "m2": 150, "height": 5.0, "rent": 45.0,
+		"age": 18, "floor": "Beton, orta yük", "ramps": 2, "kva": 250, "tint": Color("#2f4a45")},
+	{"id": "millbrook", "name": "Millbrook Bay Plant", "region": "Millbrook Bay", "m2": 200, "height": 6.0, "rent": 60.0,
+		"age": 25, "floor": "Takviyeli beton", "ramps": 2, "kva": 320, "tint": Color("#3a3f52")},
+	{"id": "ironvalley", "name": "Iron Valley Hangar", "region": "Iron Valley", "m2": 300, "height": 7.0, "rent": 90.0,
+		"age": 6, "floor": "Takviyeli beton, ağır yük", "ramps": 4, "kva": 600, "tint": Color("#4a3a2b")}
 ]
 
-# Contract choices: months, rent multiplier. Exit fee is 2 rents (user decision).
 const TERMS := [
-	{"months": 6, "factor": 1.10},
-	{"months": 12, "factor": 1.00},
-	{"months": 24, "factor": 0.90}
+	{"months": 6, "factor": 1.10, "prepay_discount": 0.05},
+	{"months": 12, "factor": 1.00, "prepay_discount": 0.08},
+	{"months": 24, "factor": 0.90, "prepay_discount": 0.12}
 ]
 const EXIT_FEE_RENTS := 2
 
-# Height (m) and floor area (m²) are new data fields for machines.
-const MACHINE_EXTRA := {
-	"A": {"area": 25, "height": 3.0},
-	"B": {"area": 30, "height": 3.5},
-	"C": {"area": 40, "height": 4.5}
+# ---------------------------------------------------------------- machines
+
+# New-machine average price (units), by type; level multiplier keeps the
+# average at the user's figures (Torna 80k, Freze 120k, Taşlama 140k, Dövme 300k).
+const TYPE_PRICE := {"Torna": 80.0, "Freze": 120.0, "Taşlama": 140.0, "Dövme": 300.0}
+const LEVEL_MULT := {1: 0.70, 2: 1.00, 3: 1.40}
+const BRANDS := {1: ["Brandt", "Halden"], 2: ["Novak Precision", "Meridian"], 3: ["Aurex", "Kessler"]}
+const MODEL_PREFIX := {"Torna": "T", "Freze": "F", "Taşlama": "G", "Dövme": "P"}
+const LEVEL_CAPACITY := {1: 40, 2: 55, 3: 70}
+const TYPE_CAP := {"Torna": 1.0, "Freze": 1.0, "Taşlama": 0.9, "Dövme": 1.5}
+const LEVEL_AREA := {1: 25.0, 2: 30.0, 3: 40.0}
+const TYPE_AREA := {"Torna": 1.0, "Freze": 1.2, "Taşlama": 1.1, "Dövme": 2.2}
+const LEVEL_HEIGHT := {1: 3.0, 2: 3.5, 3: 4.5}
+const TYPE_HEIGHT := {"Torna": 0.0, "Freze": 0.3, "Taşlama": 0.0, "Dövme": 1.5}
+const NEW_DELIVERY := {1: 2, 2: 3, 3: 5}  # months; second hand arrives in 1
+const AGE_DROP := 0.07
+const AGE_FLOOR := 0.35
+const ENERGY_RATE := 0.01  # of new list price per month
+const CONSUMABLE_RATE := 0.005  # cutting inserts and tools, per month
+
+static func age_factor(age: float) -> float:
+	return maxf(AGE_FLOOR, 1.0 - AGE_DROP * age)
+
+static func maintenance_risk(age: int) -> String:
+	if age <= 2:
+		return "Düşük"
+	if age <= 6:
+		return "Orta"
+	return "Yüksek"
+
+static func personnel_for(type: String, level: int) -> int:
+	if type == "Dövme":
+		return 2 if level == 3 else 3
+	return 1
+
+static func list_price(type: String, level: int) -> float:
+	return roundf(TYPE_PRICE[type] * LEVEL_MULT[level])
+
+# Deterministic marketplace: 12 new models plus 8 second-hand units, some discounted.
+static func machine_listings() -> Array:
+	var listings: Array = []
+	var uid := 0
+	for type in TYPES:
+		for level in [1, 2, 3]:
+			listings.append(_listing(uid, type, level, 0, 0.15 if uid % 5 == 2 else 0.0))
+			uid += 1
+	var used := [
+		["Torna", 1, 6, 0.10], ["Torna", 2, 4, 0.0], ["Freze", 1, 8, 0.15], ["Freze", 3, 3, 0.0],
+		["Taşlama", 2, 5, 0.10], ["Taşlama", 1, 9, 0.20], ["Dövme", 1, 7, 0.0], ["Dövme", 2, 4, 0.10]
+	]
+	for entry in used:
+		listings.append(_listing(uid, entry[0], entry[1], entry[2], entry[3]))
+		uid += 1
+	return listings
+
+static func _listing(uid: int, type: String, level: int, age: int, discount: float) -> Dictionary:
+	var list: float = list_price(type, level)
+	var base: float = roundf(list * age_factor(age))
+	var brand: String = BRANDS[level][uid % 2]
+	var area := roundf(float(LEVEL_AREA[level]) * float(TYPE_AREA[type]))
+	return {
+		"uid": uid, "type": type, "level": level, "brand": brand,
+		"model": "%s %s-%d" % [brand, MODEL_PREFIX[type], 100 + level * 100 + uid],
+		"age": age, "list_price": list, "base_price": base, "discount": discount,
+		"price": roundf(base * (1.0 - discount)),
+		"capacity": int(roundf(float(LEVEL_CAPACITY[level]) * float(TYPE_CAP[type]))),
+		"area": area, "height": snappedf(float(LEVEL_HEIGHT[level]) + float(TYPE_HEIGHT[type]), 0.1),
+		"personnel": personnel_for(type, level),
+		"kw": int(list / 4.0), "energy": snappedf(list * ENERGY_RATE, 0.01),
+		"consumables": snappedf(list * CONSUMABLE_RATE, 0.01),
+		"delivery": 1 if age > 0 else int(NEW_DELIVERY[level])
+	}
+
+# ---------------------------------------------------------------- equipment
+
+# Mandatory package per factory size class; optional items are bought singly.
+const PACKAGE_CLASSES := {
+	"small": {"transpalet": 2, "kasa": 40, "raf": 4, "el_aleti": 2, "takim": 2},
+	"medium": {"transpalet": 3, "kasa": 60, "raf": 6, "el_aleti": 3, "takim": 3},
+	"large": {"transpalet": 6, "kasa": 120, "raf": 12, "el_aleti": 6, "takim": 6}
 }
+const EQUIPMENT := {
+	"transpalet": {"name": "Transpalet", "price": 1.2, "area": 0.0, "required": true, "note": "Kasa ve palet taşıma"},
+	"kasa": {"name": "Malzeme kasası", "price": 0.06, "area": 0.3, "required": true, "note": "Hammadde ve yarı mamul"},
+	"raf": {"name": "Depo rafı", "price": 0.9, "area": 3.0, "required": true, "note": "Depolama alanı tüketir"},
+	"el_aleti": {"name": "El aletleri seti", "price": 2.5, "area": 1.0, "required": true, "note": "Bakım ve ayar"},
+	"takim": {"name": "Takım ve fikstür seti", "price": 6.0, "area": 1.0, "required": true, "note": "Tezgah bağlama takımları"},
+	"forklift": {"name": "Forklift", "price": 18.0, "area": 0.0, "required": false, "note": "Depo & Sevkiyat sorun ihtimalini azaltır; OEE'ye yansır (test)"},
+	"olcum": {"name": "Kalite ölçüm seti", "price": 9.0, "area": 1.5, "required": false, "note": "Kalite sorun ihtimalini azaltır (test)"},
+	"vinc": {"name": "Köprü vinç", "price": 40.0, "area": 0.0, "required": false, "min_height": 5.0, "note": "Ağır parçalar; en az 5,0 m tavan gerekir (test)"}
+}
+const OPTIONAL_ORDER := ["forklift", "olcum", "vinc", "transpalet", "kasa", "raf"]
 
-const OFFERS := [
-	{"id": 1, "title": "Rulman yatağı serisi", "customer": "Anadolu Otomotiv", "quality": 1, "units": 25, "months": 1, "revenue": 34.0, "cost": 20.0},
-	{"id": 2, "title": "Şanzıman mili", "customer": "Marmara Aktarma", "quality": 2, "units": 40, "months": 2, "revenue": 78.0, "cost": 48.0},
-	{"id": 3, "title": "Hassas piston seti", "customer": "Ege Motor", "quality": 3, "units": 30, "months": 2, "revenue": 92.0, "cost": 55.0},
-	{"id": 4, "title": "Flanş ve bağlantı parçaları", "customer": "Kuzey Makine", "quality": 1, "units": 35, "months": 1, "revenue": 44.0, "cost": 27.0},
-	{"id": 5, "title": "Büyük parti aks gövdesi", "customer": "Doğu Ağır Sanayi", "quality": 2, "units": 90, "months": 3, "revenue": 190.0, "cost": 120.0}
-]
+static func size_class(m2: int) -> String:
+	if m2 >= 250:
+		return "large"
+	if m2 >= 150:
+		return "medium"
+	return "small"
 
-const STATS := ["Zeka", "Dikkat", "Hız", "Güç", "Yaratıcılık", "Sosyallik", "Görünüm"]
+static func package_for(m2: int) -> Dictionary:
+	var items: Dictionary = PACKAGE_CLASSES[size_class(m2)]
+	var price := 0.0
+	var area := 0.0
+	for id in items:
+		price += float(EQUIPMENT[id]["price"]) * int(items[id])
+		area += float(EQUIPMENT[id]["area"]) * int(items[id])
+	return {"items": items, "price": snappedf(price, 0.01), "area": area}
+
+# ---------------------------------------------------------------- credit
+
+const CREDIT := {"bank": "Hartwell Credit Bank", "amount": 100.0, "rate": 0.015, "months": 12, "collateral": 1.25, "early_fee": 0.02}
+
+static func installment(amount: float, rate: float, months: int) -> float:
+	return amount * rate / (1.0 - pow(1.0 + rate, -months))
+
+# ---------------------------------------------------------------- jobs
+
+const CUSTOMERS := ["Ridgeway Motors", "Northgate Hydraulics", "Bluewater Marine", "Ironbridge Rail", "Summit Agri", "Carlisle Pumps", "Redfield Auto", "Halvorsen Gear"]
+const TITLES := {
+	"Torna": ["Mil ve şaft serisi", "Burç ve manşon partisi", "Flanş bağlantı seti"],
+	"Freze": ["Gövde işleme partisi", "Kalıp plakası", "Dişli kutusu kapağı"],
+	"Taşlama": ["Hassas rulman yatağı", "Piston taşlama serisi", "Valf yuvası"],
+	"Dövme": ["Krank mili dövme", "Flanş dövme partisi", "Aks dövme serisi"]
+}
+const OFFER_MIX := [4, 4, 3, 3, 3, 3, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1]  # 2×4, 4×3, 5×2, 9×1 machines
+
+static func cost_share(count: int, best_level: int, jitter: float) -> float:
+	var score := 0.5 * float(count - 1) / 3.0 + 0.5 * float(best_level - 1) / 2.0
+	return clampf(0.75 - 0.45 * score + jitter, 0.30, 0.75)
+
+static func generate_offers(month: int) -> Array:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7919 * month + 13
+	var mix: Array = OFFER_MIX.duplicate()
+	for i in range(mix.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var swap = mix[i]
+		mix[i] = mix[j]
+		mix[j] = swap
+	var offers: Array = []
+	for i in mix.size():
+		var count: int = mix[i]
+		var primary: String = TYPES[rng.randi_range(0, TYPES.size() - 1)]
+		var reqs: Array = []
+		if count >= 2 and rng.randf() < 0.45:
+			var secondary: String = TYPES[(TYPES.find(primary) + rng.randi_range(1, 3)) % 4]
+			var first := int(ceil(count / 2.0))
+			reqs.append({"type": primary, "level": _level(rng), "count": first})
+			reqs.append({"type": secondary, "level": _level(rng), "count": count - first})
+		else:
+			reqs.append({"type": primary, "level": _level(rng), "count": count})
+		var best := 1
+		for req in reqs:
+			best = maxi(best, int(req["level"]))
+		var months := rng.randi_range(count, 3 * count) if count > 1 else rng.randi_range(1, 3)
+		months = mini(months, 12)
+		var revenue := roundf(26.0 * count * months * (1.0 + 0.15 * (best - 1)) * rng.randf_range(0.9, 1.1))
+		var share := cost_share(count, best, rng.randf_range(-0.04, 0.04))
+		offers.append({
+			"id": month * 100 + i, "title": TITLES[primary][rng.randi_range(0, 2)], "customer": CUSTOMERS[rng.randi_range(0, CUSTOMERS.size() - 1)],
+			"reqs": reqs, "count": count, "best": best, "months": months, "revenue": revenue, "share": share, "material": roundf(revenue * share)
+		})
+	return offers
+
+static func _level(rng: RandomNumberGenerator) -> int:
+	var roll := rng.randf()
+	return 1 if roll < 0.5 else (2 if roll < 0.85 else 3)
+
+# ---------------------------------------------------------------- helpers
 
 static func usd(units: float) -> String:
 	var value := int(roundf(absf(units) * MONEY_UNIT_USD))
@@ -51,6 +217,15 @@ static func factory_by_id(id: String) -> Dictionary:
 		if factory["id"] == id:
 			return factory
 	return {}
+
+static func term_by_months(months: int) -> Dictionary:
+	for term in TERMS:
+		if term["months"] == months:
+			return term
+	return TERMS[1]
+
+static func req_text(req: Dictionary) -> String:
+	return "%d× %s %s" % [req["count"], LEVELS[int(req["level"])], req["type"]]
 
 static func month_label(month: int) -> String:
 	var names := ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"]

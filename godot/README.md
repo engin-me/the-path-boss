@@ -15,7 +15,7 @@ Kontroller:
 
 ## Mobil fabrika arayüzü (iskelet)
 
-`factory_shell.tscn` dikey mobil (540×960) fabrika kabuğudur: sabit üst şerit, beş ana sekme (Özet, İşler, Tezgah, Fabrika, Profil), fabrika kiralama (6/12/24 ay, 2 kira erken çıkış), tezgah alma (alan ve yükseklik kontrolü), birden çok iş kabulü ve Profil. **Mock veridir; kurallar BossState'e bağlı değildir.** Öneriler için `docs/ideas/IDEA-015`. Önizlemeler `ui_previews/` altında.
+`factory_shell.tscn` dikey mobil (540×960) fabrika kabuğudur: sabit üst şerit, beş ana sekme (Özet, İşler, Tezgah, Fabrika, Profil), fabrika kiralama (6/12/24 ay, 2 kira erken çıkış), tezgah alma (alan ve yükseklik kontrolü), birden çok iş kabulü ve Profil. **Mock veridir; kurallar BossState'e bağlı değildir.** Öneriler için `docs/ideas/IDEA-015` ve `IDEA-016`. Görseller `godot/art/factories/<id>.png` ve `godot/art/machines/<tür>_<seviye>.png` (örn. `torna_1.png`) yoluna konursa arayüz yer tutucu yerine onları gösterir. Önizlemeler `ui_previews/` altında.
 
 ```powershell
 # Sahneyi Godot editöründe factory_shell.tscn açıp F6 ile çalıştırın; başsız kontrol:

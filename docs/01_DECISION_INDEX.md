@@ -28,6 +28,7 @@
 
 ## Open design work
 
+- [IDEA-016 Makine Pazarı, Makine Gerektiren İşler, Zorunlu Ekipman ve İpotekli Kredi](ideas/IDEA-016_makine_pazari_isler_ekipman_kredi.md): 4 tür × 3 seviye, yaş/indirim, makine ihtiyaç listeli işler ve hammadde formülü, zorunlu ekipman paketi, ipotekli kredi; Claude incelemesi bekleniyor. Mock arayüz `godot/factory_shell.tscn`.
 - [IDEA-015 Fabrika Kiralama Sözleşmesi ve Mobil Arayüz İskeleti](ideas/IDEA-015_fabrika_kiralama_ve_mobil_arayuz.md): kullanıcı kararları (6/12/24 ay kira, 2 kira erken çıkış, iflasta kira borcu 0, yükseklik, USD, çoklu iş) kaydedildi; Claude incelemesi bekleniyor. Arayüz iskeleti mock veriyle `godot/factory_shell.tscn` içinde.
 - [IDEA-014 Patron Operatörlüğünün Aylık Zaman Payı](ideas/IDEA-014_patron_operatorlugu_zaman_payi.md): kullanıcı FRZ-008 v2'nin sabit 8 saatini aylık toplam saatin yarısı olarak değiştirmeyi istedi. Claude incelemesi ve yeni FREEZE sürümü bekleniyor; FRZ-008 v2 CURRENT kalır.
 - [IDEA-013 Fabrika Kuruluşu ve Operasyon Çekirdeği](ideas/IDEA-013_fabrika_kurulusu_ve_operasyon_cekirdegi.md): OEE'nin etkiye göre eşlemesi, eksik operatörün kapasite etkisi, 8 saatlik patron operatörlüğü ve iş bazlı ekonomi ilkesi FRZ-008 v2 ile donduruldu. Aylık toplam saat, kira, katalog ve diğer ücret grupları açık.
