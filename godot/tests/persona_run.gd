@@ -10,6 +10,7 @@ const Log = preload("res://scripts/playtest_log.gd")
 const CHANCE_RANK := {"Belirsiz": 0, "Düşük": 1, "Orta": 2, "Yüksek": 3, "Kesin": 4}
 
 var machine_override := {}
+var cash_override := 0.0
 var experiment := ""          # exp=label: print-only run; no report files touched
 var diag_lines: Array[String] = []
 var hours_agg := {}
@@ -35,7 +36,14 @@ func _run() -> void:
 		elif arg.begins_with("growth="):
 			BossState.growth_rate = float(arg.trim_prefix("growth="))
 		elif arg.begins_with("operator="):
-			BossState.operator_hours = int(arg.trim_prefix("operator="))
+			if arg.trim_prefix("operator=") == "half":
+				BossState.operator_half = true
+			else:
+				BossState.operator_hours = int(arg.trim_prefix("operator="))
+		elif arg.begins_with("hours="):
+			BossState.monthly_hours = int(arg.trim_prefix("hours="))
+		elif arg.begins_with("cash="):
+			cash_override = float(arg.trim_prefix("cash="))
 		elif arg.begins_with("buffer="):
 			BossState.open_buffer = int(arg.trim_prefix("buffer="))
 		elif arg.begins_with("early="):
@@ -132,7 +140,7 @@ func _simulate(persona: Dictionary, months_override: int):
 	var game = BossState.new()
 	var policy: Dictionary = persona.get("policy", {})
 	game.max_months = months_override if months_override > 0 else int(persona.get("months", 12))
-	if game.configure(persona["skills"], int(persona.get("budget", 600)), float(persona.get("cash", 400)), persona["name"], int(persona.get("seed", 1)), String(persona.get("diploma", "")), true) != "":
+	if game.configure(persona["skills"], int(persona.get("budget", 600)), (cash_override if cash_override > 0.0 else float(persona.get("cash", 400))), persona["name"], int(persona.get("seed", 1)), String(persona.get("diploma", "")), true) != "":
 		return game
 	if game.open_factory(persona.get("machines", {"A": 1})) != "":
 		return game
@@ -147,7 +155,7 @@ func play(persona: Dictionary, months_override: int) -> String:
 		game.max_months = months_override
 	else:
 		game.max_months = int(persona.get("months", 12))
-	var error: String = game.configure(persona["skills"], int(persona.get("budget", 600)), float(persona.get("cash", 400)), persona["name"], int(persona.get("seed", 1)), String(persona.get("diploma", "")), true)
+	var error: String = game.configure(persona["skills"], int(persona.get("budget", 600)), (cash_override if cash_override > 0.0 else float(persona.get("cash", 400))), persona["name"], int(persona.get("seed", 1)), String(persona.get("diploma", "")), true)
 	var rows: Array[String] = []
 	if error != "":
 		return _write(persona, game, rows, "Kurulum hatası: " + error)
@@ -230,7 +238,7 @@ func _play_month(game, policy: Dictionary) -> String:
 		month, int(report["realized"]), int(report["expected"]), report["loss"], report["revenue"],
 		visible, hidden, successes, tries, blocked, ", ".join(consultants) if not consultants.is_empty() else "—", game.prevented_this_month]
 	if not diag.is_empty():
-		var used: int = BossState.MONTHLY_HOURS - BossState.operator_hours - game.hours_left
+		var used: int = game.month_start_hours - game.hours_left
 		diag["hours_sum"] = int(diag.get("hours_sum", 0)) + used
 		diag["hours_n"] = int(diag.get("hours_n", 0)) + 1
 		for limit in [15, 20, 25, 30]:

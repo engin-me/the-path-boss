@@ -62,11 +62,25 @@ Tur 1 · 2026-09-30 · Ölçüm: `godot/` patron testi, her yapılandırma 100 t
 - Oran kuralı toplam saat kararını da dolaylı bağlıyor: Büyük ölçekte operatörlüğün mümkün kalması için toplam ≥ 32 gerekir. Toplam saat sonradan düşürülürse (ör. 30) operatörlük Büyük'te sessizce imkânsızlaşır. Bu istenmiş olabilir; ama toplam saat kararının yan etkisi olarak değil, kuralda yazılı bir sonuç olarak olmalı.
 - Gerekçe "sabit 8 saat toplam zaman değişince aynı oranı taşımıyor" toplam saatin değişeceğini varsayıyor; oysa toplam saat henüz karara bağlanmadı. Ölçülen sorun, oranın sabit sayıya göre avantajından çok, iki kararın (oran ve toplam) birbirine bağlanması.
 
-### Önerilen sonraki sınama
+### Uygulanan sınama ve sonraki adım
 
-1. `operator=half` kural anahtarı ekle (ay başı ⌊toplam/2⌋ kesilir); `MONTHLY_HOURS`'u komut satırı anahtarı yap. Toplam 32, 36, 40 ve 41 için A×1 / A×3 / A×5 ile 100 tohum tekrarla.
-2. Maaş ve kira prototipe girince operatörlüğün net kasaya etkisini 0 / 8 / yarım zamanla karşılaştır; fırsat maliyetinin zarar olarak görünüp görünmediğine bak.
-3. Persona başlangıç parasını ölçek başına gerçekçi tut (şu an Orta/Büyük açılamıyor); geçici 5 000 ölçümü karar girdisi olarak kullanma.
+Önerdiğim kural anahtarı prototipe eklendi (`operator=half`, `hours=`, `cash=`; varsayılan davranış değişmedi): operatörlük ay başında ⌊toplam/2⌋ keser; kalan saat mevcut satırların en derin gizli saat tavanını karşılamıyorsa o ay operatörlük seçilemez (payı kırpmaz). 100 tohum × 8 karakter × 12 ay, 5 000 başlangıç parası:
+
+| Toplam saat | Park (tavan) | Operatörlük | Saat engeli / gizli satırlı ay |
+| --- | --- | --- | --- |
+| 40 | A×1 / A×3 / A×5 | 20 | 0 / 1 540 · 0 / 1 819 · 0 / 1 993 |
+| 32 | A×5 (16) | 16 | 0 / 1 995 |
+| 31 | A×5 (16) | 15 (aşağı yuvarlama) | 0 / 1 995 |
+| 30 | A×5 (16) | seçilemez (kalan 15 < 16) | 0 / 1 990 |
+| 24 / 23 / 22 | A×3 (12) | 12 / 11 / seçilemez | 0 / 1 826 · 0 / 1 826 · 0 / 1 819 |
+| 16 / 15 / 14 | A×1 (8) | 8 / 7 / seçilemez | 0 / 1 579 · 0 / 1 579 · 0 / 1 546 |
+
+Bu kural üç önerimi birlikte doğruluyor: aşağı yuvarlama, ay başı taban ve "koruma sağlanamazsa seçilemez". Hiçbir yapılandırmada saat engeli oluşmadı. Bedeli: eşik altında operatörlük hiç mümkün değil (Büyük'te toplam < 32). Karar hâlâ kullanıcıya ait.
+
+Kalan sınamalar:
+
+1. Maaş ve kira prototipe girince operatörlüğün net kasaya etkisini 0 / 8 / yarım zamanla karşılaştır; fırsat maliyetinin zarar olarak görünüp görünmediğine bak.
+2. Persona başlangıç parasını ölçek başına gerçekçi tut (şu an Orta/Büyük açılamıyor); geçici 5 000 ölçümü karar girdisi olarak kullanma.
 
 ### Açık Sorular
 

@@ -77,6 +77,8 @@ static var pool_min := 0        # min offers (of 5) the current park can actuall
 static var pool_months := 3     # how many months the pool floor applies
 static var open_buffer := 1     # months of ordinary expense kept after opening
 static var operator_hours := 0  # IDEA-013 stress test: patron hours spent as operator each month
+static var monthly_hours := MONTHLY_HOURS  # IDEA-014 test: total patron hours per month (prototype input, not a rule)
+static var operator_half := false  # IDEA-014 test: operator takes floor(total/2) at month start, only if the hidden-fix guarantee survives
 static var early_months := 0    # months in which accepted job cost is not reserved from Düzelt cash
 
 var phase := "setup"
@@ -99,7 +101,8 @@ var problems: Dictionary = {}
 var next_id := 1
 var consultants: Array[Dictionary] = []
 var candidates: Array[Dictionary] = []
-var hours_left := MONTHLY_HOURS
+var hours_left := monthly_hours
+var month_start_hours := monthly_hours
 var prevented_this_month := 0
 var prevented_total := 0
 var history: Array[String] = []
@@ -408,7 +411,8 @@ func accept_jobs(selection: Array) -> String:
 			undelivered += 1
 	report = {"expected": expected, "loss": expected - realized, "realized": realized, "revenue": revenue,
 		"losses": losses, "empty": capacity_at_least(1) - expected, "capped": capped, "undelivered": undelivered}
-	hours_left = MONTHLY_HOURS - operator_hours
+	hours_left = monthly_hours - _operator_share()
+	month_start_hours = hours_left
 	month_flags = {"fix_blocked_money": 0, "fix_blocked_hours": 0, "fixes": 0}
 	_generate_candidates()
 	phase = "report"
@@ -498,6 +502,19 @@ func chance_text(root: Dictionary) -> String:
 	if is_visible(root) or possible_hidden_tiers(root) == 1:
 		return chance_label(chance_for(root))
 	return "Belirsiz"
+
+# IDEA-014: half-time operator share, rounded down so the odd hour stays in
+# management; unavailable when the rest would not cover the deepest hidden-row
+# ceiling of any active row (the FRZ-001 v3 guarantee).
+func _operator_share() -> int:
+	if not operator_half:
+		return operator_hours
+	var share: int = monthly_hours / 2
+	var ceiling: int = HOUR_BANDS[int(scale()["max_tier"])][1]
+	for root in problems.values():
+		if root["active"]:
+			ceiling = maxi(ceiling, HOUR_BANDS[int(root["scale_tier"])][1])
+	return share if monthly_hours - share >= ceiling else 0
 
 func _hours(department: String, value: int) -> int:
 	if consultant_score(department) > 0:

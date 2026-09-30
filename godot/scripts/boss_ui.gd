@@ -103,7 +103,7 @@ func _show_header() -> void:
 			["Borç açığı / eşik", "%.0f / %.0f" % [status["gap"], status["threshold"]], RED if status["gap"] > status["threshold"] * 0.7 else TEXT],
 			["Ölçek", "%s (≤T%d)" % [game.scale()["name"], game.scale()["max_tier"]], TEXT],
 			["Kapasite", "%d" % game.capacity_at_least(1), TEXT],
-			["Patron zamanı", "%d / %d sa" % [game.hours_left, BossState.MONTHLY_HOURS], TEXT]
+			["Patron zamanı", "%d / %d sa" % [game.hours_left, BossState.monthly_hours], TEXT]
 		]:
 			var box := VBoxContainer.new()
 			box.add_child(_label(item[0], 12, MUTED, false))

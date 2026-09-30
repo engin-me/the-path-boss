@@ -38,7 +38,7 @@ Notlar `godot/playtests/notes/notes.md` dosyasına eklenir (Godot editöründen 
 ... --script res://tests/persona_run.gd -- exp=deneme seeds=100 early=3 operator=24 buffer=2
 ```
 
-`pool=K:M` (ilk M ayda en az K teklif parka kalite ve tek iş miktarı açısından uyumlu), `growth=r` (aylık büyüme), `buffer=N` (kuruluşta N aylık gider tamponu), `early=N` (ilk N ayda kabul edilmiş iş maliyeti Düzelt güvencesinden ayrılmaz), `operator=H` (patron her ay H saatini operatörlüğe harcar). Varsayılan: her ay 5 tekliften en az 3'ü parka uygundur ve büyüme %5'tir; `pool=0:0` eski teklif dağılımını karşılaştırma için açar. `early=3` yalnız deney anahtarıdır, onaylı kuralda kullanılmaz. `exp=` çıktısı ayrıca ilk üç aydaki danışmansız gizli Düzelt erişimini ve patron saati kullanımını özetler.
+`operator=half` (IDEA-014 sınaması: ay başında ⌊toplam/2⌋ operatörlük; kalan saat gizli tavanı karşılamıyorsa o ay seçilemez), `hours=N` (aylık toplam patron saati, test girdisi) ve `cash=X` (tüm karakterlere aynı başlangıç parası) anahtarları da vardır. `pool=K:M` (ilk M ayda en az K teklif parka kalite ve tek iş miktarı açısından uyumlu), `growth=r` (aylık büyüme), `buffer=N` (kuruluşta N aylık gider tamponu), `early=N` (ilk N ayda kabul edilmiş iş maliyeti Düzelt güvencesinden ayrılmaz), `operator=H` (patron her ay H saatini operatörlüğe harcar). Varsayılan: her ay 5 tekliften en az 3'ü parka uygundur ve büyüme %5'tir; `pool=0:0` eski teklif dağılımını karşılaştırma için açar. `early=3` yalnız deney anahtarıdır, onaylı kuralda kullanılmaz. `exp=` çıktısı ayrıca ilk üç aydaki danışmansız gizli Düzelt erişimini ve patron saati kullanımını özetler.
 
 ## Karakter dosyası
 
