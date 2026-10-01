@@ -17,7 +17,7 @@ const FLOOR_FALLBACK := Color("#46505b")
 const SAFETY := Color("#e0a800")
 const TEXT := Color("#e8eef4")
 const WALL_T := 0.8   # wall thickness (m)
-const TILE_M := 4.0   # one floor texture covers 4 x 4 m
+const TILE_M := 2.0   # one floor texture covers 2 x 2 m (alternate tiles are mirrored to hide seams)
 
 const KIND_COLOR := {"Torna": Color("#5f7a96"), "Freze": Color("#4f8f86"), "Taşlama": Color("#8a6fa8"), "Dövme": Color("#b0764a")}
 const EQUIP_COLOR := {"transpalet": Color("#d9a23a"), "kasa": Color("#a47a4b"), "raf": Color("#3b6ea5"), "el_aleti": Color("#7a8591"),
@@ -158,6 +158,13 @@ func _layout() -> void:
 	if counts.get("vinc", 0) > 0:
 		_add("crane", 0, Rect2(0.0, length * 0.45, width, 0.6), "Köprü vinç")
 
+# Width/depth of the machine sprite (1.0 when there is no art); the footprint keeps its area.
+func _machine_aspect(machine: Dictionary) -> float:
+	var texture := _sprite_for({"kind": "machine", "machine": machine})
+	if texture == null:
+		return 1.0
+	return clampf(float(texture.get_width()) / float(texture.get_height()), 0.6, 1.8)
+
 func _place_machines(list: Array, x0: float, x1: float, y0: float, y1: float, scale: float) -> Array:
 	var out: Array = []
 	var cursor := Vector2(x0, y0)
@@ -165,16 +172,18 @@ func _place_machines(list: Array, x0: float, x1: float, y0: float, y1: float, sc
 	var fits := true
 	for machine in list:
 		var side := sqrt(float(machine["area"])) * scale
-		if cursor.x + side > x1 and cursor.x > x0:
+		var aspect := _machine_aspect(machine)
+		var box := Vector2(side * sqrt(aspect), side / sqrt(aspect))
+		if cursor.x + box.x > x1 and cursor.x > x0:
 			cursor.x = x0
 			cursor.y += row_h + 1.0
 			row_h = 0.0
-		var rect := Rect2(cursor, Vector2(side, side))
+		var rect := Rect2(cursor, box)
 		if rect.end.y > y1:
 			fits = false
 		out.append({"uid": machine["uid"], "rect": rect, "label": machine["model"], "machine": machine, "fits": true})
-		cursor.x += side + 1.0
-		row_h = maxf(row_h, side)
+		cursor.x += box.x + 1.0
+		row_h = maxf(row_h, box.y)
 	if not out.is_empty():
 		out[out.size() - 1]["fits"] = fits
 	return out
@@ -368,7 +377,16 @@ func _draw() -> void:
 				var dest := Rect2(_to_screen(Vector2(float(tx) * TILE_M, float(ty) * TILE_M)), Vector2(width_m, height_m) * zoom)
 				if dest.end.x < 0.0 or dest.end.y < 0.0 or dest.position.x > size.x or dest.position.y > size.y:
 					continue
-				draw_texture_rect_region(floor_tex, dest, Rect2(Vector2.ZERO, Vector2(width_m / TILE_M * texture_size.x, height_m / TILE_M * texture_size.y)))
+				var frac_x := width_m / TILE_M
+				var frac_y := height_m / TILE_M
+				var src := Rect2(Vector2.ZERO, Vector2(frac_x * texture_size.x, frac_y * texture_size.y))
+				if tx % 2 == 1:
+					src.position.x = texture_size.x - src.size.x
+					dest = Rect2(Vector2(dest.end.x, dest.position.y), Vector2(-dest.size.x, dest.size.y))
+				if ty % 2 == 1:
+					src.position.y = texture_size.y - src.size.y
+					dest = Rect2(Vector2(dest.position.x, dest.end.y), Vector2(dest.size.x, -dest.size.y))
+				draw_texture_rect_region(floor_tex, dest, src)
 	else:
 		draw_rect(floor_rect, FLOOR_FALLBACK)
 		var step := 5.0
@@ -448,7 +466,7 @@ func _draw_item(index: int) -> void:
 			draw_rect(frame, Color(SAFETY, 0.14 if not transit else 0.05))
 			draw_rect(frame, Color(0.1, 0.1, 0.1, 0.55 if not transit else 0.25), false, maxf(2.5, zoom * 0.16))
 			draw_rect(frame.grow(-maxf(1.0, zoom * 0.04)), Color(SAFETY, 1.0 if not transit else 0.45), false, maxf(1.5, zoom * 0.12))
-			var body := frame.grow(-minf(frame.size.x, frame.size.y) * 0.14)
+			var body := frame.grow(-minf(frame.size.x, frame.size.y) * 0.07)
 			var texture := _sprite_for(item)
 			var tint := Color(1, 1, 1, 0.45) if transit else Color.WHITE
 			if texture != null:
