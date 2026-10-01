@@ -17,6 +17,7 @@ const WALL := Color("#2a3038")
 const FLOOR_FALLBACK := Color("#46505b")
 const SAFETY := Color("#e0a800")
 const TEXT := Color("#e8eef4")
+const SNAP_M := 0.5   # edit mode: items snap to a 0.5 m grid
 const WALL_T := 0.8   # wall thickness (m)
 const TILE_M := 2.0   # the floor photo covers 2 x 2 m; a 2 x 2 mirrored composite repeats every 4 m
 const MACHINE_LENGTH_M := {"Torna": 3.0, "Freze": 2.6, "Taşlama": 3.2, "Dövme": 3.2}   # real machine length (m), sprite keeps its own aspect
@@ -47,6 +48,7 @@ var info_kind := ""
 var user_adjusted := false
 var edit_mode := false
 var drag_item := false
+var drag_raw := Vector2.ZERO
 var rotate_button: Button
 var reset_button: Button
 var edit_button: Button
@@ -112,12 +114,12 @@ func _layout() -> void:
 	var rack_y := 0.6
 	var left_end := 0.4
 	for k in racks:
-		if rack_y + 2.5 > length - 7.0 and rack_y > 0.6:
+		if rack_y + 3.75 > length - 7.0 and rack_y > 0.6:
 			rack_y = 0.6
-			rack_x += 1.6
-		_add("equip", "raf", Rect2(rack_x, rack_y, 1.2, 2.5), "Depo rafı", {"index": k})
-		rack_y += 2.9
-		left_end = rack_x + 1.2
+			rack_x += 2.2
+		_add("equip", "raf", Rect2(rack_x, rack_y, 1.8, 3.75), "Depo rafı", {"index": k})
+		rack_y += 4.15
+		left_end = rack_x + 1.8
 	var top_x0 := left_end + (0.6 if racks > 0 else 0.4)
 	var top_x := top_x0
 	var top_y := 0.6
@@ -133,17 +135,17 @@ func _layout() -> void:
 	var crate_x := top_x0
 	var crate_bottom := crate_y
 	for k in counts.get("kasa", 0):
-		if crate_x + 1.1 > width - 2.4 and crate_x > top_x0:
+		if crate_x + 0.8 > width - 2.4 and crate_x > top_x0:
 			crate_x = top_x0
-			crate_y += 1.3
-		_add("equip", "kasa", Rect2(crate_x, crate_y, 1.1, 1.1), "Malzeme kasası", {"index": k})
-		crate_bottom = maxf(crate_bottom, crate_y + 1.1)
-		crate_x += 1.3
+			crate_y += 1.0
+		_add("equip", "kasa", Rect2(crate_x, crate_y, 0.8, 0.8), "Malzeme kasası", {"index": k})
+		crate_bottom = maxf(crate_bottom, crate_y + 0.8)
+		crate_x += 1.0
 	var machine_top := maxf(top_bottom, crate_bottom) + 1.2
 	var right_y := machine_top
 	for k in counts.get("takim", 0):
-		_add("equip", "takim", Rect2(width - 1.6, right_y, 1.2, 0.6), "Takım dolabı", {"index": k})
-		right_y += 1.0
+		_add("equip", "takim", Rect2(width - 2.4, right_y, 1.8, 0.9), "Takım dolabı", {"index": k})
+		right_y += 1.3
 	for k in counts.get("olcum", 0):
 		_add("equip", "olcum", Rect2(width - 2.0, right_y, 1.6, 1.6), "Kalite ölçüm odası", {"index": k})
 		right_y += 2.0
@@ -188,6 +190,33 @@ func _apply_layout_overrides() -> void:
 		item["rot"] = rot
 		item["rect"] = _clamped(Rect2(Vector2(float(entry.get("x", rect.position.x)), float(entry.get("y", rect.position.y))), box))
 
+func _overlaps(rect: Rect2, ignore: int) -> bool:
+	for i in items.size():
+		if i == ignore or not _editable(items[i]):
+			continue
+		if rect.intersects(items[i]["rect"]):
+			return true
+	return false
+
+func _snapped_position(point: Vector2) -> Vector2:
+	return (point / SNAP_M).round() * SNAP_M
+
+# Nearest overlap-free spot for a box, searched on the snap grid around `around` (null when the plant is full).
+func _free_spot(box: Vector2, around: Vector2, ignore: int):
+	var best = null
+	var best_distance := INF
+	var steps := int(6.0 / SNAP_M)
+	for dy in range(-steps, steps + 1):
+		for dx in range(-steps, steps + 1):
+			var candidate := _clamped(Rect2(_snapped_position(around + Vector2(dx, dy) * SNAP_M), box))
+			if _overlaps(candidate, ignore):
+				continue
+			var distance := candidate.position.distance_to(around)
+			if distance < best_distance:
+				best_distance = distance
+				best = candidate
+	return best
+
 func _clamped(rect: Rect2) -> Rect2:
 	rect.position.x = clampf(rect.position.x, 0.0, maxf(0.0, interior.size.x - rect.size.x))
 	rect.position.y = clampf(rect.position.y, 0.0, maxf(0.0, interior.size.y - rect.size.y))
@@ -208,7 +237,14 @@ func _rotate_selected() -> void:
 	var rect: Rect2 = item["rect"]
 	var center := rect.get_center()
 	var box := Vector2(rect.size.y, rect.size.x)
-	item["rect"] = _clamped(Rect2(center - box / 2.0, box))
+	var turned := _clamped(Rect2(_snapped_position(center - box / 2.0), box))
+	if _overlaps(turned, selected):
+		var spot = _free_spot(box, turned.position, selected)
+		if spot == null:
+			info_label.text = "Burada döndürmeye yer yok; önce komşu öğeyi kaydır."
+			return
+		turned = spot
+	item["rect"] = turned
 	item["rot"] = (int(item["rot"]) + 1) % 4
 	_store_override(selected)
 	queue_redraw()
@@ -314,6 +350,7 @@ func _gui_input(event: InputEvent) -> void:
 					if hit >= 0 and _editable(items[hit]):
 						selected = hit
 						drag_item = true
+						drag_raw = (items[hit]["rect"] as Rect2).position
 						_show_info()
 						queue_redraw()
 			else:
@@ -329,7 +366,13 @@ func _gui_input(event: InputEvent) -> void:
 			moved = true
 		if moved and drag_item and selected >= 0:
 			var item: Dictionary = items[selected]
-			item["rect"] = _clamped(Rect2((item["rect"] as Rect2).position + event.relative / zoom, (item["rect"] as Rect2).size))
+			var current: Rect2 = item["rect"]
+			drag_raw += event.relative / zoom
+			var wanted := _clamped(Rect2(_snapped_position(drag_raw), current.size))
+			for candidate in [wanted, Rect2(Vector2(wanted.position.x, current.position.y), current.size), Rect2(Vector2(current.position.x, wanted.position.y), current.size)]:
+				if not _overlaps(candidate, selected):
+					item["rect"] = candidate
+					break
 			queue_redraw()
 		elif moved:
 			user_adjusted = true
@@ -554,6 +597,15 @@ func _draw() -> void:
 			draw_texture_rect(wall_tex, screen, true)
 		else:
 			draw_rect(screen, WALL)
+	if edit_mode and zoom >= 6.0:
+		var gx_m := 1.0
+		while gx_m < interior.size.x:
+			draw_line(_to_screen(Vector2(gx_m, 0)), _to_screen(Vector2(gx_m, interior.size.y)), Color(0.3, 0.65, 1.0, 0.12), 1.0)
+			gx_m += 1.0
+		var gy_m := 1.0
+		while gy_m < interior.size.y:
+			draw_line(_to_screen(Vector2(0, gy_m)), _to_screen(Vector2(interior.size.x, gy_m)), Color(0.3, 0.65, 1.0, 0.12), 1.0)
+			gy_m += 1.0
 	# items
 	for i in items.size():
 		_draw_item(i)

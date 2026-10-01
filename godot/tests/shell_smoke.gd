@@ -329,6 +329,11 @@ func _run() -> void:
 		return _fail("Every machine must appear in the layout")
 	# ---- editable layout: rotate/move are stored per factory, survive re-layout and the save round trip
 	var layout_view = shell.floor_view
+	var all_items: Array = layout_view.items
+	for a in all_items.size():
+		for b in range(a + 1, all_items.size()):
+			if layout_view._editable(all_items[a]) and layout_view._editable(all_items[b]) and (all_items[a]["rect"] as Rect2).intersects(all_items[b]["rect"]):
+				return _fail("Layout items overlap: %s vs %s" % [all_items[a]["key"], all_items[b]["key"]])
 	var bench_index := -1
 	for i in layout_view.items.size():
 		if layout_view.items[i]["kind"] == "equip" and layout_view.items[i]["id"] == "el_aleti":
