@@ -1,61 +1,24 @@
-# Fabrika kabuğu simülasyonu — son durum
+# Fabrika kabuğu simülasyonu — gerçekçi ekonomi (yeniden kurulum)
 
-Test girdisidir; denge kararı değildir. Motor: `godot/scripts/shell/shell_boss.gd`, koşucu: `godot/tests/shell_sim.gd`. Kurallar IDEA-015..018 önerileridir, FREEZE değildir.
+Test girdisidir; denge kararı değildir. Girdiler: `godot/playtests/ekonomi_degerleri.csv` ve kullanıcının gerçek dünya değerleri.
 
-Koşullar: 100 tohum × 12 ay; başlangıç parası $800k; `price_per_x` 0,13. Bu koşuda yeni mekanikler açık: μ (parça işleme katsayısı) ve ay sonu hurda gideri (tablo aralığından çekilir, üretilen miktara göre kesilir), gerçek kullanıma bağlı enerji, fabrika geneli vardiya planı (mesai +4 sa, saatlik ücret 1,5×), tezgah alanı sınırı %51, personel politikası. Karakterler betiklidir: kendi maliyet hesabı × (1 + marj) ile teklif verir (Tek makine ve temkinliler %30, vardiyacılar %45, yeni makineci %60).
+Koşullar: 60 tohum × 24 ay; başlangıç parası $24k (5 yıl × $400 tasarruf); tezgâh fiyatları (Hassas) Torna 75k, Freze 90k, Taşlama 110k, Dövme 150k, seviye çarpanları 0,6 / 1,0 / 2,4; mavi yaka Torna 1,0k, Freze 1,1k, Taşlama 1,3k, Dövme 1,5k (Dövme 2 kişi); dolaylı personel her 4 doğrudan işçiye 1; beyaz yaka 4. tezgâhtan itibaren sırayla; kira $4/m² + bina işletme $4/m²; amortisman 20 yıl; hızlı satış %80; çelik 600/1000 $/t; sarf %3,5; enerji kW × saat × $0,13. Müşteri referans marjı sade işte %60, karmaşık işte %100 (kalibrasyon girdisi `mid_base`/`mid_slope`).
 
-## Personel politikası Standart (varsayılan)
+Karakterler betiklidir (fiyat = kendi maliyet tahmini × (1 + marj)); Sermayeli karakterler $220k–300k ile başlar.
 
-| Karakter | Kiralanamadı | Ayakta | Zorunlu kapanış | İflas | Ort. son net kasa | En düşük kasa (ort.) | İlk iş ayı | OEE (24 sa, ort.) | Kapasite kullanımı | Ort. vardiya | Geç teslim / teslim | Bırakılan-iptal | Son skor | Teklif: kabul / karşı / ret | Gizli satırlı ay | Danışmansız deneme mümkün | Para engeli |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Tek makine | 0 | 100 | 0 | 0 | 289 | 193 | 1.1 | %24 | %95 | 1.0 | 41 / 270 | 0 | %84 | 293 / 139 / 100 | 51 | 51 | 0 |
-| Küçük temkinli | 0 | 78 | 0 | 22 | -63 | -160 | 1.0 | %22 | %64 | 1.0 | 98 / 164 | 39 | %69 | 297 / 104 / 39 | 66 | 64 | 2 |
-| Küçük vardiyacı | 0 | 100 | 0 | 0 | 919 | 102 | 1.0 | %59 | %86 | 2.5 | 35 / 791 | 0 | %92 | 498 / 739 / 1144 | 52 | 50 | 2 |
-| Orta ikinci el | 0 | 90 | 0 | 10 | 68 | -248 | 1.0 | %40 | %69 | 1.8 | 37 / 504 | 8 | %86 | 504 / 255 / 241 | 89 | 34 | 55 |
-| Orta yeni makine | 0 | 95 | 0 | 5 | 65 | -80 | 2.9 | %30 | %34 | 1.2 | 7 / 97 | 0 | %82 | 4 / 131 / 6533 | 22 | 22 | 0 |
-| Büyük iddialı | 0 | 88 | 0 | 12 | 63 | -376 | 1.0 | %35 | %56 | 1.6 | 43 / 414 | 12 | %84 | 368 / 277 / 370 | 91 | 26 | 65 |
-
-## Politika karşılaştırması (ort. son net kasa)
-
-Yok ($0): Tek makine / Küçük vardiyacı / Büyük iddialı için aşağıdaki kısa tablo; İyi ($1.200/kişi) için de.
-
-**Yok**
-
-| Karakter | Ayakta | İflas | Ort. son net kasa | En düşük kasa (ort.) |
-| --- | ---: | ---: | ---: | ---: |
-| Tek makine | 100 | 0 | 261 | 168 |
-| Küçük temkinli | 77 | 23 | -96 | -173 |
-| Küçük vardiyacı | 100 | 0 | 773 | 80 |
-| Orta ikinci el | 91 | 9 | 79 | -245 |
-| Orta yeni makine | 98 | 2 | 105 | -60 |
-| Büyük iddialı | 90 | 10 | 118 | -374 |
-
-**İyi**
-
-| Karakter | Ayakta | İflas | Ort. son net kasa | En düşük kasa (ort.) |
-| --- | ---: | ---: | ---: | ---: |
-| Tek makine | 100 | 0 | 318 | 214 |
-| Küçük temkinli | 78 | 22 | -62 | -157 |
-| Küçük vardiyacı | 100 | 0 | 840 | 95 |
-| Orta ikinci el | 91 | 9 | 30 | -275 |
-| Orta yeni makine | 95 | 5 | 31 | -77 |
-| Büyük iddialı | 88 | 12 | 29 | -380 |
+Karakter | Kiralanamadı | Ayakta | Zorunlu kapanış | İflas | Ort. son net kasa | En düşük kasa (ort.) | OEE (24 sa, ort.) | Kapasite kullanımı | Ort. vardiya | Geç teslim / teslim | Bırakılan-iptal | Son skor | Teklif: kabul / karşı / ret 
+ --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: 
+ Tek makine | 0 | 37 | 0 | 23 | -3 | -9 | %14 | %84 | 1.0 | 102 / 225 | 16 | %72 | 262 / 22 / 0 
+ Küçük temkinli | 0 | 9 | 0 | 51 | -16 | -17 | %15 | %74 | 1.0 | 71 / 103 | 34 | %65 | 156 / 0 / 0 
+ Küçük vardiyacı | 0 | 60 | 0 | 0 | 186 | 1 | %60 | %97 | 2.9 | 24 / 609 | 0 | %94 | 595 / 265 / 103 
+ Orta ikinci el | 0 | 29 | 0 | 31 | 9 | -14 | %46 | %94 | 2.6 | 24 / 329 | 2 | %87 | 412 / 42 / 1 
+ Sermayeli yeni makine | 0 | 58 | 0 | 2 | 432 | 14 | %64 | %90 | 2.6 | 122 / 695 | 10 | %83 | 357 / 604 / 1006 
+ Sermayeli büyük | 0 | 59 | 0 | 1 | 404 | 102 | %58 | %82 | 2.6 | 118 / 550 | 112 | %63 | 819 / 185 / 78
 
 ## Bulgular
 
-1. **Hiçbir politika baskın değil.** Standart ile Yok/İyi arasındaki fark çoğu karakterde gürültü sınırında; İyi politika, yan gideri ödemeye karşılık sorun önlemeyle az geri kazandırıyor. Küçük işletmede yan gider karın küçük bir kısmı, büyükte daha çok yük.
-2. **Pacific tuzağı sürüyor.** Küçük temkinli (Pacific Alloy, tek vardiya, iki torna) her koşulda %22 iflas; teslimlerin çoğu geç, 40+ iş bırakılıyor. Aynı karakteri Nordhaus ile oynatınca iflas ~%15'e iniyor. Gerçek oyuncu için "bu tedarikçiyle malzeme Ay N'de gelir, teslim Ay M" uyarısı öneriliyor.
-3. **Yeni makineci karakter (marj %60) hâlâ ilan kazanamıyor** (4 kabul / 6500 ret). Bu karakterin betiği; gerçek oyuncu marjını ayarlar.
-4. **Genel gider sabit 6.** Kira ve krediyi makineye bölmek (denendi) tek makineli dükkânda hiçbir ilan kazandırmadı; bu yüzden paylaştırma "alan ÷ 30 m² ile makine sayısından büyüğü" olarak alındı.
-5. **Tezgah alanı %51 kuralı** simülasyondaki hiçbir karakteri kısıtlamadı (Para engeli sütunu değişmedi).
-
-Sütunlu tam tablo (Standart):
-
-| Karakter | Kiralanamadı | Ayakta | Zorunlu kapanış | İflas | Ort. son net kasa | En düşük kasa (ort.) | İlk iş ayı | OEE (24 sa, ort.) | Kapasite kullanımı | Ort. vardiya | Geç teslim / teslim | Bırakılan-iptal | Son skor | Teklif: kabul / karşı / ret | Gizli satırlı ay | Danışmansız deneme mümkün | Para engeli |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Tek makine | 0 | 100 | 0 | 0 | 289 | 193 | 1.1 | %24 | %95 | 1.0 | 41 / 270 | 0 | %84 | 293 / 139 / 100 | 51 | 51 | 0 |
-| Küçük temkinli | 0 | 78 | 0 | 22 | -63 | -160 | 1.0 | %22 | %64 | 1.0 | 98 / 164 | 39 | %69 | 297 / 104 / 39 | 66 | 64 | 2 |
-| Küçük vardiyacı | 0 | 100 | 0 | 0 | 919 | 102 | 1.0 | %59 | %86 | 2.5 | 35 / 791 | 0 | %92 | 498 / 739 / 1144 | 52 | 50 | 2 |
-| Orta ikinci el | 0 | 90 | 0 | 10 | 68 | -248 | 1.0 | %40 | %69 | 1.8 | 37 / 504 | 8 | %86 | 504 / 255 / 241 | 89 | 34 | 55 |
-| Orta yeni makine | 0 | 95 | 0 | 5 | 65 | -80 | 2.9 | %30 | %34 | 1.2 | 7 / 97 | 0 | %82 | 4 / 131 / 6533 | 22 | 22 | 0 |
-| Büyük iddialı | 0 | 88 | 0 | 12 | 63 | -376 | 1.0 | %35 | %56 | 1.6 | 43 / 414 | 12 | %84 | 368 / 277 / 370 | 91 | 26 | 65 |
+1. **Tek ikinci el torna, tek vardiya, patron operatör** en zor başlangıç: yaklaşık yarısı iflas ediyor, kalanı zar zor ayakta. İşin çoğu geç teslim (eski makine, bakım sorunları). Büyümek için ikinci vardiya ve ikinci makine şart.
+2. **Küçük vardiyacı** (3 ikinci el makine, 2,9 vardiya) 24 ayda $186k'ya ulaşıyor; küçük başlayanlar için vardiya en güçlü kaldıraç.
+3. **Küçük temkinli** (Pacific Alloy, tek vardiya) çoğunlukla batıyor; Pacific hâlâ tuzak.
+4. Sermayeli karakterler (yeni makine, büyük) yüksek ve istikrarlı; ancak 24 ayda 10–15× büyüme hızlı sayılır, kalibrasyon sürüyor.
+5. Müşteri marjı ve talep bandı ayarlanabilir (`mid=` ve `slope=` bağımsız değişkenleri).

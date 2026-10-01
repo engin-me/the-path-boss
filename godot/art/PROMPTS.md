@@ -129,7 +129,7 @@ Kesme: `python tools\art_tools.py key worker.png --out godot\art\floor\props` �
 
 ## 6. Müzik (isteğe bağlı) — `godot/audio/music/main.ogg`
 
-Oyun, bu dosya varsa ilk dokunuştan sonra döngüyle çalar; yoksa sessizdir. Ses efektleri (dokunma, onay, para girişi/çıkışı, ay sonu) kodla üretilir, dosya gerekmez. Profil > Ses'ten kapatılır.
+Oyun, bu dosya varsa ilk dokunuştan sonra döngüyle çalar; yoksa sessizdir. Dosya `main.mp3`, `main.ogg` ya da `main.wav` olabilir (ffmpeg şart değil; MP3 doğrudan çalışır, ancak döngü noktasında kısa bir boşluk duyarsan OGG'ye çevir). Ses efektleri (dokunma, onay, para girişi/çıkışı, ay sonu) kodla üretilir, dosya gerekmez. Profil > Ses'ten kapatılır.
 
 Suno/Udio benzeri bir müzik üreticisi için istem (tek parça, 2–3 dakika, kesintisiz döngüye uygun):
 ```

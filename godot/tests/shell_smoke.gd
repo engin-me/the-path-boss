@@ -35,14 +35,14 @@ func _run() -> void:
 	var by_count := {1: 0, 2: 0, 3: 0, 4: 0}
 	for offer in offers:
 		by_count[offer["count"]] += 1
-		if offer["share"] < 0.14 or offer["share"] > 0.80:
-			return _fail("Material share out of 15-80%")
+		if offer["share"] < 0.01 or offer["share"] > 0.80:
+			return _fail("Material share out of 1-80%")
 		for req in offer["reqs"]:
 			if req["parts"] <= 0 or absf(float(req["parts"]) * float(req["difficulty"]) - float(req["workload"])) > 0.01:
 				return _fail("workload must equal parts x difficulty")
 	if offers.size() != 20 or by_count != {1: 9, 2: 5, 3: 4, 4: 2}:
 		return _fail("Offer mix must be 20 = 9x1, 5x2, 4x3, 2x4: " + str(by_count))
-	if Data.usd(1285.0) != "$1.285.000" or Data.list_price("Dövme", 2) != 300.0 or Data.list_price("Torna", 2) != 80.0:
+	if Data.usd(1285.0) != "$1.285.000" or Data.list_price("Dövme", 2) != 150.0 or Data.list_price("Torna", 2) != 75.0:
 		return _fail("Currency or price averages")
 	# ---- OEE formula: Standart Torna, one shift, no problems -> 2000 x 1/3 x 0.70 x 0.97
 	var probe: Dictionary = Data.machine_listings()[0].duplicate()
@@ -63,6 +63,7 @@ func _run() -> void:
 	shell._open_detail("factory", "factory_5")
 	shell._pick_term(12)
 	shell._toggle_prepay(true)
+	game.cash = 300.0   # the default 24k start is too thin for a medium plant's hidden-fix guarantee
 	var cash0: float = game.cash
 	shell._ask_rent("factory_5")
 	if shell.overlay.get_child_count() == 0:
@@ -73,9 +74,9 @@ func _run() -> void:
 		return _fail("Prepaid rent should be charged and recorded")
 	var poor = Boss.new()
 	poor.default_setup(1)
-	poor.cash = 100.0
+	poor.cash = 30.0
 	if poor.rent_block_reason("factory_9", 12, false) == "":
-		return _fail("Renting a large plant with 100 units must be refused")
+		return _fail("Renting a large plant with 30 units must be refused")
 	# ---- machines, equipment gate, delivery
 	game.cash = 1000.0
 	if game.buy_listing(13) != "" or game.buy_listing(14) != "":
@@ -131,7 +132,7 @@ func _run() -> void:
 	if not _near(plan_game.shift_equiv(plan_machine), 3.0, 0.001):
 		return _fail("Two shifts with overtime equal 3 shift-equivalents")
 	var crews := float(plan_machine["personnel"])
-	if not _near(plan_game.machine_wages(plan_machine), (Data.WAGE * (1.0 + Data.OT_HOURS_SHARE * Data.OT_WAGE_MULT) + plan_game.staff_cost_per_head()) * crews * 2.0, 0.001):
+	if not _near(plan_game.machine_wages(plan_machine), (Data.wage_for(plan_machine["kind"]) * (1.0 + Data.OT_HOURS_SHARE * Data.OT_WAGE_MULT) + plan_game.staff_cost_per_head()) * crews * 2.0, 0.001):
 		return _fail("Overtime hours must cost 1.5x the wage")
 	var plan_copy = Boss.new()
 	if plan_copy.from_save(plan_game.to_save()) != "" or plan_copy.plan_shifts != 2 or not bool(plan_copy.plan_ot[1]):
@@ -183,6 +184,15 @@ func _run() -> void:
 	for candidate in wait_game.offers:
 		if wait_game.fit_block_reason(candidate["id"]) == "" and wait_game.accept_block_reason(candidate["id"]) == "":
 			return _fail("During the report the phase, not the fit, must block accepting")
+	# ---- a higher level machine serves lower-level work but at its own energy and write-off
+	var basis_low: Dictionary = plan_game.serving_basis("Torna", 1)
+	var basis_exact: Dictionary = plan_game.serving_basis("Torna", int(plan_machine["level"]))
+	if int(basis_low["level"]) != int(plan_machine["level"]) or not _near(float(basis_low["price"]), float(plan_machine["price"]), 0.001):
+		return _fail("A Torna Hassas must serve Standart work with its own price")
+	if not _near(float(basis_exact["energy"]), float(basis_low["energy"]), 0.001):
+		return _fail("Serving lower-level work must cost the serving machine's energy")
+	if not _near(plan_game.monthly_amortization(), float(plan_machine["price"]) / float(Data.AMORT_MONTHS), 0.001):
+		return _fail("Monthly write-off is price / 120")
 	# ---- job scrap: drawn inside the table range, charged at delivery
 	var plan_offer: Dictionary = plan_game.offers[0]
 	var estimate: Dictionary = plan_game.cost_estimate(plan_offer)
@@ -510,7 +520,7 @@ func _run() -> void:
 		return _fail("One machine must not be enough collateral")
 	if g3.loan_block_reason(uids) == "":
 		var before: float = g3.cash
-		if g3.take_loan(uids) != "" or not _near(g3.cash - before, 100.0, 0.001) or g3.debt < 100.0:
+		if g3.take_loan(uids) != "" or not _near(g3.cash - before, float(Data.CREDIT["amount"]), 0.001) or g3.debt < float(Data.CREDIT["amount"]):
 			return _fail("Loan must pay out and add debt")
 		if g3.sell_block_reason(uids[0]) == "":
 			return _fail("A mortgaged machine must not be sellable")

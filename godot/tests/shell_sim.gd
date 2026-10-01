@@ -7,19 +7,24 @@ extends SceneTree
 const ShellBoss = preload("res://scripts/shell/shell_boss.gd")
 const Data = preload("res://scripts/shell/shell_data.gd")
 
+static var pm := -1.0   # arg pm=: overrides every persona's quote margin
+static var trace := false
+static var only := ""
 static var staff_policy := 1   # 0 Yok, 1 Standart, 2 İyi (arg policy=)
 
 # uid reference: new machines 0-11 (Torna, Freze, Taşlama, Dövme x Standart/Hassas/Nitelikli);
-# second hand: 12 Torna-Std 6y, 13 Torna-Has 4y, 14 Freze-Std 8y, 15 Freze-Nit 3y,
-# 16 Taşlama-Has 5y, 17 Taşlama-Std 9y, 18 Dövme-Std 7y, 19 Dövme-Has 4y.
+# second hand: 12 Torna-Std 12y, 13 Torna-Has 8y, 14 Freze-Std 14y, 15 Freze-Nit 5y,
+# 16 Taşlama-Has 9y, 17 Taşlama-Std 15y, 18 Dövme-Std 16y, 19 Dövme-Has 10y.
 # "grow": add a shift to machines whose backlog is high (when cash allows).
+# "expand": used machines bought later, when cash covers the price and three months of expenses.
+# "cash": starting money override (the default is the operator's five years of saving).
 const PERSONAS := [
-	{"name": "Tek makine", "factory": "factory_1", "term": 12, "prepay": false, "buys": [[1, 13]], "grow": false, "supplier": "nord", "margin": 0.30},
-	{"name": "Küçük temkinli", "factory": "factory_1", "term": 12, "prepay": false, "buys": [[1, 13], [1, 14]], "grow": false, "supplier": "pacific", "margin": 0.30},
-	{"name": "Küçük vardiyacı", "factory": "factory_1", "term": 12, "prepay": false, "buys": [[1, 13], [1, 14]], "grow": true, "supplier": "nord", "margin": 0.45},
-	{"name": "Orta ikinci el", "factory": "factory_3", "term": 12, "prepay": false, "buys": [[1, 13], [1, 14], [1, 17]], "grow": true, "supplier": "midland", "margin": 0.30},
-	{"name": "Orta yeni makine", "factory": "factory_3", "term": 12, "prepay": false, "buys": [[1, 1], [1, 4]], "grow": true, "supplier": "atlas", "margin": 0.60},
-	{"name": "Büyük iddialı", "factory": "factory_4", "term": 24, "prepay": false, "buys": [[1, 13], [1, 14], [1, 16], [2, 12]], "grow": true, "supplier": "nord", "margin": 0.45}
+	{"name": "Tek makine", "factory": "factory_1", "term": 12, "prepay": false, "buys": [[1, 12]], "expand": [], "grow": false, "supplier": "nord", "margin": 0.70},
+	{"name": "Küçük temkinli", "factory": "factory_1", "term": 12, "prepay": false, "buys": [[1, 12]], "expand": [13], "grow": false, "supplier": "pacific", "margin": 0.50},
+	{"name": "Küçük vardiyacı", "factory": "factory_1", "term": 12, "prepay": false, "buys": [[1, 12]], "expand": [13, 14], "grow": true, "supplier": "nord", "margin": 0.90},
+	{"name": "Orta ikinci el", "factory": "factory_3", "term": 12, "prepay": false, "buys": [[1, 12]], "expand": [13, 14, 17], "grow": true, "supplier": "midland", "margin": 0.70},
+	{"name": "Sermayeli yeni makine", "factory": "factory_3", "term": 12, "prepay": false, "buys": [[1, 1], [1, 4]], "expand": [], "grow": true, "supplier": "atlas", "margin": 0.90, "cash": 220.0},
+	{"name": "Sermayeli büyük", "factory": "factory_4", "term": 24, "prepay": false, "buys": [[1, 13], [1, 14], [1, 16], [2, 12]], "expand": [], "grow": true, "supplier": "nord", "margin": 0.80, "cash": 300.0}
 ]
 
 func _initialize() -> void:
@@ -39,6 +44,24 @@ func _run() -> void:
 			Data.revenue_scale = float(arg.trim_prefix("rev="))
 		elif arg.begins_with("cash="):
 			Data.start_cash = float(arg.trim_prefix("cash="))
+		elif arg.begins_with("trace="):
+			trace = int(arg.trim_prefix("trace=")) == 1
+		elif arg.begins_with("only="):
+			only = arg.trim_prefix("only=")
+		elif arg.begins_with("pm="):
+			pm = float(arg.trim_prefix("pm="))
+		elif arg.begins_with("mid="):
+			Data.mid_base = float(arg.trim_prefix("mid="))
+		elif arg.begins_with("slope="):
+			Data.mid_slope = float(arg.trim_prefix("slope="))
+		elif arg.begins_with("margin="):
+			Data.margin_scale = float(arg.trim_prefix("margin="))
+		elif arg.begins_with("wage="):
+			Data.WAGE = float(arg.trim_prefix("wage="))
+		elif arg.begins_with("rent="):
+			Data.rent_scale = float(arg.trim_prefix("rent="))
+		elif arg.begins_with("overhead="):
+			Data.typical_overhead = float(arg.trim_prefix("overhead="))
 		elif arg.begins_with("policy="):
 			staff_policy = int(arg.trim_prefix("policy="))
 		elif arg.begins_with("floor="):
@@ -46,6 +69,8 @@ func _run() -> void:
 	print("| Karakter | Kiralanamadı | Ayakta | Zorunlu kapanış | İflas | Ort. son net kasa | En düşük kasa (ort.) | İlk iş ayı | OEE (24 sa, ort.) | Kapasite kullanımı | Ort. vardiya | Geç teslim / teslim | Bırakılan-iptal | Son skor | Teklif: kabul / karşı / ret | Gizli satırlı ay | Danışmansız deneme mümkün | Para engeli |")
 	print("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
 	for persona in PERSONAS:
+		if only != "" and not String(persona["name"]).begins_with(only):
+			continue
 		var agg := {"denied": 0, "alive": 0, "forced": 0, "bankrupt": 0, "net": 0.0, "trough": 0.0, "first_job": 0.0, "first_n": 0,
 			"oee": 0.0, "oee_n": 0, "used": 0.0, "net_cap": 0.0, "shifts": 0.0, "shift_n": 0, "late": 0, "delivered": 0, "dropped": 0,
 			"score": 0.0, "hidden": 0, "ok": 0, "money": 0, "q_ok": 0, "q_counter": 0, "q_reject": 0}
@@ -74,6 +99,9 @@ func _play(persona: Dictionary, seed_value: int, months: int, agg: Dictionary) -
 	game.max_months = months
 	game.default_setup(seed_value)
 	game.staff_policy = staff_policy
+	if persona.has("cash"):
+		game.cash = float(persona["cash"])
+	var expand: Array = persona.get("expand", []).duplicate()
 	if game.rent_factory(persona["factory"], persona["term"], persona["prepay"]) != "":
 		agg["denied"] += 1
 		return
@@ -89,6 +117,10 @@ func _play(persona: Dictionary, seed_value: int, months: int, agg: Dictionary) -
 				continue
 			still.append(item)
 		queue = still
+		if not expand.is_empty():
+			var listing: Dictionary = game.listing_by_uid(int(expand[0]))
+			if game.cash > float(listing["price"]) + 3.0 * game.ordinary_expense() and game.buy_listing(int(expand[0])) == "":
+				expand.remove_at(0)
 		# grow shifts where the backlog per machine kind is high
 		if persona["grow"]:
 			for machine in game.delivered():
@@ -131,7 +163,7 @@ func _play(persona: Dictionary, seed_value: int, months: int, agg: Dictionary) -
 			if promised + offer_load > 0.85 * capacity_now * float(offer["months"]):
 				continue
 			var estimate: Dictionary = game.cost_estimate(offer)
-			var price := roundf(float(estimate["total"]) * (1.0 + float(persona["margin"])))
+			var price := snappedf(float(estimate["total"]) * (1.0 + (pm if pm >= 0.0 else float(persona["margin"]))), 0.001)
 			var result: Dictionary = game.submit_quote(offer["id"], price, 30, int(offer["months"]))
 			if not result["ok"]:
 				continue
@@ -188,6 +220,8 @@ func _play(persona: Dictionary, seed_value: int, months: int, agg: Dictionary) -
 					agg["late"] += 1
 			elif str(line).begins_with("İptal:"):
 				agg["dropped"] += 1
+		if trace and seed_value == 1:
+			print("M%d cash %.2f | %s" % [game.month, game.cash, " | ".join(game.last_lines)])
 		trough = minf(trough, game.cash - game.debt)
 	if game.phase == "end":
 		var kind: String = game.closure.get("type", "")

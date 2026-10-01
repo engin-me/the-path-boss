@@ -903,9 +903,11 @@ func _offer_card(offer: Dictionary, reason: String) -> void:
 	for req in offer["reqs"]:
 		var have: bool = game.owns(req)
 		_row(box, "%s %s" % [Data.LEVELS[int(req["level"])], req["kind"]], "%d parça × %s = %s%s" % [req["parts"], Data.mu_text(float(req["difficulty"])), _xfmt(float(req["workload"])), "" if have else "  (makine yok)"], TEXT if have else RED, 14)
+	for req in offer["reqs"]:
+		box.add_child(_label("%s: %s kg/parça · %.1f t %s çelik" % [req["kind"], str(req["weight"]).trim_suffix(".0"), float(req["tons"]), "nitelikli" if int(req["steel"]) > 1 else "standart"], 11, MUTED))
 	_row(box, "Teslim süresi", "%d ay" % offer["months"])
 	_row(box, "En erken üretim başlangıcı", "bu ay" if int(offer["start_delay"]) == 0 else "%d ay sonra" % offer["start_delay"], MUTED)
-	box.add_child(_label("%s = Parça İşleme Katsayısı (yüksek = zor parça). İş yükü = parça × %s." % [Data.DIFFICULTY_SYMBOL, Data.DIFFICULTY_SYMBOL], 11, MUTED))
+	box.add_child(_label("%s = Parça İşleme Katsayısı (yüksek = zor parça). İş yükü = parça × %s. Daha yüksek seviye tezgâh alt seviye işi de yapabilir (ama daha pahalıya)." % [Data.DIFFICULTY_SYMBOL, Data.DIFFICULTY_SYMBOL], 11, MUTED))
 	if game.quote_mode:
 		box.add_child(_label(Data.urgency_hint(offer), 12, MUTED))
 		box.add_child(_button("Teklif ver" if reason == "" else reason, _open_detail.bind("quote", str(offer["id"])), reason == "", reason != ""))
@@ -999,7 +1001,7 @@ func _detail_quote() -> void:
 	head.add_child(_label("%s = Parça İşleme Katsayısı (yüksek = zor parça). İş yükü = parça × %s." % [Data.DIFFICULTY_SYMBOL, Data.DIFFICULTY_SYMBOL], 11, MUTED))
 	_row(head, "Müşterinin istediği teslim", "%d ay" % offer["months"], TEXT, 14)
 	var estimate: Dictionary = game.cost_estimate(offer, quote_edit)
-	quote_price = ceilf(float(estimate["total"]) * (1.0 + quote_margin))
+	quote_price = ceilf(float(estimate["total"]) * (1.0 + quote_margin) * 100.0) / 100.0
 	var box := _card(content, "Teklifin", GREEN, true)
 	_row(box, "Fiyat", Data.usd(quote_price), GREEN, 20)
 	_row(box, "Toplam maliyet (ayrıntı aşağıda)", Data.usd(float(estimate["total"])), MUTED, 13)
@@ -1043,6 +1045,10 @@ func _detail_quote() -> void:
 		var span: Array = line["scrap_range"]
 		card.add_child(_label("Bu tür iş için olağan aralık %%%d–%%%d (ortalama %%%.1f); oran, parçaya dönüşen malzeme üzerinden hesaplanır (çapak ve talaş hammadde fiyatındadır); işi alınca gerçek oran bu aralıkta çıkar ve ay sonunda üretilen miktara göre kasadan düşer. Tahmini düşürmek fiyatı indirir, gerçek hurda aynı kalır." % [int(roundf(float(span[0]) * 100.0)), int(roundf(float(span[1]) * 100.0)), float(line["scrap_rate"]) * 100.0], 11, MUTED))
 		_stepper(card, "Genel giderler (kira, kredi, enerji)", Data.usd(float(line["overhead"])), i, "overhead_pct", 10.0, edit.has("overhead_pct") and float(edit["overhead_pct"]) != 0.0)
+		_stepper(card, "Amortisman (bedel ÷ %d ay)" % Data.AMORT_MONTHS, Data.usd(float(line["amortization"])), i, "amortization_pct", 10.0, edit.has("amortization_pct") and float(edit["amortization_pct"]) != 0.0)
+		if int(line["serving_level"]) > int(line["level"]):
+			card.add_child(_label("Bu işi %s tezgâhın yapar: daha pahalı enerji, personel ve amortisman. Alt seviye tezgâh kullanmak daha ucuzdur." % Data.LEVELS[int(line["serving_level"])], 11, GOLD))
+		_stepper(card, "Sarf malzeme (maliyetin %%%.1f'i)" % (Data.CONSUMABLE_SHARE * 100.0), Data.usd(float(line["consumables"])), i, "consumables_pct", 10.0, edit.has("consumables_pct") and float(edit["consumables_pct"]) != 0.0)
 		_stepper(card, "Personel giderleri", Data.usd(float(line["personnel"])), i, "personnel_pct", 10.0, edit.has("personnel_pct") and float(edit["personnel_pct"]) != 0.0)
 		_row(card, "Tezgah maliyeti", Data.usd(float(line["subtotal"])), GREEN, 15)
 	var totals := _card(content, "Toplam maliyet", BORDER)
@@ -1279,7 +1285,7 @@ func _ask_buy(uid: int) -> void:
 		"%s · %s %s" % [listing["model"], Data.LEVELS[int(listing["level"])], listing["kind"]],
 		"Ödeme şimdi: %s" % Data.usd(float(listing["price"])),
 		"Teslim: %d ay sonra (%s). Teslime kadar kapasite artmaz." % [listing["delivery"], Data.month_label(arrive)],
-		"Teslimde %d personel otomatik işe başlar (kişi başı %s/ay)." % [listing["personnel"], Data.usd(Data.WAGE)],
+		"Teslimde %d personel otomatik işe başlar (kişi başı %s/ay)." % [listing["personnel"], Data.usd(Data.wage_for(listing["kind"]))],
 		"Aylık işletme: %s enerji + %s sarf" % [Data.usd(float(listing["energy"])), Data.usd(float(listing["consumables"]))],
 		"Alan: %d m²" % listing["area"]
 	], "Satın al", _buy.bind(uid))
@@ -1439,6 +1445,8 @@ func _page_shifts() -> void:
 	for machine in game.delivered():
 		wages += game.machine_wages(machine)
 	_row(summary, "Aylık personel gideri", Data.usd(wages), TEXT, 15)
+	_row(summary, "Dolaylı personel", "%d kişi · %s" % [game.indirect_count(), Data.usd(game.indirect_cost())], TEXT, 15)
+	_row(summary, "Ofis kadrosu", "%d kişi · %s" % [game.office_roles().size(), Data.usd(game.office_cost())], TEXT, 15)
 	_row(summary, "Üretilebilir kapasite", "%s/ay" % _xfmt(game.effective_capacity()), GREEN, 15)
 	summary.add_child(_label("Personel, makineler teslim alındığında kadroya girer; vardiya artınca otomatik işe alınır.", 12, MUTED))
 
@@ -1818,12 +1826,23 @@ func _detail_costs() -> void:
 	var wages := 0.0
 	for machine in game.delivered():
 		wages += game.machine_wages(machine)
-		energy += (float(machine["energy"]) + float(machine["consumables"])) * game.shift_equiv(machine)
+		energy += float(machine["energy"]) * game.shift_equiv(machine)
 		_row(box, machine["model"], Data.usd(game.machine_running_cost(machine)), MUTED, 13)
-	_row(box, "Enerji + sarf", Data.usd(energy), TEXT, 15)
+	_row(box, "Enerji (tam çalışma varsayımı)", Data.usd(energy), TEXT, 15)
 	_row(box, "Personel (patron vardiyası ücretsiz)", Data.usd(wages), TEXT, 15)
+	_row(box, "Bina işletme (vergi, aidat, ısıtma, güvenlik)", Data.usd(game.building_overhead()), TEXT, 15)
+	_row(box, "Dolaylı personel (%d kişi)" % game.indirect_count(), Data.usd(game.indirect_cost()), TEXT, 15)
+	var roles: Array = game.office_roles()
+	var role_names: Array = []
+	for role in roles:
+		role_names.append(role["name"])
+	_row(box, "Ofis kadrosu (%d kişi)" % roles.size(), Data.usd(game.office_cost()), TEXT, 15)
+	if not role_names.is_empty():
+		box.add_child(_label(", ".join(role_names), 12, MUTED))
+	box.add_child(_label("Sarf malzeme ayrıca ay sonunda üretim maliyetinin %%%.1f'i kadar düşer." % (Data.CONSUMABLE_SHARE * 100.0), 12, MUTED))
 	if not game.loan.is_empty():
 		_row(box, "Kredi taksidi", Data.usd(float(game.loan["installment"])), TEXT, 15)
-	_row(box, "Toplam", Data.usd(game.ordinary_expense()), GREEN, 17)
+	_row(box, "Toplam (nakit)", Data.usd(game.ordinary_expense()), GREEN, 17)
+	_row(box, "Amortisman (kâğıt üstü, nakit değil)", Data.usd(game.monthly_amortization()), MUTED, 13)
 	box.add_child(_label("Teslim alınmamış makineler gider yaratmaz; personel teslimde işe başlar.", 12, MUTED))
 

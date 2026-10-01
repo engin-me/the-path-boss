@@ -9,12 +9,37 @@ const MONEY_UNIT_USD := 1000.0
 const LEVELS := ["", "Standart", "Hassas", "Nitelikli"]
 const TYPES := ["Torna", "Freze", "Taşlama", "Dövme"]
 const STATS_LIST := ["Zeka", "Dikkat", "Hız", "Güç", "Yaratıcılık", "Sosyallik", "Görünüm"]
-const WAGE := 3.0  # per person per month (mock; wage model is open in IDEA-013)
+# Real-world inputs from the economy sheet (USD; 1 unit = $1.000). Direct operators by machine kind (experienced class),
+# indirect staff (internal logistics, cleaning, warehouse) one per INDIRECT_RATIO direct workers, office staff by machine count.
+const WAGE_BY_KIND := {"Torna": 1.0, "Freze": 1.1, "Taşlama": 1.3, "Dövme": 1.5}
+static var WAGE := 1.1   # average direct wage, used where no machine kind is known
+const INDIRECT_RATIO := 4
+const INDIRECT_WAGE := 1.0
+# Office roles join in this order of importance once the plant has more than three machines.
+const OFFICE_ROLES := [
+	{"name": "Muhasebe / ofis", "at": 4, "cost": 1.3}, {"name": "Planlama", "at": 7, "cost": 1.5}, {"name": "Kalite", "at": 10, "cost": 1.6},
+	{"name": "Satın alma / depo", "at": 13, "cost": 1.6}, {"name": "Üretim şefi", "at": 16, "cost": 2.0}, {"name": "Yönetici", "at": 20, "cost": 2.5}
+]
+const OFFICE_EXTRA_EVERY := 4   # after the last role: one more office worker per 4 machines
+const OFFICE_EXTRA_COST := 1.5
+const RENT_PER_M2 := 4.0   # USD per month
+const BUILDING_EXTRA_PER_M2 := 4.0   # tax, service charge, heating, security (USD per month)
+const TARIFF := 0.13   # USD per kWh
+const LOAD_FACTOR := 0.6
+const SHIFT_HOURS_MONTH := 160.0
+const CONSUMABLE_SHARE := 0.035   # consumables as a share of production cost
+# Steel (units = $1.000 per ton), parts' weights and the raw bar needed per finished kilo.
+const STEEL_PRICE := {1: 0.6, 2: 1.0, 3: 1.0}
+const PART_WEIGHT := {"Torna": [1.0, 8.0], "Freze": [3.0, 20.0], "Taşlama": [0.5, 5.0], "Dövme": [5.0, 40.0]}
+const RAW_FACTOR := {"Torna": 1.6, "Freze": 2.0, "Taşlama": 1.2, "Dövme": 1.4}
+
+static func wage_for(kind: String) -> float:
+	return float(WAGE_BY_KIND.get(kind, WAGE))
 
 # ---------------------------------------------------------------- factories
 
 # Rentable buildings: width x length x height (m) from the art table; the image id is
-# factory_<n>. Rent grows with area^0.85 (22.5k at 150 m2) and +1% per metre of height over 8 m.
+# factory_<n>. Rent is RENT_PER_M2 times the area, +1% per metre of height over 8 m.
 const FACTORY_SIZES := [
 	[10, 15, 8], [15, 15, 10], [15, 20, 8], [20, 20, 10], [15, 35, 10], [20, 30, 10], [20, 40, 10],
 	[20, 50, 12], [30, 50, 15], [40, 50, 15], [50, 50, 15], [50, 60, 15], [50, 70, 15]
@@ -33,10 +58,10 @@ static func _build_factories() -> Array:
 		var length: int = FACTORY_SIZES[i][1]
 		var height: int = FACTORY_SIZES[i][2]
 		var area := width * length
-		var rent := 22.5 * pow(float(area) / 150.0, 0.85) * (1.0 + 0.01 * float(height - 8))
+		var rent := RENT_PER_M2 * float(area) / 1000.0 * (1.0 + 0.01 * float(height - 8))
 		var tint := Color.from_hsv(0.58 + 0.03 * float(i % 4), 0.25, 0.28 + 0.01 * float(i))
 		list.append({"id": "factory_%d" % (i + 1), "name": FACTORY_NAMES[i], "region": FACTORY_REGIONS[i], "m2": area, "width": width, "length": length,
-			"height": float(height), "rent": snappedf(rent, 0.5), "age": FACTORY_AGES[i],
+			"height": float(height), "rent": snappedf(rent, 0.05), "age": FACTORY_AGES[i],
 			"floor": "Takviyeli beton" if area >= 500 else "Beton, hafif yük", "ramps": clampi(int(roundf(float(area) / 500.0)) + 1, 1, 6),
 			"kva": int(float(area) * 1.2), "tint": tint})
 	return list
@@ -48,14 +73,13 @@ const TERMS := [
 ]
 const EXIT_FEE_RENTS := 2
 const ABANDON_PENALTY := 0.10  # of the job revenue; paid material is lost (mock)
-const SALE_RATE := 0.70  # voluntary sale of a machine (FRZ-003 v2)
+const SALE_RATE := 0.80  # quick sale: 20 percent under the market value (FRZ-003 v2)
 
 # ---------------------------------------------------------------- machines
 
-# New-machine average price (units), by type; level multiplier keeps the
-# average at the user's figures (Torna 80k, Freze 120k, Taşlama 140k, Dövme 300k).
-const TYPE_PRICE := {"Torna": 80.0, "Freze": 120.0, "Taşlama": 140.0, "Dövme": 300.0}
-const LEVEL_MULT := {1: 0.70, 2: 1.00, 3: 1.40}
+# New-machine price (units) of the mid level (Hassas) by type; the level multiplier gives Standart and Nitelikli.
+const TYPE_PRICE := {"Torna": 75.0, "Freze": 90.0, "Taşlama": 110.0, "Dövme": 150.0}   # Hassas (mid level) new price
+const LEVEL_MULT := {1: 0.60, 2: 1.00, 3: 2.40}
 const BRANDS := {1: ["Brandt", "Halden"], 2: ["Novak Precision", "Meridian"], 3: ["Aurex", "Kessler"]}
 const MODEL_PREFIX := {"Torna": "T", "Freze": "F", "Taşlama": "G", "Dövme": "P"}
 const NAMEPLATE := {"Torna": 2000, "Freze": 1600, "Taşlama": 1200, "Dövme": 800}  # x per month at 3 shifts (IDEA-018)
@@ -79,8 +103,7 @@ const TYPE_HEIGHT := {"Torna": 0.0, "Freze": 0.3, "Taşlama": 0.0, "Dövme": 1.5
 const NEW_DELIVERY := {1: 1, 2: 2, 3: 3}  # months; second hand arrives in 1
 const AGE_DROP := 0.07
 const AGE_FLOOR := 0.35
-const ENERGY_RATE := 0.01  # of new list price per month
-const CONSUMABLE_RATE := 0.005  # cutting inserts and tools, per month
+
 
 static func age_factor(age: float) -> float:
 	return maxf(AGE_FLOOR, 1.0 - AGE_DROP * age)
@@ -93,9 +116,11 @@ static func maintenance_risk(age: int) -> String:
 	return "Yüksek"
 
 static func personnel_for(type: String, level: int) -> int:
-	if type == "Dövme":
-		return 2 if level == 3 else 3
-	return 1
+	return 2 if type == "Dövme" else 1
+
+# Monthly electricity of a machine for one shift (160 h, average load).
+static func energy_month(kw: int) -> float:
+	return snappedf(float(kw) * SHIFT_HOURS_MONTH * TARIFF * LOAD_FACTOR / 1000.0, 0.001)
 
 static func list_price(type: String, level: int) -> float:
 	return roundf(TYPE_PRICE[type] * LEVEL_MULT[level])
@@ -109,8 +134,8 @@ static func machine_listings() -> Array:
 			listings.append(_listing(uid, type, level, 0, 0.15 if uid % 5 == 2 else 0.0))
 			uid += 1
 	var used := [
-		["Torna", 1, 6, 0.10], ["Torna", 2, 4, 0.0], ["Freze", 1, 8, 0.15], ["Freze", 3, 3, 0.0],
-		["Taşlama", 2, 5, 0.10], ["Taşlama", 1, 9, 0.20], ["Dövme", 1, 7, 0.0], ["Dövme", 2, 4, 0.10]
+		["Torna", 1, 12, 0.15], ["Torna", 2, 8, 0.0], ["Freze", 1, 14, 0.10], ["Freze", 3, 5, 0.0],
+		["Taşlama", 2, 9, 0.10], ["Taşlama", 1, 15, 0.10], ["Dövme", 1, 16, 0.0], ["Dövme", 2, 10, 0.10]
 	]
 	for entry in used:
 		listings.append(_listing(uid, entry[0], entry[1], entry[2], entry[3]))
@@ -131,8 +156,8 @@ static func _listing(uid: int, type: String, level: int, age: int, discount: flo
 		"scrap": maxf(SCRAP_FLOOR, float(SCRAP_BASE[type]) + float(SCRAP_LEVEL_DELTA[level])),
 		"area": area, "height": snappedf(float(LEVEL_HEIGHT[level]) + float(TYPE_HEIGHT[type]), 0.1),
 		"personnel": personnel_for(type, level),
-		"kw": int(list / 4.0), "energy": snappedf(list * ENERGY_RATE, 0.01),
-		"consumables": snappedf(list * CONSUMABLE_RATE, 0.01),
+		"kw": int(list / 4.0), "energy": energy_month(int(list / 4.0)),
+		"consumables": 0.0,
 		"delivery": 1 if age > 0 else int(NEW_DELIVERY[level])
 	}
 
@@ -145,14 +170,14 @@ const PACKAGE_CLASSES := {
 	"large": {"transpalet": 4, "kasa": 30, "raf": 14, "el_aleti": 6, "takim": 15}
 }
 const EQUIPMENT := {
-	"transpalet": {"name": "Transpalet", "price": 5.0, "area": 0.0, "required": true, "note": "Kasa ve palet taşıma"},
-	"kasa": {"name": "Malzeme kasası", "price": 0.4, "area": 0.3, "required": true, "note": "Hammadde ve yarı mamul"},
-	"raf": {"name": "Depo rafı", "price": 4.0, "area": 3.0, "required": true, "note": "Depolama alanı tüketir"},
-	"el_aleti": {"name": "El aletleri seti", "price": 2.0, "area": 1.0, "required": true, "note": "Bakım ve ayar"},
-	"takim": {"name": "Takım ve fikstür seti", "price": 2.0, "area": 1.0, "required": true, "note": "Tezgah bağlama takımları"},
-	"forklift": {"name": "Forklift", "price": 40.0, "area": 0.0, "required": false, "note": "Depo & Sevkiyat sorun ihtimalini azaltır; OEE'ye yansır (test)"},
-	"olcum": {"name": "Kalite ölçüm seti", "price": 20.0, "area": 1.5, "required": false, "note": "Kalite sorun ihtimalini azaltır (test)"},
-	"vinc": {"name": "Köprü vinç", "price": 90.0, "area": 0.0, "required": false, "min_height": 5.0, "note": "Ağır parçalar; en az 5,0 m tavan gerekir (test)"}
+	"transpalet": {"name": "Transpalet", "price": 0.45, "area": 0.0, "required": true, "note": "Kasa ve palet taşıma"},
+	"kasa": {"name": "Malzeme kasası", "price": 0.025, "area": 0.3, "required": true, "note": "Hammadde ve yarı mamul"},
+	"raf": {"name": "Depo rafı", "price": 0.35, "area": 3.0, "required": true, "note": "Depolama alanı tüketir"},
+	"el_aleti": {"name": "El aletleri seti", "price": 0.8, "area": 1.0, "required": true, "note": "Bakım ve ayar"},
+	"takim": {"name": "Takım ve fikstür seti", "price": 0.6, "area": 1.0, "required": true, "note": "Tezgah bağlama takımları"},
+	"forklift": {"name": "Forklift", "price": 15.0, "area": 0.0, "required": false, "note": "Depo & Sevkiyat sorun ihtimalini azaltır; OEE'ye yansır (test)"},
+	"olcum": {"name": "Kalite ölçüm seti", "price": 8.0, "area": 1.5, "required": false, "note": "Kalite sorun ihtimalini azaltır (test)"},
+	"vinc": {"name": "Köprü vinç", "price": 40.0, "area": 0.0, "required": false, "min_height": 5.0, "note": "Ağır parçalar; en az 5,0 m tavan gerekir (test)"}
 }
 const OPTIONAL_ORDER := ["forklift", "olcum", "vinc", "transpalet", "kasa", "raf"]
 
@@ -170,11 +195,11 @@ static func package_for(m2: int) -> Dictionary:
 	for id in items:
 		price += float(EQUIPMENT[id]["price"]) * int(items[id])
 		area += float(EQUIPMENT[id]["area"]) * int(items[id])
-	return {"items": items, "price": snappedf(price, 0.01), "area": area}
+	return {"items": items, "price": snappedf(price, 0.001), "area": area}
 
 # ---------------------------------------------------------------- credit
 
-const CREDIT := {"bank": "Hartwell Credit Bank", "amount": 100.0, "rate": 0.015, "months": 12, "collateral": 1.25, "early_fee": 0.02}
+const CREDIT := {"bank": "Hartwell Credit Bank", "amount": 40.0, "rate": 0.015, "months": 12, "collateral": 1.25, "early_fee": 0.02}
 
 static func installment(amount: float, rate: float, months: int) -> float:
 	return amount * rate / (1.0 - pow(1.0 + rate, -months))
@@ -188,10 +213,10 @@ const TITLES := {
 	"Taşlama": ["Hassas rulman yatağı", "Piston taşlama serisi", "Valf yuvası"],
 	"Dövme": ["Krank mili dövme", "Flanş dövme partisi", "Aks dövme serisi"]
 }
-static var price_per_x := 0.13  # units (k$) per x for a Torna; other kinds scale with machine price and nameplate
+static var price_per_x := 0.0135  # units (k$) per μ for a Torna; other kinds scale with machine price and nameplate (used for the capacity-value estimate)
 static var revenue_scale := 1.0  # calibration input for simulations (not a rule)
 static var rent_scale := 1.0  # kept at 1.0; rents in FACTORIES are already the calibrated values
-static var start_cash := 800.0
+static var start_cash := 24.0   # five years of saving $400 a month as an operator
 # Suppliers (foreign names). price = factor on the job's material estimate; lead = months until
 # the material arrives; terms = months after ordering until payment is due; delay = chance of +1 month;
 # quality 1..3 changes the job's yield (scrap): 1 Ekonomik, 2 Standart, 3 Premium.
@@ -219,7 +244,10 @@ static func urgency_hint(offer: Dictionary) -> String:
 
 const QUALITY_NAMES := ["", "Ekonomik", "Standart", "Premium"]
 const QUALITY_YIELD := {1: 0.96, 2: 1.0, 3: 1.015}
-const OVERHEAD_PER_MACHINE_MONTH := 9.0  # plant overhead 6 + personnel share 3 per machine-month (mock)
+static var typical_overhead := 0.45   # customers' belief of plant overhead per machine-month (rent, building, office), k$
+static var mid_base := 0.60   # customer reference margin over the typical cost of a plain job (covers capital return and overhead)
+static var mid_slope := 0.40  # extra margin of the most complex job
+static var margin_scale := 1.0   # calibration input: scales the customer margin band
 const ADVANCE_RATE := 0.30  # customer advance on acceptance (proposal; fixed in the first slice)
 
 static func supplier_by_id(id: String) -> Dictionary:
@@ -242,15 +270,15 @@ static func price_x(kind: String) -> float:
 	return price_per_x * revenue_scale * float(TYPE_PRICE[kind]) / 80.0 * 2000.0 / float(NAMEPLATE[kind])
 
 const DIFFICULTY_SYMBOL := "μ"   # Parça İşleme Katsayısı: higher = harder part
-const OVERHEAD_ESTIMATE := 6.0   # plant overhead share per machine-month in the cost estimate (placeholder; see the open question on deriving it)
 # Staff care (meals, shuttle, ...): monthly cost per head and the extra chance that a people-related
 # problem is prevented before it starts. Placeholder numbers.
 const STAFF_POLICIES := [
 	{"name": "Yok", "cost": 0.0, "bonus": 0.0, "note": "Gider yok; kimse korunmaz."},
-	{"name": "Standart", "cost": 0.6, "bonus": 0.10, "note": "Yemek ve servis."},
-	{"name": "İyi", "cost": 1.2, "bonus": 0.20, "note": "Yemek, servis, sağlık ve prim."}
+	{"name": "Standart", "cost": 0.15, "bonus": 0.10, "note": "Yemek ve servis."},
+	{"name": "İyi", "cost": 0.3, "bonus": 0.20, "note": "Yemek, servis, sağlık ve prim."}
 ]
 const MACHINE_AREA_SHARE := 0.51   # machines (listing area) may cover at most this share of the plant
+const AMORT_MONTHS := 240   # straight-line machine write-off over 20 years; accounting cost, not cash
 const OT_HOURS_SHARE := 0.5   # overtime adds 4 h to an 8 h shift
 const OT_WAGE_MULT := 1.5     # overtime hours cost 1.5x the hourly wage
 
@@ -280,49 +308,61 @@ static func difficulty(level: int, rng: RandomNumberGenerator) -> float:
 	var pool := {1: [1.0, 1.5], 2: [1.5, 2.0], 3: [2.0, 2.5]}
 	return float(pool[level][rng.randi_range(0, 1)])
 
+# Typical cost of one machine-month of this kind/level in an ordinary shop (what customers believe it costs):
+# direct crew with its share of indirect staff, electricity, write-off and plant overhead, k$.
+static func typical_machine_month(kind: String, level: int) -> Dictionary:
+	var list: float = list_price(kind, level)
+	var crew := float(personnel_for(kind, level))
+	var labor := (wage_for(kind) + INDIRECT_WAGE / float(INDIRECT_RATIO)) * crew
+	var energy := energy_month(int(list / 4.0))
+	return {"labor": labor, "energy": energy, "amort": list / float(AMORT_MONTHS), "overhead": typical_overhead}
+
 # Builds (or rebuilds) an offer's requirements and money from a spec:
 # specs = [{"kind", "level", "n"}], n = machine-equivalents of one-shift demand.
+# Material comes from tonnage (parts x weight x raw bar per finished kilo x steel price); the customer's cost
+# belief adds scrap, the typical machine-month cost and consumables; the reference price is that cost plus a margin.
 static func fill_offer(offer: Dictionary, specs: Array, rng: RandomNumberGenerator) -> void:
 	var total_n := 0
 	var best := 1
 	var reqs: Array = []
-	var revenue := 0.0
+	var material := 0.0
+	var cost := 0.0
 	for spec in specs:
 		var level: int = spec["level"]
+		var kind: String = spec["kind"]
 		var utilisation := rng.randf_range(0.55, 1.15)
-		var load_x: float = float(spec["n"]) * ref_output(spec["kind"]) * utilisation * float(offer["duration"])
+		var load_x: float = float(spec["n"]) * ref_output(kind) * utilisation * float(offer["duration"])
 		var z := difficulty(level, rng)
 		var parts := maxi(10, int(roundf(load_x / z / 10.0)) * 10)
 		var workload := float(parts) * z
-		reqs.append({"kind": spec["kind"], "level": level, "count": int(spec["n"]), "parts": parts, "difficulty": z, "workload": workload, "remaining": workload})
-		revenue += workload * price_x(spec["kind"])
+		var span: Array = PART_WEIGHT[kind]
+		var weight := snappedf(rng.randf_range(float(span[0]), float(span[1])), 0.5)
+		var tons := float(parts) * weight * float(RAW_FACTOR[kind]) / 1000.0
+		var material_part := tons * float(STEEL_PRICE[level])
+		var months := float(spec["n"]) * float(offer["duration"])
+		var machine := typical_machine_month(kind, level)
+		var running := months * (float(machine["labor"]) + float(machine["energy"]) + float(machine["amort"]) + float(machine["overhead"]))
+		var consumables := CONSUMABLE_SHARE * (material_part + months * (float(machine["labor"]) + float(machine["energy"])))
+		cost += material_part * (1.0 + scrap_rate(kind, level)) + running + consumables
+		material += material_part
+		reqs.append({"kind": kind, "level": level, "count": int(spec["n"]), "parts": parts, "difficulty": z, "workload": workload, "remaining": workload,
+			"weight": weight, "tons": tons, "steel": level, "material_part": material_part})
 		total_n += int(spec["n"])
 		best = maxi(best, level)
-	revenue = roundf(revenue * (1.0 + 0.15 * (best - 1)) * rng.randf_range(0.92, 1.08))
-	# Margin grows with complexity (machines needed and level): 15% for a plain one-machine
-	# Standart job up to 60% for a four-machine Nitelikli job. The customer's cost follows
-	# from the reference price; material is what is left after overhead and personnel.
+	# Margin grows with complexity (machines needed and level): a plain one-machine Standart job pays the
+	# smallest margin, a four-machine Nitelikli job the largest.
 	var complexity := 0.5 * float(total_n - 1) / 3.0 + 0.5 * float(best - 1) / 2.0
-	var mid := 0.15 + 0.45 * complexity
-	var cost_ref := revenue / (1.0 + mid)
-	var machine_months := 0.0
-	for spec in specs:
-		machine_months += float(spec["n"]) * float(offer["duration"])
-	var weight_sum := 0.0
-	var scrap_weighted := 0.0
-	for req in reqs:
-		var weight: float = float(req["workload"]) * price_x(req["kind"])
-		weight_sum += weight
-		scrap_weighted += weight * scrap_rate(req["kind"], int(req["level"]))
-	var material := maxf(revenue * 0.15, (cost_ref - machine_months * OVERHEAD_PER_MACHINE_MONTH) / (1.0 + scrap_weighted / maxf(0.001, weight_sum)))
+	var mid := (mid_base + mid_slope * complexity) * margin_scale
+	var cost_ref := cost * rng.randf_range(0.95, 1.05) * revenue_scale
+	var revenue := roundf(cost_ref * (1.0 + mid) * 1000.0) / 1000.0
 	offer["reqs"] = reqs
 	offer["count"] = total_n
 	offer["best"] = best
 	offer["revenue"] = revenue
 	offer["mid"] = mid
 	offer["cost_ref"] = cost_ref
-	offer["material"] = roundf(material)
-	offer["share"] = material / maxf(1.0, revenue)
+	offer["material"] = snappedf(material, 0.001)
+	offer["share"] = material / maxf(0.001, revenue)
 	offer["title"] = TITLES[specs[0]["kind"]][rng.randi_range(0, 2)]
 
 static func generate_offers(month: int, salt := 0) -> Array:

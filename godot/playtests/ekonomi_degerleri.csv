@@ -1,0 +1,93 @@
+﻿Kategori;Kalem;Birim;Şu anki oyun değeri;Senin değerin;Not
+1 Tezgâh fiyatı (sıfır);Torna Standart;USD;56000;;Yeni makine liste fiyatı (kurulum dahil)
+1 Tezgâh fiyatı (sıfır);Torna Hassas;USD;80000;;Yeni makine liste fiyatı (kurulum dahil)
+1 Tezgâh fiyatı (sıfır);Torna Nitelikli;USD;112000;;Yeni makine liste fiyatı (kurulum dahil)
+1 Tezgâh fiyatı (sıfır);Freze Standart;USD;84000;;Yeni makine liste fiyatı (kurulum dahil)
+1 Tezgâh fiyatı (sıfır);Freze Hassas;USD;120000;;Yeni makine liste fiyatı (kurulum dahil)
+1 Tezgâh fiyatı (sıfır);Freze Nitelikli;USD;168000;;Yeni makine liste fiyatı (kurulum dahil)
+1 Tezgâh fiyatı (sıfır);Taşlama Standart;USD;98000;;Yeni makine liste fiyatı (kurulum dahil)
+1 Tezgâh fiyatı (sıfır);Taşlama Hassas;USD;140000;;Yeni makine liste fiyatı (kurulum dahil)
+1 Tezgâh fiyatı (sıfır);Taşlama Nitelikli;USD;196000;;Yeni makine liste fiyatı (kurulum dahil)
+1 Tezgâh fiyatı (sıfır);Dövme Standart;USD;210000;;Yeni makine liste fiyatı (kurulum dahil)
+1 Tezgâh fiyatı (sıfır);Dövme Hassas;USD;300000;;Yeni makine liste fiyatı (kurulum dahil)
+1 Tezgâh fiyatı (sıfır);Dövme Nitelikli;USD;420000;;Yeni makine liste fiyatı (kurulum dahil)
+2 Tezgâh saat ücreti;Torna Standart;USD/saat (hammadde hariç, müşteriye);117;;1 vardiya = ayda ~160 saat, müşteriye kestiğin işçilik+makine bedeli
+2 Tezgâh saat ücreti;Torna Hassas;USD/saat (hammadde hariç, müşteriye);137;;1 vardiya = ayda ~160 saat, müşteriye kestiğin işçilik+makine bedeli
+2 Tezgâh saat ücreti;Torna Nitelikli;USD/saat (hammadde hariç, müşteriye);159;;1 vardiya = ayda ~160 saat, müşteriye kestiğin işçilik+makine bedeli
+2 Tezgâh saat ücreti;Freze Standart;USD/saat (hammadde hariç, müşteriye);147;;1 vardiya = ayda ~160 saat, müşteriye kestiğin işçilik+makine bedeli
+2 Tezgâh saat ücreti;Freze Hassas;USD/saat (hammadde hariç, müşteriye);177;;1 vardiya = ayda ~160 saat, müşteriye kestiğin işçilik+makine bedeli
+2 Tezgâh saat ücreti;Freze Nitelikli;USD/saat (hammadde hariç, müşteriye);210;;1 vardiya = ayda ~160 saat, müşteriye kestiğin işçilik+makine bedeli
+2 Tezgâh saat ücreti;Taşlama Standart;USD/saat (hammadde hariç, müşteriye);161;;1 vardiya = ayda ~160 saat, müşteriye kestiğin işçilik+makine bedeli
+2 Tezgâh saat ücreti;Taşlama Hassas;USD/saat (hammadde hariç, müşteriye);194;;1 vardiya = ayda ~160 saat, müşteriye kestiğin işçilik+makine bedeli
+2 Tezgâh saat ücreti;Taşlama Nitelikli;USD/saat (hammadde hariç, müşteriye);233;;1 vardiya = ayda ~160 saat, müşteriye kestiğin işçilik+makine bedeli
+2 Tezgâh saat ücreti;Dövme Standart;USD/saat (hammadde hariç, müşteriye);276;;1 vardiya = ayda ~160 saat, müşteriye kestiğin işçilik+makine bedeli
+2 Tezgâh saat ücreti;Dövme Hassas;USD/saat (hammadde hariç, müşteriye);346;;1 vardiya = ayda ~160 saat, müşteriye kestiğin işçilik+makine bedeli
+2 Tezgâh saat ücreti;Dövme Nitelikli;USD/saat (hammadde hariç, müşteriye);425;;1 vardiya = ayda ~160 saat, müşteriye kestiğin işçilik+makine bedeli
+3 Operatör sayısı;Torna Standart;kişi / vardiya;1;;
+3 Operatör sayısı;Torna Hassas;kişi / vardiya;1;;
+3 Operatör sayısı;Torna Nitelikli;kişi / vardiya;1;;
+3 Operatör sayısı;Freze Standart;kişi / vardiya;1;;
+3 Operatör sayısı;Freze Hassas;kişi / vardiya;1;;
+3 Operatör sayısı;Freze Nitelikli;kişi / vardiya;1;;
+3 Operatör sayısı;Taşlama Standart;kişi / vardiya;1;;
+3 Operatör sayısı;Taşlama Hassas;kişi / vardiya;1;;
+3 Operatör sayısı;Taşlama Nitelikli;kişi / vardiya;1;;
+3 Operatör sayısı;Dövme Standart;kişi / vardiya;3;;
+3 Operatör sayısı;Dövme Hassas;kişi / vardiya;3;;
+3 Operatör sayısı;Dövme Nitelikli;kişi / vardiya;2;;
+4 Enerji + sarf (1 vardiya);Torna Standart;USD/ay;840;;Elektrik + kesici uç/soğutma sıvısı, çalışmayan tezgâh ödemez
+4 Enerji + sarf (1 vardiya);Torna Hassas;USD/ay;1200;;Elektrik + kesici uç/soğutma sıvısı, çalışmayan tezgâh ödemez
+4 Enerji + sarf (1 vardiya);Torna Nitelikli;USD/ay;1680;;Elektrik + kesici uç/soğutma sıvısı, çalışmayan tezgâh ödemez
+4 Enerji + sarf (1 vardiya);Freze Standart;USD/ay;1260;;Elektrik + kesici uç/soğutma sıvısı, çalışmayan tezgâh ödemez
+4 Enerji + sarf (1 vardiya);Freze Hassas;USD/ay;1800;;Elektrik + kesici uç/soğutma sıvısı, çalışmayan tezgâh ödemez
+4 Enerji + sarf (1 vardiya);Freze Nitelikli;USD/ay;2520;;Elektrik + kesici uç/soğutma sıvısı, çalışmayan tezgâh ödemez
+4 Enerji + sarf (1 vardiya);Taşlama Standart;USD/ay;1470;;Elektrik + kesici uç/soğutma sıvısı, çalışmayan tezgâh ödemez
+4 Enerji + sarf (1 vardiya);Taşlama Hassas;USD/ay;2100;;Elektrik + kesici uç/soğutma sıvısı, çalışmayan tezgâh ödemez
+4 Enerji + sarf (1 vardiya);Taşlama Nitelikli;USD/ay;2940;;Elektrik + kesici uç/soğutma sıvısı, çalışmayan tezgâh ödemez
+4 Enerji + sarf (1 vardiya);Dövme Standart;USD/ay;3150;;Elektrik + kesici uç/soğutma sıvısı, çalışmayan tezgâh ödemez
+4 Enerji + sarf (1 vardiya);Dövme Hassas;USD/ay;4500;;Elektrik + kesici uç/soğutma sıvısı, çalışmayan tezgâh ödemez
+4 Enerji + sarf (1 vardiya);Dövme Nitelikli;USD/ay;6300;;Elektrik + kesici uç/soğutma sıvısı, çalışmayan tezgâh ödemez
+5 Tezgâh ömrü (amortisman);Torna;yıl;10;;Yenileme zamanı
+5 Tezgâh ömrü (amortisman);Freze;yıl;10;;Yenileme zamanı
+5 Tezgâh ömrü (amortisman);Taşlama;yıl;10;;Yenileme zamanı
+5 Tezgâh ömrü (amortisman);Dövme;yıl;10;;Yenileme zamanı
+6 Teslim süresi (yeni tezgâh);Standart;ay;1;;
+6 Teslim süresi (yeni tezgâh);Hassas;ay;2;;
+6 Teslim süresi (yeni tezgâh);Nitelikli;ay;3;;
+6 İkinci el;Yıllık değer kaybı;% / yıl;7;;Taban: sıfır fiyatın %35'i
+6 İkinci el;Satış oranı (tezgâhı satarsan);% güncel değer;70;;
+7 Personel;Operatör aylık toplam maliyeti (işveren);USD/ay;3000;;Maaş + SGK + yan haklar
+7 Personel;Mesai saat ücreti çarpanı;×;1.5;;
+7 Personel;Yemek+servis (Standart);USD/kişi/ay;600;;
+7 Personel;Yemek+servis+sağlık+prim (İyi);USD/kişi/ay;1200;;
+8 Bina kirası (12 ay sözleşme);150 m²;USD/ay;22500;;Yükseklik 8 m varsayımı
+8 Bina kirası (12 ay sözleşme);300 m²;USD/ay;40600;;Yükseklik 8 m varsayımı
+8 Bina kirası (12 ay sözleşme);600 m²;USD/ay;73200;;Yükseklik 8 m varsayımı
+8 Bina kirası (12 ay sözleşme);1000 m²;USD/ay;117500;;Yükseklik 8 m varsayımı
+8 Bina kirası (12 ay sözleşme);2000 m²;USD/ay;211600;;Yükseklik 8 m varsayımı
+8 Bina kirası (12 ay sözleşme);3500 m²;USD/ay;350000;;Yükseklik 8 m varsayımı
+8 Bina kirası;6 aylık sözleşme farkı;% (kira üstüne);10;;
+8 Bina kirası;24 aylık sözleşme farkı;% (kira altına);10;;
+8 Bina kirası;Erken çıkış bedeli;kira sayısı;2;;
+9 Ekipman fiyatı;Transpalet;USD / adet;5000;;
+9 Ekipman fiyatı;Malzeme kasası;USD / adet;400;;
+9 Ekipman fiyatı;Depo rafı;USD / adet;4000;;
+9 Ekipman fiyatı;El aletleri seti;USD / adet;2000;;
+9 Ekipman fiyatı;Takım ve fikstür seti;USD / adet;2000;;
+9 Ekipman fiyatı;Forklift;USD / adet;40000;;
+9 Ekipman fiyatı;Kalite ölçüm seti;USD / adet;20000;;
+9 Ekipman fiyatı;Köprü vinç;USD / adet;90000;;
+10 İş ve müşteri;Hammaddenin iş bedeline oranı (ortalama);%;68;;Kalan kısım işçilik+makine+marj
+10 İş ve müşteri;Müşteri net marjı, sade iş;% (maliyete göre);15;;
+10 İş ve müşteri;Müşteri net marjı, karmaşık iş;% (maliyete göre);60;;
+10 İş ve müşteri;Peşinat oranı;%;30;;
+10 İş ve müşteri;İşi bırakma cezası;% iş bedeli;10;;
+11 Finans;Başlangıç sermayesi;USD;800000;;
+11 Finans;Kredi tutarı;USD;100000;;
+11 Finans;Kredi faizi;% / ay;1.5;;
+11 Finans;Kredi vadesi;ay;12;;
+11 Finans;Teminat oranı (ipotek);%;125;;
+11 Finans;Erken kapama bedeli;% bakiye;2;;
+12 Diğer (yeni);Yıllık planlı bakım;% tezgâh fiyatı / yıl;(modelde yok);;Bakım problemlerinin dışında düzenli bakım bedeli
+12 Diğer (yeni);Bina sigortası + aidat + vergi;% kira;(modelde yok);;
+12 Diğer (yeni);Ofis / yönetim gideri;USD/ay;(modelde yok);;Muhasebe, internet, yazılım vb.
