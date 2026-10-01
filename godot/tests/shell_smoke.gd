@@ -366,6 +366,12 @@ func _run() -> void:
 		for b in range(a + 1, all_items.size()):
 			if layout_view._editable(all_items[a]) and layout_view._editable(all_items[b]) and not (str(all_items[a]["id"]) == "raf" and str(all_items[b]["id"]) == "raf") and (all_items[a]["rect"] as Rect2).intersects(all_items[b]["rect"]):
 				return _fail("Layout items overlap: %s vs %s" % [all_items[a]["key"], all_items[b]["key"]])
+	var nearest_to_middle := INF
+	for entry in layout_view.items:
+		if entry["kind"] == "machine":
+			nearest_to_middle = minf(nearest_to_middle, ((entry["rect"] as Rect2).get_center()).distance_to(layout_view.interior.size / 2.0))
+	if nearest_to_middle > 4.0:
+		return _fail("Machines must sit around the middle of the plant (nearest is %.1f m away)" % nearest_to_middle)
 	var bench_index := -1
 	for i in layout_view.items.size():
 		if layout_view.items[i]["kind"] == "equip" and layout_view.items[i]["id"] == "el_aleti":
