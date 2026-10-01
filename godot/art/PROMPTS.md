@@ -126,3 +126,17 @@ Kaydet: `godot/art/machines/<ad>.jpg` ve `python tools\art_tools.py resize godot
 A single factory worker seen strictly from above (top-down orthographic), standing, blue work overalls, yellow hard hat, safety vest, arms slightly forward as if operating a machine. Solid pure magenta background (#FF00FF) filling the whole canvas, no floor, no shadow rectangle, photorealistic, about 0.6 x 0.6 m footprint, front of the body faces the BOTTOM of the image.
 ```
 Kesme: `python tools\art_tools.py key worker.png --out godot\art\floor\props` → `worker.png` (oyun yoksa çizilmiş yer tutucu kullanır).
+
+## 6. Müzik (isteğe bağlı) — `godot/audio/music/main.ogg`
+
+Oyun, bu dosya varsa ilk dokunuştan sonra döngüyle çalar; yoksa sessizdir. Ses efektleri (dokunma, onay, para girişi/çıkışı, ay sonu) kodla üretilir, dosya gerekmez. Profil > Ses'ten kapatılır.
+
+Suno/Udio benzeri bir müzik üreticisi için istem (tek parça, 2–3 dakika, kesintisiz döngüye uygun):
+```
+Instrumental background music for a calm business management game about running a small factory. Relaxed focused mood, around 90 BPM, warm electric piano and soft analog synth pads, gentle muted bass, light percussion with subtle mechanical ticks and soft clicks, faint industrial hum in the background, optimistic but serious. No vocals, no sudden loud parts, ends in a way that loops seamlessly.
+```
+İkinci (isteğe bağlı) parça — baskı/kriz anları için: aynı istem, "slightly tense, 110 BPM, minor key, pulsing low synth".
+
+Lisans: üreticinin kullanım koşullarını kontrol edin (ticari kullanım çoğu zaman ücretli plan ister). Alternatif: CC0 / ticari kullanıma açık müzik arşivleri; lisansı dosyayla birlikte saklayın.
+
+Dönüştürme (ffmpeg): `ffmpeg -i parca.mp3 -c:a libvorbis -q:a 4 godot\audio\music\main.ogg` (yaklaşık 3 MB altı hedefleyin).
