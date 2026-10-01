@@ -1,11 +1,13 @@
 extends SceneTree
 
 # Headless policy simulation on the ShellBoss engine (IDEA-015..018 economy).
-# Usage: --script res://tests/shell_sim.gd -- seeds=100 [months=12] [price=0.10] [rev=1] [cash=800] [floor=12]
+# Usage: --script res://tests/shell_sim.gd -- seeds=100 [months=12] [price=0.10] [rev=1] [cash=800] [floor=12] [policy=1]
 # All numbers are test inputs, not balance decisions.
 
 const ShellBoss = preload("res://scripts/shell/shell_boss.gd")
 const Data = preload("res://scripts/shell/shell_data.gd")
+
+static var staff_policy := 1   # 0 Yok, 1 Standart, 2 İyi (arg policy=)
 
 # uid reference: new machines 0-11 (Torna, Freze, Taşlama, Dövme x Standart/Hassas/Nitelikli);
 # second hand: 12 Torna-Std 6y, 13 Torna-Has 4y, 14 Freze-Std 8y, 15 Freze-Nit 3y,
@@ -37,6 +39,8 @@ func _run() -> void:
 			Data.revenue_scale = float(arg.trim_prefix("rev="))
 		elif arg.begins_with("cash="):
 			Data.start_cash = float(arg.trim_prefix("cash="))
+		elif arg.begins_with("policy="):
+			staff_policy = int(arg.trim_prefix("policy="))
 		elif arg.begins_with("floor="):
 			ShellBoss.pool_floor = int(arg.trim_prefix("floor="))
 	print("| Karakter | Kiralanamadı | Ayakta | Zorunlu kapanış | İflas | Ort. son net kasa | En düşük kasa (ort.) | İlk iş ayı | OEE (24 sa, ort.) | Kapasite kullanımı | Ort. vardiya | Geç teslim / teslim | Bırakılan-iptal | Son skor | Teklif: kabul / karşı / ret | Gizli satırlı ay | Danışmansız deneme mümkün | Para engeli |")
@@ -69,6 +73,7 @@ func _play(persona: Dictionary, seed_value: int, months: int, agg: Dictionary) -
 	var game = ShellBoss.new()
 	game.max_months = months
 	game.default_setup(seed_value)
+	game.staff_policy = staff_policy
 	if game.rent_factory(persona["factory"], persona["term"], persona["prepay"]) != "":
 		agg["denied"] += 1
 		return
