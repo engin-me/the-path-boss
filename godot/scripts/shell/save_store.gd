@@ -5,7 +5,7 @@ extends RefCounted
 
 const PATH := "user://savegame.dat"
 const TEMP := "user://savegame.tmp"
-const VERSION := 2
+const VERSION := 3
 
 # Off in headless runs (tests, simulations) so they never touch a real save.
 static var enabled := true

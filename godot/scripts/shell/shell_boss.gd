@@ -47,6 +47,9 @@ var staff_policy := 1   # index into Data.STAFF_POLICIES
 var plan_patron := true   # the owner runs the first shift of one single-operator machine
 var layout := {}   # factory_id -> item key -> {x, y, rot}: cosmetic floor arrangement (IDEA-013)
 
+# Fix costs of problems scaled to the real-world money of the shell (operator about $1k a month).
+const SHELL_MONEY_BANDS := {1: [2.4, 4.0], 2: [4.8, 7.2], 3: [10.0, 14.0], 4: [20.0, 28.0], 5: [40.0, 56.0]}
+
 # ---------------------------------------------------------------- save / load
 
 const BASE_FIELDS := ["phase", "persona", "budget", "skills", "diploma", "start_cash", "cash", "debt", "credit_used", "month", "max_months",
@@ -165,15 +168,48 @@ func base_rent() -> float:
 	return roundf(float(factory()["rent"]) * Data.rent_scale * float(Data.term_by_months(term)["factor"]))
 
 func running_cost() -> float:
-	var cost := 0.0
+	var cost := plant_fixed_cost()
 	for machine in delivered():
 		cost += machine_running_cost(machine)
 	return cost
 
+# Building overhead (tax, service charge, heating, security), indirect staff and the office, paid every month.
+func building_overhead() -> float:
+	return float(factory()["m2"]) * Data.BUILDING_EXTRA_PER_M2 / 1000.0 if factory_id != "" else 0.0
+
+func indirect_count() -> int:
+	return staff_count() / Data.INDIRECT_RATIO
+
+func indirect_cost() -> float:
+	return float(indirect_count()) * Data.INDIRECT_WAGE
+
+# White collar join in order of importance once the plant has more than three machines.
+func office_roles() -> Array:
+	var count := delivered().size()
+	var roles: Array = []
+	for role in Data.OFFICE_ROLES:
+		if count >= int(role["at"]):
+			roles.append(role)
+	var last_at: int = int(Data.OFFICE_ROLES[Data.OFFICE_ROLES.size() - 1]["at"])
+	if count >= last_at + Data.OFFICE_EXTRA_EVERY:
+		var extra := (count - last_at) / Data.OFFICE_EXTRA_EVERY
+		for i in extra:
+			roles.append({"name": "Ofis çalışanı", "at": last_at + Data.OFFICE_EXTRA_EVERY * (i + 1), "cost": Data.OFFICE_EXTRA_COST})
+	return roles
+
+func office_cost() -> float:
+	var total := 0.0
+	for role in office_roles():
+		total += float(role["cost"])
+	return total
+
+func plant_fixed_cost() -> float:
+	return building_overhead() + indirect_cost() + office_cost() if factory_id != "" else 0.0
+
 # What the month really costs after the report: wages always, energy and consumables only for the share of
 # the month a machine actually worked.
 func running_cost_actual() -> float:
-	var cost := 0.0
+	var cost := plant_fixed_cost()
 	for machine in delivered():
 		var potential := float(machine.get("output_last", 0.0))
 		var worked := clampf(float(machine.get("used_last", 0.0)) / potential, 0.0, 1.0) if potential > 0.0 else 0.0
@@ -205,7 +241,7 @@ func machine_wages(machine: Dictionary) -> float:
 	for shift in range(1, int(machine["shifts"]) + 1):
 		if shift == 1 and machine.get("patron", false):
 			continue
-		wages += Data.WAGE * int(machine["personnel"]) * (1.0 + (Data.OT_HOURS_SHARE * Data.OT_WAGE_MULT if plan_ot[shift - 1] else 0.0))
+		wages += Data.wage_for(machine["kind"]) * int(machine["personnel"]) * (1.0 + (Data.OT_HOURS_SHARE * Data.OT_WAGE_MULT if plan_ot[shift - 1] else 0.0))
 		wages += staff_cost_per_head() * int(machine["personnel"])
 	return wages
 
@@ -512,7 +548,7 @@ func area_used() -> float:
 
 func hidden_guarantee() -> float:
 	var current := scale()
-	return float(MONEY_BANDS[int(current["max_tier"])][1]) * float(current["factor"])
+	return float(SHELL_MONEY_BANDS[int(current["max_tier"])][1]) * float(current["factor"])
 
 # Cash needed on acceptance: the material order of a cash-on-order supplier, net of the advance.
 func first_payment(offer: Dictionary) -> float:
@@ -576,7 +612,7 @@ func rent_block_reason(id: String, months: int, prepay: bool) -> String:
 	var first_rent := 0.0 if prepay else float(quote["rent"])
 	# FRZ-002 v3 §4: keep the first month's expense and the hidden-fix guarantee.
 	var size_scale := SCALES[2] if Data.size_class(int(target["m2"])) == "large" else (SCALES[1] if Data.size_class(int(target["m2"])) == "medium" else SCALES[0])
-	var guarantee: float = float(MONEY_BANDS[int(size_scale["max_tier"])][1]) * float(size_scale["factor"])
+	var guarantee: float = float(SHELL_MONEY_BANDS[int(size_scale["max_tier"])][1]) * float(size_scale["factor"])
 	var needed := first_rent + guarantee
 	if cash - due < needed:
 		return "Kiradan sonra kasa %.0f; ilk ay gideri ve gizli sorun güvencesi için en az %.0f gerekli." % [cash - due, needed]
@@ -857,10 +893,10 @@ func serving_basis(kind: String, level: int) -> Dictionary:
 		equiv += 1.0 + (Data.OT_HOURS_SHARE if plan_ot[i] else 0.0)
 	equiv = minf(equiv, 3.0)
 	if not best.is_empty():
-		return {"level": int(best["level"]), "owned": true, "energy": (float(best["energy"]) + float(best["consumables"])) * equiv,
+		return {"level": int(best["level"]), "owned": true, "energy": float(best["energy"]) * equiv,
 			"price": float(best["price"]), "personnel": int(best["personnel"])}
 	var list: float = Data.list_price(kind, level)
-	return {"level": level, "owned": false, "energy": list * (Data.ENERGY_RATE + Data.CONSUMABLE_RATE) * equiv,
+	return {"level": level, "owned": false, "energy": Data.energy_month(int(list / 4.0)) * equiv,
 		"price": list, "personnel": Data.personnel_for(kind, level)}
 
 # Straight-line write-off per month of everything delivered (accounting only; the cash left when it was bought).
@@ -876,41 +912,56 @@ func monthly_amortization() -> float:
 # material is never editable.
 func cost_estimate(offer: Dictionary, edits := {}) -> Dictionary:
 	var supplier := Data.supplier_by_id(default_supplier)
-	var material := float(offer["material"]) * float(supplier["price"])
+	var supplier_price := float(supplier["price"])
 	var quality := int(supplier["quality"])
-	var weight_sum := 0.0
-	for req in offer["reqs"]:
-		weight_sum += float(req["workload"]) * Data.price_x(req["kind"])
-	# fixed plant costs (rent and loan installment) are shared by the machines the plant is sized for
-	# (area / a typical 30 m2 work zone), or by the machines owned when there are more of them
+	var material := float(offer["material"]) * supplier_price
+	# fixed plant costs (rent, building overhead, indirect staff, office, loan) are shared by the machines the
+	# plant is sized for (area / a typical 30 m2 work zone), or by the machines owned when there are more of them
 	var slots := maxf(float(machines.size()), floorf(float(factory()["m2"]) / 30.0) if factory_id != "" else 1.0)
-	var fixed_share := (base_rent() + (float(loan["installment"]) if not loan.is_empty() else 0.0)) / maxf(1.0, slots)
+	var fixed_pool := base_rent() + plant_fixed_cost() + (float(loan["installment"]) if not loan.is_empty() else 0.0)
+	var fixed_share := fixed_pool / maxf(1.0, slots)
 	var lines: Array = []
 	var total := material
 	var base_total := material
 	for i in offer["reqs"].size():
 		var req: Dictionary = offer["reqs"][i]
 		var edit: Dictionary = edits.get(i, {})
-		var share := float(req["workload"]) * Data.price_x(req["kind"]) / maxf(0.001, weight_sum)
-		var material_part := material * share
+		var material_part := float(req["material_part"]) * supplier_price
 		var months := float(req["count"]) * float(offer["duration"])
 		var rate := Data.scrap_rate(req["kind"], int(req["level"]), quality)
 		var rate_used := maxf(0.0, rate + float(edit.get("scrap_pt", 0.0)) / 100.0)
 		var basis := serving_basis(req["kind"], int(req["level"]))
-		var overhead_base := months * (fixed_share + float(basis["energy"]))
-		var personnel_base := months * (Data.WAGE + staff_cost_per_head()) * float(basis["personnel"])
+		var energy_base := months * float(basis["energy"])
+		var overhead_base := months * fixed_share + energy_base
+		var personnel_base := months * (Data.wage_for(req["kind"]) + staff_cost_per_head()) * float(basis["personnel"])
 		var amort_base := months * float(basis["price"]) / float(Data.AMORT_MONTHS)
+		var consumables_base := Data.CONSUMABLE_SHARE * (material_part + personnel_base + energy_base)
 		var line := {"kind": req["kind"], "level": req["level"], "count": req["count"], "months": months,
 			"material_part": material_part, "scrap_rate": rate, "scrap_rate_used": rate_used, "scrap_range": Data.scrap_range(req["kind"], int(req["level"])),
 			"scrap": material_part * rate_used, "overhead": overhead_base * (1.0 + float(edit.get("overhead_pct", 0.0)) / 100.0),
 			"personnel": personnel_base * (1.0 + float(edit.get("personnel_pct", 0.0)) / 100.0),
 			"amortization": amort_base * (1.0 + float(edit.get("amortization_pct", 0.0)) / 100.0),
+			"consumables": consumables_base * (1.0 + float(edit.get("consumables_pct", 0.0)) / 100.0),
 			"serving_level": basis["level"], "serving_owned": basis["owned"]}
-		line["subtotal"] = float(line["scrap"]) + float(line["overhead"]) + float(line["personnel"]) + float(line["amortization"])
+		line["subtotal"] = float(line["scrap"]) + float(line["overhead"]) + float(line["personnel"]) + float(line["amortization"]) + float(line["consumables"])
 		total += float(line["subtotal"])
-		base_total += material_part * rate + overhead_base + personnel_base + amort_base
+		base_total += material_part * rate + overhead_base + personnel_base + amort_base + consumables_base
 		lines.append(line)
 	return {"material": material, "lines": lines, "total": total, "base_total": base_total}
+
+# Raw material turned into parts this month (for the consumables share of the production cost).
+func material_used_month(job: Dictionary) -> float:
+	var order: Dictionary = job.get("order", {})
+	var supplier := Data.supplier_by_id(String(order.get("supplier", default_supplier)))
+	var material: float = float(order["amount"]) if order.has("amount") else float(job["material"]) * float(supplier["price"])
+	var weight_sum := 0.0
+	for req in job["reqs"]:
+		weight_sum += float(req["material_part"])
+	var used := 0.0
+	for req in job["reqs"]:
+		var share := float(req["material_part"]) / maxf(0.001, weight_sum)
+		used += material * share * float(req.get("made_month", 0.0)) / maxf(1.0, float(req["workload"]))
+	return used
 
 # Material scrapped this month: the drawn rate of each requirement, on the material of the parts
 # that were actually made (flash and chips are already inside the raw-material price).
@@ -921,12 +972,12 @@ func scrap_cost_month(job: Dictionary) -> float:
 	var material: float = float(order["amount"]) if order.has("amount") else float(job["material"]) * float(supplier["price"])
 	var weight_sum := 0.0
 	for req in job["reqs"]:
-		weight_sum += float(req["workload"]) * Data.price_x(req["kind"])
+		weight_sum += float(req["material_part"])
 	var cost := 0.0
 	var draws: Array = job.get("scrap_draws", [])
 	for i in job["reqs"].size():
 		var req: Dictionary = job["reqs"][i]
-		var share := float(req["workload"]) * Data.price_x(req["kind"]) / maxf(0.001, weight_sum)
+		var share := float(req["material_part"]) / maxf(0.001, weight_sum)
 		var drawn: float = Data.scrap_at(req["kind"], int(req["level"]), Data.scrap_position(float(draws[i]), quality)) if i < draws.size() else Data.scrap_rate(req["kind"], int(req["level"]), quality)
 		cost += material * share * drawn * float(req.get("made_month", 0.0)) / maxf(1.0, float(req["workload"]))
 	return cost
@@ -1308,7 +1359,13 @@ func close_month() -> String:
 		lines.append("Kira: %s" % Data.usd(base_rent()))
 	var running := running_cost_actual()
 	cash -= running
-	lines.append("Enerji (yalnızca çalışan tezgahlar), sarf ve personel: %s" % Data.usd(running))
+	lines.append("Personel, enerji (yalnızca çalışan tezgahlar), bina işletme, dolaylı ve ofis kadrosu: %s" % Data.usd(running))
+	var material_used := 0.0
+	for job in jobs:
+		material_used += material_used_month(job)
+	var consumables := Data.CONSUMABLE_SHARE * (running + material_used)
+	cash -= consumables
+	lines.append("Sarf malzeme (üretim maliyetinin %%%.1f'i): %s" % [Data.CONSUMABLE_SHARE * 100.0, Data.usd(consumables)])
 	if not loan.is_empty():
 		var interest := float(loan["balance"]) * float(loan["rate"])
 		var principal := float(loan["installment"]) - interest
@@ -1431,7 +1488,7 @@ func _generate_problems(events: int) -> void:
 			if pick <= 0:
 				tier = candidate
 				break
-		var band: Array = MONEY_BANDS[tier]
+		var band: Array = SHELL_MONEY_BANDS[tier]
 		var hour_band: Array = HOUR_BANDS[tier]
 		problems["k%d" % next_id] = {
 			"department": department, "tier": tier, "loss": loss, "base_loss": loss, "active": true, "attempted": 0,
