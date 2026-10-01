@@ -183,7 +183,7 @@ const TITLES := {
 static var price_per_x := 0.13  # units (k$) per x for a Torna; other kinds scale with machine price and nameplate
 static var revenue_scale := 1.0  # calibration input for simulations (not a rule)
 static var rent_scale := 1.0  # kept at 1.0; rents in FACTORIES are already the calibrated values
-static var start_cash := 800.0
+static var start_cash := 5000.0  # TEST: 800.0 is the calibrated value; raised to try big buildings and all machines
 # Suppliers (foreign names). price = factor on the job's material estimate; lead = months until
 # the material arrives; terms = months after ordering until payment is due; delay = chance of +1 month;
 # quality 1..3 changes the job's yield (scrap): 1 Ekonomik, 2 Standart, 3 Premium.
