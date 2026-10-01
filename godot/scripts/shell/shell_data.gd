@@ -63,6 +63,14 @@ const LEVEL_PERF := {1: 0.70, 2: 0.80, 3: 0.90}
 const SCRAP_BASE := {"Torna": 0.03, "Freze": 0.04, "Taşlama": 0.06, "Dövme": 0.09}  # Standart level
 const SCRAP_LEVEL_DELTA := {1: 0.0, 2: -0.005, 3: -0.01}
 const SCRAP_FLOOR := 0.02
+# Job scrap range by the machine kind and level the job needs (share of the material). The estimate uses the
+# middle of the range; the real value is drawn inside it when the job is accepted. Placeholder numbers.
+const SCRAP_RANGE := {
+	"Torna": {1: [0.01, 0.04], 2: [0.05, 0.08], 3: [0.08, 0.12]},
+	"Freze": {1: [0.01, 0.05], 2: [0.06, 0.12], 3: [0.12, 0.16]},
+	"Taşlama": {1: [0.01, 0.06], 2: [0.07, 0.14], 3: [0.15, 0.20]},
+	"Dövme": {1: [0.08, 0.15], 2: [0.16, 0.24], 3: [0.25, 0.35]}
+}
 const LEVEL_LETTER := {1: "A", 2: "B", 3: "C"}  # engine machine class (BossState legacy key)
 const LEVEL_AREA := {1: 25.0, 2: 30.0, 3: 40.0}
 const TYPE_AREA := {"Torna": 1.0, "Freze": 1.2, "Taşlama": 1.1, "Dövme": 2.2}
@@ -133,8 +141,8 @@ static func _listing(uid: int, type: String, level: int, age: int, discount: flo
 # Required equipment set per factory size class; optional items are bought singly.
 const PACKAGE_CLASSES := {
 	"small": {"transpalet": 1, "kasa": 10, "raf": 4, "el_aleti": 2, "takim": 5},
-	"medium": {"transpalet": 2, "kasa": 16, "raf": 14, "el_aleti": 3, "takim": 3},
-	"large": {"transpalet": 4, "kasa": 30, "raf": 28, "el_aleti": 6, "takim": 6}
+	"medium": {"transpalet": 2, "kasa": 16, "raf": 7, "el_aleti": 3, "takim": 8},
+	"large": {"transpalet": 4, "kasa": 30, "raf": 14, "el_aleti": 6, "takim": 15}
 }
 const EQUIPMENT := {
 	"transpalet": {"name": "Transpalet", "price": 5.0, "area": 0.0, "required": true, "note": "Kasa ve palet taşıma"},
@@ -234,15 +242,23 @@ static func price_x(kind: String) -> float:
 	return price_per_x * revenue_scale * float(TYPE_PRICE[kind]) / 80.0 * 2000.0 / float(NAMEPLATE[kind])
 
 const DIFFICULTY_SYMBOL := "μ"   # Parça İşleme Katsayısı: higher = harder part
-const OVERHEAD_ESTIMATE := 6.0   # plant overhead share per machine-month used in the cost estimate (mock)
+const OVERHEAD_ESTIMATE := 6.0   # plant overhead share per machine-month in the cost estimate (placeholder; see the open question on deriving it)
+const OT_HOURS_SHARE := 0.5   # overtime adds 4 h to an 8 h shift
+const OT_WAGE_MULT := 1.5     # overtime hours cost 1.5x the hourly wage
 
 static func mu_text(value: float) -> String:
 	return "%s %s" % [DIFFICULTY_SYMBOL, str(value).trim_suffix(".0")]
 
-# Scrap share of a machine kind/level (the listing's own value), made worse or better by the supplier's yield.
+static func scrap_range(kind: String, level: int) -> Array:
+	return SCRAP_RANGE[kind][level]
+
+static func scrap_with_yield(rate: float, yield_factor: float) -> float:
+	return maxf(0.0, 1.0 - yield_factor * (1.0 - rate))
+
+# Expected job scrap: the middle of the range, made worse or better by the supplier's yield.
 static func scrap_rate(kind: String, level: int, yield_factor := 1.0) -> float:
-	var base := maxf(SCRAP_FLOOR, float(SCRAP_BASE[kind]) + float(SCRAP_LEVEL_DELTA[level]))
-	return maxf(0.0, 1.0 - yield_factor * (1.0 - base))
+	var range_: Array = SCRAP_RANGE[kind][level]
+	return scrap_with_yield((float(range_[0]) + float(range_[1])) / 2.0, yield_factor)
 
 static func difficulty(level: int, rng: RandomNumberGenerator) -> float:
 	var pool := {1: [1.0, 1.5], 2: [1.5, 2.0], 3: [2.0, 2.5]}

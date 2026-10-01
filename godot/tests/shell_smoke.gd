@@ -111,6 +111,38 @@ func _run() -> void:
 		game.set_shifts(machine["uid"], 1)
 	if game.set_overtime(true) == "":
 		return _fail("Overtime on a medium plant must be refused (hidden-fix hour guarantee)")
+	# ---- factory shift plan: every machine follows it; overtime is +0.5 shift at 1.5x pay and never with three shifts
+	var plan_game = Boss.new()
+	plan_game.default_setup(9)
+	plan_game.cash = 2000.0
+	plan_game.rent_factory("factory_1", 12, false)
+	plan_game.buy_package()
+	plan_game.buy_listing(13)
+	plan_game.run_report()
+	plan_game.close_month()
+	plan_game.problems.clear()
+	var plan_machine: Dictionary = plan_game.delivered()[0]
+	var plan_base: float = plan_game.effective_capacity()
+	if plan_game.set_plan(2, [false, false, false], false) != "" or int(plan_machine["shifts"]) != 2 or not _near(plan_game.effective_capacity() / plan_base, 2.0, 0.01):
+		return _fail("A two-shift plan must run every machine on two shifts")
+	if plan_game.set_plan(3, [true, true, true], false) != "" or plan_game.plan_ot.has(true) or int(plan_machine["shifts"]) != 3:
+		return _fail("Three shifts must clear every overtime tick")
+	plan_game.set_plan(2, [true, true, false], false)
+	if not _near(plan_game.shift_equiv(plan_machine), 3.0, 0.001):
+		return _fail("Two shifts with overtime equal 3 shift-equivalents")
+	var crews := float(plan_machine["personnel"])
+	if not _near(plan_game.machine_wages(plan_machine), Data.WAGE * crews * 2.0 * (1.0 + Data.OT_HOURS_SHARE * Data.OT_WAGE_MULT), 0.001):
+		return _fail("Overtime hours must cost 1.5x the wage")
+	var plan_copy = Boss.new()
+	if plan_copy.from_save(plan_game.to_save()) != "" or plan_copy.plan_shifts != 2 or not bool(plan_copy.plan_ot[1]):
+		return _fail("The shift plan must survive the save round trip")
+	# ---- job scrap: drawn inside the table range, charged at delivery
+	var plan_offer: Dictionary = plan_game.offers[0]
+	var estimate: Dictionary = plan_game.cost_estimate(plan_offer)
+	for line in estimate["lines"]:
+		var span: Array = line["scrap_range"]
+		if float(line["scrap_rate"]) < float(span[0]) - 0.0001 or float(line["scrap_rate"]) > float(span[1]) + 0.0001:
+			return _fail("The scrap estimate must sit inside the table range")
 	# ---- FIFO workload and on-time delivery
 	var fresh = Boss.new()
 	fresh.default_setup(5)

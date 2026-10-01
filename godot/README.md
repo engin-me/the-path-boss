@@ -51,3 +51,10 @@ Godot motoruyla kısa otomatik kontrol:
 ```powershell
 & 'C:\Users\emrah.engin\Downloads\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64_console.exe' --headless --path godot --script res://tests/smoke.gd
 ```
+
+## Fabrika kabuğu: son eklemeler (test aşaması, yer tutucu sayılar)
+
+- **Üstten yerleşim:** başlangıç eşyaları bina içinde sabit tohumla dağılır (raflar sol duvarda yarı yarıya binen "tren"), konumlar kayda yazılır. ✎ düzenleme modu: sürükle (0,5 m ızgara, üst üste binmez), ⟳ döndür, ↺ sıfırla. Yerleşimin oyuna etkisi yoktur (IDEA-013).
+- **Vardiya planı (Fabrika > Vardiya):** 1. vardiya hep açık; 2. ve 3. vardiya ardışık; mesai bir vardiyaya +4 sa (+0,5 vardiya, saatlik ücret 1,5×), üç vardiyada mesai yok; "Patron operatörlük yapar" tek operatörlü bir tezgahın 1. vardiyasını otomatik atar.
+- **Teklif maliyeti:** hammadde sabit; her tezgah türü için ayrı kart (hurda, genel gider, personel). Hurda aralığı tablo ile verilir (`SCRAP_RANGE`), tahmin orta noktadır, gerçek oran işi alınca aralıkta çekilir ve tesliminde hammaddeden düşülür. Oyuncu kendi varsayımlarını değiştirebilir; fiyat = toplam maliyet × (1 + marj).
+- **μ (Parça İşleme Katsayısı):** yüksek = zor parça; iş yükü = parça × μ, birim "x".

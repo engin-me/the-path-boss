@@ -426,7 +426,7 @@ func _render() -> void:
 	var show_floor: bool = rented and subtab["fabrika"] == "yerlesim"
 	scroll_view.visible = not show_floor
 	if rented:
-		_chips(sticky, [{"id": "yerlesim", "title": "Yerleşim (üstten)"}, {"id": "sozlesme", "title": "Sözleşme"}], subtab["fabrika"],
+		_chips(sticky, [{"id": "yerlesim", "title": "Yerleşim (üstten)"}, {"id": "vardiya", "title": "Vardiya"}, {"id": "sozlesme", "title": "Sözleşme"}], subtab["fabrika"],
 			func(id: String) -> void:
 				subtab["fabrika"] = id
 				_render())
@@ -923,7 +923,8 @@ func _detail_quote() -> void:
 		var edit: Dictionary = quote_edit.get(i, {})
 		var card := _card(content, "%s %s tezgahı · %d makine × %d ay" % [Data.LEVELS[int(line["level"])], line["kind"], int(line["count"]), int(offer["duration"])], BORDER)
 		_stepper(card, "Hurda giderleri", "%%%.0f · %s" % [float(line["scrap_rate_used"]) * 100.0, Data.usd(float(line["scrap"]))], i, "scrap_pt", 1.0, edit.has("scrap_pt") and float(edit["scrap_pt"]) != 0.0)
-		card.add_child(_label("Bu tezgahın ortalaması %%%.1f; teklifte düşürmek fiyatı indirir, gerçek hurda aynı kalır." % (float(line["scrap_rate"]) * 100.0), 11, MUTED))
+		var span: Array = line["scrap_range"]
+		card.add_child(_label("Bu tür iş için olağan aralık %%%d–%%%d (ortalama %%%.1f); işi alınca gerçek oran bu aralıkta çıkar. Tahmini düşürmek fiyatı indirir, gerçek hurda aynı kalır." % [int(roundf(float(span[0]) * 100.0)), int(roundf(float(span[1]) * 100.0)), float(line["scrap_rate"]) * 100.0], 11, MUTED))
 		_stepper(card, "Genel giderler", Data.usd(float(line["overhead"])), i, "overhead_pct", 10.0, edit.has("overhead_pct") and float(edit["overhead_pct"]) != 0.0)
 		_stepper(card, "Personel giderleri", Data.usd(float(line["personnel"])), i, "personnel_pct", 10.0, edit.has("personnel_pct") and float(edit["personnel_pct"]) != 0.0)
 		_row(card, "Tezgah maliyeti", Data.usd(float(line["subtotal"])), GREEN, 15)
@@ -1267,6 +1268,9 @@ func _buy_equipment(id: String, qty: int) -> void:
 # ------------------------------------------------------------------ Fabrika
 
 func _page_fabrika() -> void:
+	if game.factory_id != "" and subtab["fabrika"] == "vardiya":
+		_page_shifts()
+		return
 	if game.factory_id != "":
 		var factory: Dictionary = game.factory()
 		var box := _card(content, "Kiraladığın yer", GREEN, true)
@@ -1289,6 +1293,70 @@ func _page_fabrika() -> void:
 		_row(box, "Tavan yüksekliği", "%.1f m" % factory["height"], TEXT, 16)
 		_row(box, "Aylık kira (Sözleşme: 12 Ay)", Data.usd(float(factory["rent"])), GREEN, 18)
 		box.add_child(_button("İncele", _open_detail.bind("factory", factory["id"]), true, false, true))
+
+# ------------------------------------------------------------------ Vardiya
+
+func _page_shifts() -> void:
+	var editable: bool = game.phase == "offers"
+	var box := _card(content, "Vardiya planı", GREEN, true)
+	box.add_child(_label("Plan tüm tezgahlar için geçerlidir. 1. vardiya her zaman açıktır. Mesai bir vardiyaya +4 saat ekler, saatlik ücret 1,5 katıdır; üç vardiyada mesai olmaz.", 12, MUTED))
+	if not editable:
+		box.add_child(_label("Vardiya ve mesai ay başında (rapordan önce) değiştirilir.", 12, GOLD))
+	for n in [1, 2, 3]:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		var tick := CheckBox.new()
+		tick.text = "Vardiya %d" % n
+		tick.add_theme_font_size_override("font_size", 15)
+		tick.custom_minimum_size = Vector2(0, 48)
+		tick.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		tick.button_pressed = game.plan_shifts >= n
+		tick.disabled = n == 1 or not editable
+		tick.toggled.connect(_on_shift_tick.bind(n))
+		row.add_child(tick)
+		var overtime := CheckBox.new()
+		overtime.text = "Mesai (+4 sa)"
+		overtime.add_theme_font_size_override("font_size", 14)
+		overtime.custom_minimum_size = Vector2(0, 48)
+		overtime.button_pressed = bool(game.plan_ot[n - 1])
+		overtime.disabled = not editable or n > game.plan_shifts or game.plan_shifts >= 3
+		overtime.toggled.connect(_on_overtime_tick.bind(n))
+		row.add_child(overtime)
+		box.add_child(row)
+	var patron := CheckBox.new()
+	patron.text = "Patron operatörlük yapar"
+	patron.add_theme_font_size_override("font_size", 15)
+	patron.custom_minimum_size = Vector2(0, 52)
+	patron.button_pressed = game.plan_patron
+	patron.disabled = not editable
+	patron.toggled.connect(_on_patron_tick)
+	box.add_child(patron)
+	box.add_child(_label("Patron tek operatörlü bir tezgahın 1. vardiyasını kendisi çalıştırır (otomatik atanır); o tezgahta 2 vardiya için tek personel yeter. Yönetim saatinden %d sa harcar." % game.patron_hours(), 12, MUTED))
+	var summary := _card(content, "Sonuç", BORDER)
+	_row(summary, "Personel (otomatik istihdam)", "%d kişi" % game.staff_count(), TEXT, 15)
+	var wages := 0.0
+	for machine in game.delivered():
+		wages += game.machine_wages(machine)
+	_row(summary, "Aylık personel gideri", Data.usd(wages), TEXT, 15)
+	_row(summary, "Etkin kapasite", "%s/ay" % _xfmt(game.effective_capacity()), GREEN, 15)
+	summary.add_child(_label("Personel, makineler teslim alındığında kadroya girer; vardiya artınca otomatik işe alınır.", 12, MUTED))
+
+func _on_shift_tick(on: bool, n: int) -> void:
+	_apply_plan(n if on else n - 1, game.plan_ot.duplicate(), game.plan_patron)
+
+func _on_overtime_tick(on: bool, n: int) -> void:
+	var overtime: Array = game.plan_ot.duplicate()
+	overtime[n - 1] = on
+	_apply_plan(game.plan_shifts, overtime, game.plan_patron)
+
+func _on_patron_tick(on: bool) -> void:
+	_apply_plan(game.plan_shifts, game.plan_ot.duplicate(), on)
+
+func _apply_plan(shifts: int, overtime: Array, patron: bool) -> void:
+	var result: String = game.set_plan(shifts, overtime, patron)
+	if result != "":
+		_say(result)
+	_render()
 
 # ------------------------------------------------------------------ Profil
 
@@ -1594,56 +1662,12 @@ func _detail_machines() -> void:
 		_row(box, "Teorik · performans · hurda", "%s · %%%d · %%%.1f" % [_xfmt(float(machine["nameplate"])), int(roundf(float(machine["perf"]) * 100.0)), float(machine["scrap"]) * 100.0], TEXT, 14)
 		_row(box, "Güncel değer", Data.usd(game.current_value(machine)), TEXT, 15)
 		if delivered:
-			_row(box, "Vardiya", "%d%s" % [machine["shifts"], " (+mesai)" if machine.get("patron", false) and game.patron_overtime else ""], TEXT, 15)
+			_row(box, "Vardiya", "%d%s%s" % [machine["shifts"], " (+mesai)" if game.plan_ot[0] else "", " · 1. vardiya patron" if machine.get("patron", false) else ""], TEXT, 15)
 			_row(box, "Etkin çıktı", "%s/ay" % _xfmt(game.machine_output(machine, mults)), GREEN, 15)
 			_row(box, "Aylık işletme", Data.usd(game.machine_running_cost(machine)), TEXT, 15)
-			var shifts_row := HBoxContainer.new()
-			shifts_row.add_theme_constant_override("separation", 10)
-			shifts_row.add_child(_button("− vardiya", _change_shifts.bind(machine["uid"], -1), false, int(machine["shifts"]) <= 1 or game.phase != "offers"))
-			shifts_row.add_child(_button("+ vardiya", _change_shifts.bind(machine["uid"], 1), false, int(machine["shifts"]) >= 3 or game.phase != "offers"))
-			for child in shifts_row.get_children():
-				child.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			box.add_child(shifts_row)
-			if int(machine["personnel"]) == 1:
-				var own := CheckBox.new()
-				own.text = "Bu makinenin 1. vardiyasını ben çalıştırırım"
-				own.add_theme_font_size_override("font_size", 14)
-				own.custom_minimum_size = Vector2(0, 48)
-				own.button_pressed = machine.get("patron", false)
-				own.disabled = game.phase != "offers"
-				own.toggled.connect(_toggle_patron.bind(machine["uid"]))
-				box.add_child(own)
-				if machine.get("patron", false):
-					var ot := CheckBox.new()
-					ot.text = "Mesai (+%50, daha çok yönetim saati harcar)"
-					ot.add_theme_font_size_override("font_size", 14)
-					ot.custom_minimum_size = Vector2(0, 48)
-					ot.button_pressed = game.patron_overtime
-					ot.disabled = game.phase != "offers"
-					ot.toggled.connect(_toggle_overtime)
-					box.add_child(ot)
-					box.add_child(_label("Patron vardiyası aylık yönetim saatinden %d sa alır." % game.patron_hours(), 12, MUTED))
+			box.add_child(_label("Vardiya ve mesai Fabrika > Vardiya bölümünden ayarlanır.", 12, MUTED))
 		var reason: String = game.sell_block_reason(machine["uid"])
 		box.add_child(_button("Sat · +%s" % Data.usd(game.sale_income(machine)) if reason == "" else reason, _ask_sell.bind(machine["uid"]), false, reason != ""))
-
-func _change_shifts(uid: int, delta: int) -> void:
-	var machine: Dictionary = game.machine_by_uid(uid)
-	var result: String = game.set_shifts(uid, int(machine["shifts"]) + delta)
-	if result != "":
-		_say(result)
-	_render()
-
-func _toggle_patron(on: bool, uid: int) -> void:
-	var result: String = game.set_patron(uid, on)
-	if result != "":
-		_say(result)
-	_render()
-
-func _toggle_overtime(on: bool) -> void:
-	var result: String = game.set_overtime(on)
-	if result != "":
-		_say(result)
-	_render()
 
 func _ask_sell(uid: int) -> void:
 	var machine: Dictionary = game.machine_by_uid(uid)
@@ -1671,7 +1695,7 @@ func _detail_oee() -> void:
 	for machine in game.delivered():
 		_row(cap, machine["model"], "%s/ay · %d vardiya" % [_xfmt(game.machine_output(machine, mults)), machine["shifts"]], TEXT, 14)
 	var how := _card(content, "OEE nasıl hesaplanır?")
-	how.add_child(_label("OEE (24 saat) = vardiya/3 × performans × (1 − hurda) × sorun çarpanı. Tek vardiya = 1/3; mesaiyle 0,5; üç vardiya = 1. Sorunlar: Bakım/Planlama/Depo → kullanılabilirlik, Üretim → performans, Kalite → hurda. Finans gibi alanlar OEE dışı net çıktıyı düşürür.", 12, MUTED))
+	how.add_child(_label("OEE (24 saat) = vardiya/3 × performans × (1 − hurda) × sorun çarpanı. Tek vardiya = 1/3; bir vardiyaya mesai (+4 sa) 0,5 vardiya ekler; üç vardiya = 1. Sorunlar: Bakım/Planlama/Depo → kullanılabilirlik, Üretim → performans, Kalite → hurda. Finans gibi alanlar OEE dışı net çıktıyı düşürür.", 12, MUTED))
 
 func _detail_costs() -> void:
 	var box := _card(content, "Aylık gider dökümü", BORDER, true)
@@ -1679,11 +1703,7 @@ func _detail_costs() -> void:
 	var energy := 0.0
 	var wages := 0.0
 	for machine in game.delivered():
-		var wage := 0.0
-		for shift in range(1, int(machine["shifts"]) + 1):
-			if not (shift == 1 and machine.get("patron", false)):
-				wage += Data.WAGE * int(machine["personnel"])
-		wages += wage
+		wages += game.machine_wages(machine)
 		energy += (float(machine["energy"]) + float(machine["consumables"])) * game.shift_equiv(machine)
 		_row(box, machine["model"], Data.usd(game.machine_running_cost(machine)), MUTED, 13)
 	_row(box, "Enerji + sarf", Data.usd(energy), TEXT, 15)

@@ -41,6 +41,9 @@ var default_supplier := "nord"
 var quote_mode := true
 var mails: Array = []
 var next_mail := 1
+var plan_shifts := 1   # factory shift plan (applies to every machine; machines can still differ in tests)
+var plan_ot := [false, false, false]   # overtime per shift row
+var plan_patron := true   # the owner runs the first shift of one single-operator machine
 var layout := {}   # factory_id -> item key -> {x, y, rot}: cosmetic floor arrangement (IDEA-013)
 
 # ---------------------------------------------------------------- save / load
@@ -57,6 +60,9 @@ func to_save() -> Dictionary:
 		data[field] = get(field)
 	data["machines"] = machines.duplicate(true)
 	data["layout"] = layout.duplicate(true)
+	data["plan_shifts"] = plan_shifts
+	data["plan_ot"] = plan_ot.duplicate()
+	data["plan_patron"] = plan_patron
 	data["offers"] = offers.duplicate(true)
 	data["rng_seed"] = rng.seed
 	data["rng_state"] = rng.state
@@ -75,6 +81,9 @@ func from_save(data: Dictionary) -> String:
 		set(field, copy[field])
 	machines.assign(copy["machines"])
 	layout = copy.get("layout", {})
+	plan_shifts = int(copy.get("plan_shifts", 1))
+	plan_ot = copy.get("plan_ot", [false, false, false]).duplicate()
+	plan_patron = bool(copy.get("plan_patron", true))
 	offers.assign(copy["offers"])
 	rng.seed = int(copy["rng_seed"])
 	rng.state = int(copy["rng_state"])
@@ -168,21 +177,36 @@ func delivered() -> Array:
 # ---------------------------------------------------------------- shifts, patron, OEE (IDEA-018)
 
 func shift_equiv(machine: Dictionary) -> float:
-	var shifts := float(machine["shifts"])
-	if machine.get("patron", false) and patron_overtime:
-		shifts += 0.5
-	return minf(shifts, 3.0)
+	var equiv := 0.0
+	for i in clampi(int(machine["shifts"]), 1, 3):
+		equiv += 1.0 + (Data.OT_HOURS_SHARE if plan_ot[i] else 0.0)
+	return minf(equiv, 3.0)
 
 func availability(machine: Dictionary) -> float:
 	return shift_equiv(machine) / 3.0
 
-func machine_running_cost(machine: Dictionary) -> float:
+# Staff of one machine: one crew per shift (the owner covers the first shift of his own machine);
+# overtime hours cost 1.5x, so a shift with overtime costs 1 + 0.5 x 1.5 = 1.75 crews.
+func machine_wages(machine: Dictionary) -> float:
 	var wages := 0.0
 	for shift in range(1, int(machine["shifts"]) + 1):
 		if shift == 1 and machine.get("patron", false):
 			continue
-		wages += Data.WAGE * int(machine["personnel"])
-	return (float(machine["energy"]) + float(machine["consumables"])) * shift_equiv(machine) + wages
+		wages += Data.WAGE * int(machine["personnel"]) * (1.0 + (Data.OT_HOURS_SHARE * Data.OT_WAGE_MULT if plan_ot[shift - 1] else 0.0))
+	return wages
+
+func machine_running_cost(machine: Dictionary) -> float:
+	return (float(machine["energy"]) + float(machine["consumables"])) * shift_equiv(machine) + machine_wages(machine)
+
+# People on the payroll for the current plan.
+func staff_count() -> int:
+	var count := 0
+	for machine in delivered():
+		for shift in range(1, int(machine["shifts"]) + 1):
+			if shift == 1 and machine.get("patron", false):
+				continue
+			count += int(machine["personnel"])
+	return count
 
 func patron_machine() -> Dictionary:
 	for machine in machines:
@@ -237,14 +261,49 @@ func set_patron(uid: int, on: bool) -> String:
 func set_overtime(on: bool) -> String:
 	if phase != "offers":
 		return "Mesai ay başında (rapordan önce) ayarlanır."
+	if on and plan_shifts >= 3:
+		return "Üç vardiyada mesai olmaz."
 	var machine := patron_machine()
-	if on and machine.is_empty():
-		return "Önce bir makineyi sen çalıştırmalısın."
-	if on:
+	if on and not machine.is_empty():
 		var reason := patron_block_reason(machine["uid"], true)
 		if reason != "":
 			return reason
-	patron_overtime = on
+	plan_ot[0] = on
+	patron_overtime = on and not machine.is_empty()
+	return ""
+
+# Factory shift plan: `shifts` crews run every machine, `overtime[i]` adds 4 hours to shift i+1
+# (never with three shifts) and `patron` lets the owner run the first shift of one single-operator machine.
+func set_plan(shifts: int, overtime: Array, patron: bool) -> String:
+	if phase != "offers":
+		return "Vardiya ve mesai ay başında (rapordan önce) ayarlanır."
+	shifts = clampi(shifts, 1, 3)
+	var ot := [false, false, false]
+	for i in shifts:
+		ot[i] = bool(overtime[i]) and shifts < 3
+	if patron:
+		var machine := patron_machine()
+		if machine.is_empty():
+			for candidate in delivered():
+				if int(candidate["personnel"]) == 1 and patron_block_reason(candidate["uid"], ot[0]) == "":
+					machine = candidate
+					break
+		if not machine.is_empty():
+			var reason := patron_block_reason(machine["uid"], ot[0])
+			if reason != "":
+				return reason
+			for other in machines:
+				other["patron"] = false
+			machine["patron"] = true
+	else:
+		for other in machines:
+			other["patron"] = false
+	plan_patron = patron
+	plan_shifts = shifts
+	plan_ot = ot
+	patron_overtime = ot[0] and not patron_machine().is_empty()
+	for machine in machines:
+		machine["shifts"] = shifts
 	return ""
 
 func set_shifts(uid: int, shifts: int) -> String:
@@ -258,7 +317,7 @@ func set_shifts(uid: int, shifts: int) -> String:
 
 # A solo patron runs the first single-operator machine that arrives.
 func _auto_patron() -> void:
-	if not patron_machine().is_empty():
+	if not plan_patron or not patron_machine().is_empty():
 		return
 	for machine in delivered():
 		if int(machine["personnel"]) == 1 and patron_block_reason(machine["uid"], false) == "":
@@ -581,7 +640,7 @@ func buy_listing(uid: int) -> String:
 	machine["reference"] = float(listing["price"])
 	machine["bought_month"] = month
 	machine["arrive"] = month + int(listing["delivery"])
-	machine["shifts"] = 1
+	machine["shifts"] = plan_shifts
 	machine["patron"] = false
 	machine["used_last"] = 0.0
 	machine["output_last"] = 0.0
@@ -673,6 +732,13 @@ func _create_job(offer: Dictionary, price: float, advance_rate: float, due_month
 	job["yield"] = 1.0
 	job["advance"] = advance
 	job["order"] = {}
+	var scrap_draw := RandomNumberGenerator.new()
+	scrap_draw.seed = 31 * int(offer["id"]) + 7 * month + 3
+	var draws: Array = []
+	for req in job["reqs"]:
+		var scrap_span: Array = Data.scrap_range(req["kind"], int(req["level"]))
+		draws.append(lerpf(float(scrap_span[0]), float(scrap_span[1]), scrap_draw.randf()))
+	job["scrap_draws"] = draws
 	jobs.append(job)
 	offers.erase(offer)
 	history.append("Ay %d: iş kabul edildi: %s (fiyat %.0f, peşinat %.0f)." % [month, job["title"], price, advance])
@@ -692,7 +758,7 @@ func _create_job(offer: Dictionary, price: float, advance_rate: float, due_month
 func cost_estimate(offer: Dictionary, edits := {}) -> Dictionary:
 	var supplier := Data.supplier_by_id(default_supplier)
 	var material := float(offer["material"]) * float(supplier["price"])
-	var yield_factor: float = float(Data.QUALITY_YIELD[int(supplier["quality"])])
+	var yield_factor := 1.0   # supplier quality already changes the job's output (job["yield"]); not counted twice
 	var weight_sum := 0.0
 	for req in offer["reqs"]:
 		weight_sum += float(req["workload"]) * Data.price_x(req["kind"])
@@ -710,7 +776,7 @@ func cost_estimate(offer: Dictionary, edits := {}) -> Dictionary:
 		var overhead_base := months * Data.OVERHEAD_ESTIMATE
 		var personnel_base := months * Data.WAGE
 		var line := {"kind": req["kind"], "level": req["level"], "count": req["count"], "months": months,
-			"material_part": material_part, "scrap_rate": rate, "scrap_rate_used": rate_used,
+			"material_part": material_part, "scrap_rate": rate, "scrap_rate_used": rate_used, "scrap_range": Data.scrap_range(req["kind"], int(req["level"])),
 			"scrap": material_part * rate_used, "overhead": overhead_base * (1.0 + float(edit.get("overhead_pct", 0.0)) / 100.0),
 			"personnel": personnel_base * (1.0 + float(edit.get("personnel_pct", 0.0)) / 100.0)}
 		line["subtotal"] = float(line["scrap"]) + float(line["overhead"]) + float(line["personnel"])
@@ -718,6 +784,24 @@ func cost_estimate(offer: Dictionary, edits := {}) -> Dictionary:
 		base_total += material_part * rate + overhead_base + personnel_base
 		lines.append(line)
 	return {"material": material, "lines": lines, "total": total, "base_total": base_total}
+
+# Material lost to scrap on a finished job: the drawn rate per requirement.
+func scrap_cost_of(job: Dictionary) -> float:
+	var order: Dictionary = job.get("order", {})
+	var supplier := Data.supplier_by_id(String(order.get("supplier", default_supplier)))
+	var yield_factor := 1.0
+	var material: float = float(order["amount"]) if order.has("amount") else float(job["material"]) * float(supplier["price"])
+	var weight_sum := 0.0
+	for req in job["reqs"]:
+		weight_sum += float(req["workload"]) * Data.price_x(req["kind"])
+	var cost := 0.0
+	var draws: Array = job.get("scrap_draws", [])
+	for i in job["reqs"].size():
+		var req: Dictionary = job["reqs"][i]
+		var share := float(req["workload"]) * Data.price_x(req["kind"]) / maxf(0.001, weight_sum)
+		var drawn: float = float(draws[i]) if i < draws.size() else float(Data.scrap_rate(req["kind"], int(req["level"])))
+		cost += material * share * Data.scrap_with_yield(drawn, yield_factor)
+	return cost
 
 # The customer's own cost belief (from the reference price and the job's complexity margin).
 func customer_cost(offer: Dictionary) -> float:
@@ -1093,6 +1177,10 @@ func close_month() -> String:
 		job["elapsed"] = int(job["elapsed"]) + 1
 		if job_done(job):
 			var on_time := month <= int(job["due_month"])
+			var scrap_cost := scrap_cost_of(job)
+			cash -= scrap_cost
+			if scrap_cost > 0.0:
+				lines.append("Hurda gideri: %s (%s)" % [Data.usd(scrap_cost), job["title"]])
 			var remainder := float(job["revenue"]) - float(job["advance"])
 			cash += remainder
 			delivered_revenue += float(job["revenue"])
