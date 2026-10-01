@@ -505,7 +505,7 @@ func _draw_item(index: int) -> void:
 				real *= shrink
 				var top_left := Vector2(body.position.x + (body.size.x - real.x) / 2.0, body.position.y + (body.size.y - real.y) * 0.35)
 				machine_rect = Rect2(top_left, real)
-				draw_rect(Rect2(top_left + Vector2(zoom * 0.12, zoom * 0.18), real), Color(0, 0, 0, 0.22 * fade))
+				draw_texture_rect(texture, Rect2(top_left + Vector2(zoom * 0.14, zoom * 0.2), real), false, Color(0, 0, 0, 0.3 * fade))
 				draw_texture_rect(texture, machine_rect, false, tint)
 				draw_rect(machine_rect.grow(zoom * 0.25), Color(SAFETY, 0.55 * fade), false, maxf(1.0, zoom * 0.07))
 			else:
