@@ -7,7 +7,7 @@
 ```
 Strict top-down orthographic game sprite, exactly 90 degrees overhead view, no perspective, no horizon.
 Soft light from the top-left with a subtle contact shadow toward the bottom-right.
-Realistic industrial look, clean slightly stylized game-asset rendering, muted palette of steel gray, deep blue, safety yellow and orange accents.
+Photorealistic industrial look matching a real aerial photograph (same style as the building photos in the game), crisp detail, natural materials, muted palette of steel gray, deep blue, safety yellow and orange accents. The floor under the objects in the game is light gray polished concrete, so keep objects clearly readable against light gray.
 The front of the object (control panel / operator side) faces the BOTTOM of the image.
 Solid pure magenta background (#FF00FF), nothing else in the image, no floor, no text, no watermark, no logo.
 Keep about 10% empty margin around each object.

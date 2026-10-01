@@ -17,3 +17,6 @@ __pycache__/
 
 # Local scratch
 .claude/
+
+# Godot import metadata is generated per machine
+*.import

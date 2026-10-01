@@ -307,7 +307,7 @@ func _chips(parent: Control, options: Array, current: String, callback: Callable
 	parent.add_child(scroll)
 
 # Image slot: loads res://art/<kind>/<id>.png when it exists, else a placeholder.
-func _image_slot(kind: String, id: String, tint: Color, height := 170) -> Control:
+func _image_slot(kind: String, id: String, tint: Color, height := 250) -> Control:
 	var texture: Texture2D = Art.find("res://art/%s/%s" % [kind, id])
 	if texture != null:
 		var rect := TextureRect.new()
@@ -1097,7 +1097,7 @@ func _machine_card(listing: Dictionary) -> void:
 	var box := _card(content, "", GOLD if selected else BORDER, true)
 	var panel := _panel_of(box)
 	listing_cards[listing["uid"]] = panel
-	box.add_child(_image_slot("machines", "%s_%d" % [String(listing["kind"]).to_lower(), listing["level"]], Color("#26313d")))
+	box.add_child(_image_slot("machines", "%s_%d" % [Art.slug(listing["kind"]), listing["level"]], Color("#26313d")))
 	box.add_child(_label(listing["model"], 22, TEXT))
 	var age_text := "Yeni (sıfır)" if int(listing["age"]) == 0 else "İkinci el · %d yaşında" % listing["age"]
 	box.add_child(_label("%s · %s · %s" % [listing["kind"], Data.LEVELS[int(listing["level"])], age_text], 15, MUTED))
@@ -1313,7 +1313,7 @@ func _render_detail() -> void:
 
 func _detail_factory(factory: Dictionary) -> void:
 	var hero := _card(content, "", BORDER, true)
-	hero.add_child(_image_slot("factories", factory["id"], factory["tint"], 200))
+	hero.add_child(_image_slot("factories", factory["id"], factory["tint"], 270))
 	_row(hero, "Bölge", factory["region"], TEXT, 16)
 	_row(hero, "Alan", "%d m²" % factory["m2"], TEXT, 16)
 	_row(hero, "Tavan yüksekliği", "%.1f m" % factory["height"], TEXT, 16)

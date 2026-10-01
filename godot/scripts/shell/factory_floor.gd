@@ -14,7 +14,7 @@ const Art = preload("res://scripts/shell/art.gd")
 const BG_OUT := Color("#0b1118")
 const WALL := Color("#2a3038")
 const FLOOR_FALLBACK := Color("#46505b")
-const SAFETY := Color("#f2d24b")
+const SAFETY := Color("#e0a800")
 const TEXT := Color("#e8eef4")
 const WALL_T := 0.8   # wall thickness (m)
 const TILE_M := 4.0   # one floor texture covers 4 x 4 m
@@ -429,7 +429,9 @@ func _draw_item(index: int) -> void:
 						draw_rect(Rect2(rect.position.x + float(s) * rect.size.x / float(maxi(1, stripes)), rect.position.y, rect.size.x / float(maxi(1, stripes)), rect.size.y), Color("#1a1a1a"))
 		"crane":
 			draw_rect(rect, Color(SAFETY, 0.55))
-			draw_string(font, rect.position + Vector2(8, rect.size.y + 14), "Köprü vinç rayı", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, SAFETY)
+			var rail_pos := rect.position + Vector2(8, rect.size.y + 14)
+			draw_string_outline(font, rail_pos, "Köprü vinç rayı", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, 4, Color(0.05, 0.07, 0.09, 0.95))
+			draw_string(font, rail_pos, "Köprü vinç rayı", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#ffd24a"))
 		"equip":
 			var texture := _sprite_for(item)
 			if texture != null:
@@ -443,8 +445,9 @@ func _draw_item(index: int) -> void:
 			var transit: bool = int(machine["arrive"]) > game.month
 			var working: bool = float(machine.get("used_last", 0.0)) > 0.0
 			var frame := rect
-			draw_rect(frame, Color(SAFETY, 0.18 if not transit else 0.06))
-			draw_rect(frame, Color(SAFETY, 0.9 if not transit else 0.4), false, maxf(1.5, zoom * 0.12))
+			draw_rect(frame, Color(SAFETY, 0.14 if not transit else 0.05))
+			draw_rect(frame, Color(0.1, 0.1, 0.1, 0.55 if not transit else 0.25), false, maxf(2.5, zoom * 0.16))
+			draw_rect(frame.grow(-maxf(1.0, zoom * 0.04)), Color(SAFETY, 1.0 if not transit else 0.45), false, maxf(1.5, zoom * 0.12))
 			var body := frame.grow(-minf(frame.size.x, frame.size.y) * 0.14)
 			var texture := _sprite_for(item)
 			var tint := Color(1, 1, 1, 0.45) if transit else Color.WHITE
@@ -460,4 +463,7 @@ func _draw_item(index: int) -> void:
 			draw_circle(frame.position + Vector2(frame.size.x - 8.0, 8.0), maxf(4.0, zoom * 0.3), dot)
 			if zoom >= 7.0:
 				var label := "%s%s" % [String(machine["model"]).get_slice(" ", String(machine["model"]).count(" ")), "  ×%d" % machine["shifts"] if not transit else "  (yolda)"]
-				draw_string(font, frame.position + Vector2(4, frame.size.y - 5), label, HORIZONTAL_ALIGNMENT_LEFT, frame.size.x - 6.0, clampi(int(zoom * 0.8), 9, 16), TEXT)
+				var label_pos := frame.position + Vector2(4, frame.size.y - 5)
+				var label_size := clampi(int(zoom * 0.8), 9, 16)
+				draw_string_outline(font, label_pos, label, HORIZONTAL_ALIGNMENT_LEFT, frame.size.x - 6.0, label_size, 5, Color(0.05, 0.07, 0.09, 0.95))
+				draw_string(font, label_pos, label, HORIZONTAL_ALIGNMENT_LEFT, frame.size.x - 6.0, label_size, TEXT)
