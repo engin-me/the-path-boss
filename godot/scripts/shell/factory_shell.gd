@@ -293,11 +293,14 @@ func _chips(parent: Control, options: Array, current: String, callback: Callable
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	scroll.add_child(row)
+	var active_button: Button = null
 	for option in options:
 		var button := Button.new()
 		button.text = option["title"]
 		button.custom_minimum_size = Vector2(0, 40)
 		var active: bool = option["id"] == current
+		if active:
+			active_button = button
 		for style_name in ["normal", "hover", "pressed"]:
 			var chip := _box(GREEN_DIM if active else PANEL_ALT, GREEN if active else BORDER, 20, 1)
 			chip.content_margin_left = 16
@@ -307,6 +310,13 @@ func _chips(parent: Control, options: Array, current: String, callback: Callable
 		button.pressed.connect(callback.bind(option["id"]))
 		row.add_child(button)
 	parent.add_child(scroll)
+	if active_button != null:
+		# the row is rebuilt on every render, so bring the selected chip back into view once it has a size
+		(func() -> void:
+			await get_tree().process_frame
+			await get_tree().process_frame
+			if is_instance_valid(scroll) and is_instance_valid(active_button):
+				scroll.ensure_control_visible(active_button)).call()
 
 # Image slot: loads res://art/<kind>/<id>.png when it exists, else a placeholder.
 func _image_slot(kind: String, id: String, tint: Color, height := 250) -> Control:
@@ -554,7 +564,7 @@ func _ozet_general() -> void:
 		["Yatırım tutarı", Data.usd(float(game.invested)), "detail:machines"],
 		["Güncel değer", Data.usd(float(game.investment_value())), "detail:machines"],
 		["OEE (24 saat)", oee, "detail:oee"],
-		["Etkin kapasite", "%s/ay" % _xfmt(game.effective_capacity()), "detail:oee"],
+		["Üretilebilir kapasite", "%s/ay" % _xfmt(game.effective_capacity()), "detail:oee"],
 		["Teslim skoru", "%%%d" % int(roundf(float(game.delivery_score) * 100.0)), "tab:isler"],
 		["Aktif iş", str(game.jobs.size()), "tab:isler"],
 		["Aylık gider", Data.usd(float(game.ordinary_expense())), "detail:costs"],
@@ -601,7 +611,7 @@ func _ozet_report() -> void:
 	for line in ["Teorik: makinelerin 3 vardiya (24 saat) çalışırsa üretebileceği x. Tek başına sen bir makinede yalnız bir vardiya çalıştırırsın; bu yüzden \"vardiya kaybı\" büyük görünür.",
 			"Performans: tezgah seviyesine bağlı hız (Standart %70, Hassas %80, Nitelikli %90). Hurda: tezgah türü ve seviyesine bağlı.",
 			"Sorun kaybı: aktif sorunlar (Bakım/Planlama/Depo → kullanılabilirlik, Üretim → performans, Kalite → hurda; diğer alanlar OEE dışı).",
-			"Net çıktı, kabul ettiğin işlere FIFO ile dağıtılır; boş kalan kapasite ayrı yazılır.",
+			"Üretilebilir kapasite, kabul ettiğin işlere FIFO ile dağıtılır; dağıtılan kısım \"gerçek üretim\", artan kısım \"boş kapasite\"dir. İş yoksa üretilebilir kapasite yine de görünür ama gerçek üretim sıfırdır.",
 			"OEE (24 saat bazlı) = fiziksel kayıplardan sonra iyi parça / teorik."]:
 		why.add_child(_label(line, 12, MUTED))
 	_phase_button()
@@ -617,14 +627,23 @@ func _waterfall_card(parent: Control, title: String, report: Dictionary) -> void
 		["Performans kaybı", float(report["perf"]), float(report["shift"])],
 		["Hurda", float(report["scrap"]), float(report["perf"])],
 		["Sorun kaybı (fiziksel)", float(report["phys"]), float(report["scrap"])],
-		["Net çıktı", float(report["net"]), float(report["phys"])]]
+		["Üretilebilir kapasite", float(report["net"]), float(report["phys"])]]
 	for step in steps:
 		var loss: float = float(step[2]) - float(step[1])
 		var text := _xfmt(float(step[1])) if float(step[2]) == 0.0 else "%s  (−%s)" % [_xfmt(float(step[1])), _xfmt(loss)]
 		_row(box, step[0], text, RED if loss > 0.5 and float(step[2]) > 0.0 else TEXT, 15)
-		box.add_child(_bar(float(step[1]), maxf(1.0, float(report["theoretical"])), GREEN if step[0] == "Net çıktı" else YELLOW))
-	_row(box, "İşlere giden", _xfmt(float(report["used"])), GREEN, 16)
-	_row(box, "Boş kapasite", _xfmt(float(report["idle"])), MUTED, 15)
+		box.add_child(_bar(float(step[1]), maxf(1.0, float(report["theoretical"])), GREEN if step[0] == "Üretilebilir kapasite" else YELLOW))
+	_row(box, "Gerçek üretim (işlere giden)", _xfmt(float(report["used"])), GREEN, 16)
+	_row(box, "Boş kapasite (iş yok)", _xfmt(float(report["idle"])), MUTED, 15)
+	var waiting: Array = []
+	for job in game.jobs:
+		var why: String = game.job_wait_reason(job)
+		if why != "":
+			waiting.append("%s: %s" % [job["title"], why])
+	for line in waiting:
+		box.add_child(_label("Üretilmeyen iş · " + line, 12, GOLD))
+	if game.jobs.is_empty():
+		box.add_child(_label("Kabul edilmiş iş yok; kapasite var ama üretilecek bir şey yok.", 12, GOLD))
 	_row(box, "OEE (24 saat bazlı)", "%%%d" % int(roundf(float(report["oee"]) * 100.0)), TEXT, 16)
 
 func _ozet_departments() -> void:
@@ -714,7 +733,7 @@ func _page_isler() -> void:
 		return
 	var doable := 0
 	for offer in game.offers:
-		if game.accept_block_reason(offer["id"]) == "":
+		if game.fit_block_reason(offer["id"]) == "":
 			doable += 1
 	_chips(content, [
 		{"id": "tum", "title": "Tümü (%d)" % game.offers.size()},
@@ -725,7 +744,7 @@ func _page_isler() -> void:
 		subtab["isler"], func(id: String) -> void:
 			subtab["isler"] = id
 			_render())
-	var box := _card(content, "Etkin kapasite (şu anki vardiyalarla)")
+	var box := _card(content, "Üretilebilir kapasite (şu anki vardiyalarla)")
 	var any := false
 	for kind in Data.TYPES:
 		var cap: float = game.effective_capacity(kind)
@@ -736,7 +755,7 @@ func _page_isler() -> void:
 		box.add_child(_label("Teslim alınmış tezgah yok; gelecekte başlayan işleri şimdiden kabul edebilirsin.", 13, MUTED))
 	box.add_child(_label("Gerekli ekipman: %s · Teslim skoru %%%d" % ["tamam" if game.package_bought else "EKSİK", int(roundf(float(game.delivery_score) * 100.0))], 12, MUTED if game.package_bought else RED))
 	if game.phase != "offers":
-		content.add_child(_label("İş kabulü ay başında, rapor açılmadan önce yapılır.", 12, GOLD))
+		content.add_child(_label("Rapor açık: iş kabulü yeni ayın başında yapılır. \"Yapabileceklerim\" makinelerine ve nakdine uyan ilanları sayar.", 12, GOLD))
 	if subtab["isler"] == "tedarik":
 		_page_suppliers()
 		return
@@ -752,7 +771,7 @@ func _page_isler() -> void:
 		return
 	for offer in game.offers:
 		var reason: String = game.accept_block_reason(offer["id"])
-		if subtab["isler"] == "yapabilir" and reason != "":
+		if subtab["isler"] == "yapabilir" and game.fit_block_reason(offer["id"]) != "":
 			continue
 		_offer_card(offer, reason)
 
@@ -774,6 +793,9 @@ func _job_card(job: Dictionary, finish_month: int) -> void:
 		stage = "Başlamadı · Ay %d" % job["start_month"]
 		stage_color = GOLD
 	_row(card, "Aşama", stage, stage_color)
+	var wait_reason: String = game.job_wait_reason(job)
+	if wait_reason != "":
+		card.add_child(_label("Neden üretilmiyor: " + wait_reason, 12, GOLD))
 	card.add_child(_bar(total - remaining, total))
 	_row(card, "Kalan yük", "%s / %s" % [_xfmt(remaining), _xfmt(total)], TEXT, 14)
 	for req in job["reqs"]:
@@ -914,27 +936,10 @@ func _detail_quote() -> void:
 	head.add_child(_label("%s = Parça İşleme Katsayısı (yüksek = zor parça). İş yükü = parça × %s." % [Data.DIFFICULTY_SYMBOL, Data.DIFFICULTY_SYMBOL], 11, MUTED))
 	_row(head, "Müşterinin istediği teslim", "%d ay" % offer["months"], TEXT, 14)
 	var estimate: Dictionary = game.cost_estimate(offer, quote_edit)
-	var material_card := _card(content, "Hammadde", BORDER)
-	_row(material_card, "Hammadde (%s)" % Data.supplier_by_id(game.default_supplier)["name"], Data.usd(float(estimate["material"])), TEXT, 14)
-	material_card.add_child(_label("Hammadde maliyeti değiştirilemez; tedarikçiyi İşler > Tedarikçiler'den seçersin.", 11, MUTED))
-	var lines: Array = estimate["lines"]
-	for i in lines.size():
-		var line: Dictionary = lines[i]
-		var edit: Dictionary = quote_edit.get(i, {})
-		var card := _card(content, "%s %s tezgahı · %d makine × %d ay" % [Data.LEVELS[int(line["level"])], line["kind"], int(line["count"]), int(offer["duration"])], BORDER)
-		_stepper(card, "Hurda giderleri", "%%%.0f · %s" % [float(line["scrap_rate_used"]) * 100.0, Data.usd(float(line["scrap"]))], i, "scrap_pt", 1.0, edit.has("scrap_pt") and float(edit["scrap_pt"]) != 0.0)
-		var span: Array = line["scrap_range"]
-		card.add_child(_label("Bu tür iş için olağan aralık %%%d–%%%d (ortalama %%%.1f); oran, parçaya dönüşen malzeme üzerinden hesaplanır (çapak ve talaş hammadde fiyatındadır); işi alınca gerçek oran bu aralıkta çıkar ve ay sonunda üretilen miktara göre kasadan düşer. Tahmini düşürmek fiyatı indirir, gerçek hurda aynı kalır." % [int(roundf(float(span[0]) * 100.0)), int(roundf(float(span[1]) * 100.0)), float(line["scrap_rate"]) * 100.0], 11, MUTED))
-		_stepper(card, "Genel giderler (kira, kredi, enerji)", Data.usd(float(line["overhead"])), i, "overhead_pct", 10.0, edit.has("overhead_pct") and float(edit["overhead_pct"]) != 0.0)
-		_stepper(card, "Personel giderleri", Data.usd(float(line["personnel"])), i, "personnel_pct", 10.0, edit.has("personnel_pct") and float(edit["personnel_pct"]) != 0.0)
-		_row(card, "Tezgah maliyeti", Data.usd(float(line["subtotal"])), GREEN, 15)
-	var totals := _card(content, "Toplam maliyet", BORDER)
-	_row(totals, "Hammadde + tezgah maliyetleri", Data.usd(float(estimate["total"])), GREEN, 17)
-	if float(estimate["total"]) < float(estimate["base_total"]) - 0.5:
-		totals.add_child(_label("Varsayımların gerçek tahminin %s altında; fark senin cebinden çıkar." % Data.usd(float(estimate["base_total"]) - float(estimate["total"])), 12, RED))
 	quote_price = ceilf(float(estimate["total"]) * (1.0 + quote_margin))
 	var box := _card(content, "Teklifin", GREEN, true)
 	_row(box, "Fiyat", Data.usd(quote_price), GREEN, 20)
+	_row(box, "Toplam maliyet (ayrıntı aşağıda)", Data.usd(float(estimate["total"])), MUTED, 13)
 	_row(box, "Kâr marjı (toplam maliyete göre)", "%%%d" % int(roundf(quote_margin * 100.0)), TEXT if quote_margin >= 0.0 else RED, 15)
 	var steps := HBoxContainer.new()
 	steps.add_theme_constant_override("separation", 6)
@@ -961,6 +966,26 @@ func _detail_quote() -> void:
 	box.add_child(_label("Daha hızlı teslim fiyat toleransını biraz artırır, daha yavaş düşürür; yüksek peşinat düşürür. Teslimat skorun (%%%d) de etkiler." % int(roundf(float(game.delivery_score) * 100.0)), 12, MUTED))
 	var reason: String = game.quote_block_reason(int(detail_arg), quote_price)
 	box.add_child(_button("Teklifi gönder" if reason == "" else reason, _send_quote.bind(int(detail_arg)), reason == "", reason != "", true))
+
+	content.add_child(_label("Maliyet ayrıntısı: hurda, genel gider ve personel varsayımlarını değiştirebilirsin; fiyat toplam maliyete göre güncellenir.", 12, MUTED))
+	var material_card := _card(content, "Hammadde", BORDER)
+	_row(material_card, "Hammadde (%s)" % Data.supplier_by_id(game.default_supplier)["name"], Data.usd(float(estimate["material"])), TEXT, 14)
+	material_card.add_child(_label("Hammadde maliyeti değiştirilemez; tedarikçiyi İşler > Tedarikçiler'den seçersin.", 11, MUTED))
+	var lines: Array = estimate["lines"]
+	for i in lines.size():
+		var line: Dictionary = lines[i]
+		var edit: Dictionary = quote_edit.get(i, {})
+		var card := _card(content, "%s %s tezgahı · %d makine × %d ay" % [Data.LEVELS[int(line["level"])], line["kind"], int(line["count"]), int(offer["duration"])], BORDER)
+		_stepper(card, "Hurda giderleri", "%%%.0f · %s" % [float(line["scrap_rate_used"]) * 100.0, Data.usd(float(line["scrap"]))], i, "scrap_pt", 1.0, edit.has("scrap_pt") and float(edit["scrap_pt"]) != 0.0)
+		var span: Array = line["scrap_range"]
+		card.add_child(_label("Bu tür iş için olağan aralık %%%d–%%%d (ortalama %%%.1f); oran, parçaya dönüşen malzeme üzerinden hesaplanır (çapak ve talaş hammadde fiyatındadır); işi alınca gerçek oran bu aralıkta çıkar ve ay sonunda üretilen miktara göre kasadan düşer. Tahmini düşürmek fiyatı indirir, gerçek hurda aynı kalır." % [int(roundf(float(span[0]) * 100.0)), int(roundf(float(span[1]) * 100.0)), float(line["scrap_rate"]) * 100.0], 11, MUTED))
+		_stepper(card, "Genel giderler (kira, kredi, enerji)", Data.usd(float(line["overhead"])), i, "overhead_pct", 10.0, edit.has("overhead_pct") and float(edit["overhead_pct"]) != 0.0)
+		_stepper(card, "Personel giderleri", Data.usd(float(line["personnel"])), i, "personnel_pct", 10.0, edit.has("personnel_pct") and float(edit["personnel_pct"]) != 0.0)
+		_row(card, "Tezgah maliyeti", Data.usd(float(line["subtotal"])), GREEN, 15)
+	var totals := _card(content, "Toplam maliyet", BORDER)
+	_row(totals, "Hammadde + tezgah maliyetleri", Data.usd(float(estimate["total"])), GREEN, 17)
+	if float(estimate["total"]) < float(estimate["base_total"]) - 0.5:
+		totals.add_child(_label("Varsayımların gerçek tahminin %s altında; fark senin cebinden çıkar." % Data.usd(float(estimate["base_total"]) - float(estimate["total"])), 12, RED))
 
 func _bump_price(delta: float) -> void:
 	quote_margin = snappedf(quote_margin + delta, 0.01)
@@ -1351,7 +1376,7 @@ func _page_shifts() -> void:
 	for machine in game.delivered():
 		wages += game.machine_wages(machine)
 	_row(summary, "Aylık personel gideri", Data.usd(wages), TEXT, 15)
-	_row(summary, "Etkin kapasite", "%s/ay" % _xfmt(game.effective_capacity()), GREEN, 15)
+	_row(summary, "Üretilebilir kapasite", "%s/ay" % _xfmt(game.effective_capacity()), GREEN, 15)
 	summary.add_child(_label("Personel, makineler teslim alındığında kadroya girer; vardiya artınca otomatik işe alınır.", 12, MUTED))
 
 func _on_shift_tick(on: bool, n: int) -> void:
@@ -1509,11 +1534,14 @@ func _detail_leave() -> void:
 	var fee: float = game.leave_fee()
 	var reason: String = game.leave_block_reason()
 	var box := _card(content, "Emin misin?", GOLD)
-	box.add_child(_label("Sözleşmeyi erken bırakırsan %d kira (%s) ceza ödersin; peşin ödenen kira iade edilmez. Makineler, ekipman ve kabul edilmiş işler kaybolur." % [Data.EXIT_FEE_RENTS, Data.usd(fee)], 14, TEXT))
+	box.add_child(_label("Sözleşmeyi erken bırakırsan %d kira (%s) ceza ödersin; peşin ödenen kira iade edilmez. Makineler ve ekipman kaybolur." % [Data.EXIT_FEE_RENTS, Data.usd(fee)], 14, TEXT))
+	var jobs_cost: Dictionary = game.leave_job_costs()
+	if int(jobs_cost["jobs"]) > 0:
+		box.add_child(_label("%d aktif iş bırakılır: ceza %s, alınan peşinatların iadesi %s, ödenmemiş hammadde siparişleri %s. Toplam %s." % [jobs_cost["jobs"], Data.usd(float(jobs_cost["penalty"])), Data.usd(float(jobs_cost["refund"])), Data.usd(float(jobs_cost["orders"])), Data.usd(float(jobs_cost["total"]))], 13, RED))
 	if reason != "":
 		box.add_child(_label(reason, 13, RED))
 	box.add_child(_button("Vazgeç", _back))
-	box.add_child(_button("Bırak ve %s öde" % Data.usd(fee), _leave_factory, true, reason != "" or fee > float(game.cash)))
+	box.add_child(_button("Bırak ve %s öde" % Data.usd(fee + float(jobs_cost["total"])), _leave_factory, true, reason != "" or fee + float(jobs_cost["total"]) > float(game.cash)))
 
 func _leave_factory() -> void:
 	var result: String = game.leave_factory()

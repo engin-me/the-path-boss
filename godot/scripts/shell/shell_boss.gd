@@ -380,11 +380,14 @@ func loss_fractions() -> Dictionary:
 # Problem multipliers: physical (availability x performance x quality) and non-physical,
 # with the 33 percent realisation floor on their product.
 func problem_mults(fr: Dictionary) -> Dictionary:
-	var physical := (1.0 - float(fr["A"])) * (1.0 - float(fr["P"])) * (1.0 - float(fr["Q"]))
+	var raw_physical := (1.0 - float(fr["A"])) * (1.0 - float(fr["P"])) * (1.0 - float(fr["Q"]))
+	# the realisation floor holds for the whole product, so the physical part alone cannot sink below it either
+	var physical := maxf(REALIZATION_FLOOR, raw_physical)
 	var non := 1.0 - float(fr["N"])
 	var total := maxf(REALIZATION_FLOOR, physical * non)
-	var non_eff := minf(1.0, total / maxf(physical, 0.0001))
-	return {"phys": physical, "non": non_eff, "a": 1.0 - float(fr["A"]), "p": 1.0 - float(fr["P"]), "q": 1.0 - float(fr["Q"])}
+	var non_eff := minf(1.0, total / physical)
+	var spread := pow(physical / maxf(raw_physical, 0.0001), 1.0 / 3.0)
+	return {"phys": physical, "non": non_eff, "a": minf(1.0, (1.0 - float(fr["A"])) * spread), "p": minf(1.0, (1.0 - float(fr["P"])) * spread), "q": minf(1.0, (1.0 - float(fr["Q"])) * spread)}
 
 func machine_steps(machine: Dictionary, mults: Dictionary) -> Dictionary:
 	var theoretical := float(machine["nameplate"])
@@ -606,6 +609,20 @@ func leave_block_reason() -> String:
 		return "İpotekli kredi kapanmadan sözleşme bırakılamaz."
 	return ""
 
+# Leaving drops every running job exactly like abandoning it: penalty, advance refund, and material already
+# ordered still has to be paid.
+func leave_job_costs() -> Dictionary:
+	var penalty := 0.0
+	var refund := 0.0
+	var orders := 0.0
+	for job in jobs:
+		penalty += abandon_penalty(job)
+		refund += float(job["advance"])
+		var order: Dictionary = job.get("order", {})
+		if not order.is_empty() and not bool(order.get("paid", false)):
+			orders += float(order["amount"])
+	return {"jobs": jobs.size(), "penalty": penalty, "refund": refund, "orders": orders, "total": penalty + refund + orders}
+
 func leave_fee() -> float:
 	return base_rent() * Data.EXIT_FEE_RENTS
 
@@ -614,8 +631,11 @@ func leave_factory() -> String:
 	var reason := leave_block_reason()
 	if reason != "":
 		return reason
-	cash -= leave_fee()
-	history.append("Ay %d: %s bırakıldı (çıkış bedeli %.0f)." % [month, factory()["name"], leave_fee()])
+	var jobs_cost := leave_job_costs()
+	cash -= leave_fee() + float(jobs_cost["total"])
+	for job in jobs:
+		_score_event(0.0)
+	history.append("Ay %d: %s bırakıldı (çıkış bedeli %.0f; %d iş bırakıldı: ceza %.0f, peşinat iadesi %.0f, iptal edilemeyen hammadde %.0f)." % [month, factory()["name"], leave_fee(), jobs_cost["jobs"], jobs_cost["penalty"], jobs_cost["refund"], jobs_cost["orders"]])
 	factory_id = ""
 	machines.clear()
 	jobs.clear()
@@ -762,6 +782,10 @@ func _apply_pool_floor() -> void:
 func accept_block_reason(id: int) -> String:
 	if phase != "offers":
 		return "İş, ay başında (rapordan önce) kabul edilir."
+	return fit_block_reason(id)
+
+# Whether the offer suits the plant (equipment, machines, cash), whatever the phase of the month.
+func fit_block_reason(id: int) -> String:
 	var offer := offer_by_id(id)
 	if offer.is_empty():
 		return "İlan bulunamadı."
@@ -1130,6 +1154,31 @@ func _allocate(job_list: Array, cap_left: Dictionary, t: int, record: bool) -> v
 				if record:
 					machine["used_last"] = float(machine.get("used_last", 0.0)) + use
 					req["made_month"] = float(req.get("made_month", 0.0)) + got
+
+# Why an accepted job is not being produced (empty when it is, or will be, loaded this month).
+func job_wait_reason(job: Dictionary) -> String:
+	var order: Dictionary = job.get("order", {})
+	if order.is_empty():
+		return "Hammadde siparişi verilmedi"
+	if int(order["arrive_month"]) > month:
+		return "Hammadde Ay %d'de gelir" % int(order["arrive_month"])
+	if int(job["start_month"]) > month:
+		return "Müşteri hazırlığı sürüyor; üretim Ay %d'de başlar" % int(job["start_month"])
+	var missing: Array = []
+	for req in job["reqs"]:
+		if float(req["remaining"]) > 0.5 and _eligible(req["kind"], int(req["level"]), month).is_empty():
+			missing.append("%s %s" % [Data.LEVELS[int(req["level"])], req["kind"]])
+	if not missing.is_empty():
+		return "Teslim alınmış tezgah yok: " + ", ".join(missing)
+	if not package_bought:
+		return "Gerekli ekipman eksik"
+	if phase == "report" and not report.is_empty():
+		var made := 0.0
+		for req in job["reqs"]:
+			made += float(req.get("made_month", 0.0))
+		if made <= 0.0001 and not job_done(job):
+			return "Bu ayın kapasitesi önceki işlere gitti (FIFO sırası)"
+	return ""
 
 func job_done(job: Dictionary) -> bool:
 	for req in job["reqs"]:
