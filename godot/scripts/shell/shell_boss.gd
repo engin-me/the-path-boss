@@ -167,6 +167,16 @@ func running_cost() -> float:
 		cost += machine_running_cost(machine)
 	return cost
 
+# What the month really costs after the report: wages always, energy and consumables only for the share of
+# the month a machine actually worked.
+func running_cost_actual() -> float:
+	var cost := 0.0
+	for machine in delivered():
+		var potential := float(machine.get("output_last", 0.0))
+		var worked := clampf(float(machine.get("used_last", 0.0)) / potential, 0.0, 1.0) if potential > 0.0 else 0.0
+		cost += (float(machine["energy"]) + float(machine["consumables"])) * shift_equiv(machine) * worked + machine_wages(machine)
+	return cost
+
 func delivered() -> Array:
 	var list: Array = []
 	for machine in machines:
@@ -751,6 +761,17 @@ func _create_job(offer: Dictionary, price: float, advance_rate: float, due_month
 
 # ---------------------------------------------------------------- quotes (IDEA-017)
 
+# Monthly energy and consumables of one machine of this kind/level on the current shift plan.
+func _estimate_energy(kind: String, level: int) -> float:
+	for machine in machines:
+		if machine["kind"] == kind and int(machine["level"]) == level:
+			return (float(machine["energy"]) + float(machine["consumables"])) * shift_equiv(machine)
+	var list: float = Data.list_price(kind, level)
+	var equiv := 0.0
+	for i in clampi(plan_shifts, 1, 3):
+		equiv += 1.0 + (Data.OT_HOURS_SHARE if plan_ot[i] else 0.0)
+	return list * (Data.ENERGY_RATE + Data.CONSUMABLE_RATE) * minf(equiv, 3.0)
+
 # What the player can work out: material at the default supplier plus, per machine kind the job
 # needs, a scrap allowance, the plant overhead and the personnel it occupies. `edits[i]` lets the
 # player change the assumptions of requirement i (scrap in points, overhead and personnel in percent);
@@ -762,6 +783,10 @@ func cost_estimate(offer: Dictionary, edits := {}) -> Dictionary:
 	var weight_sum := 0.0
 	for req in offer["reqs"]:
 		weight_sum += float(req["workload"]) * Data.price_x(req["kind"])
+	# fixed plant costs (rent and loan installment) are shared by the machines the plant is sized for
+	# (area / a typical 30 m2 work zone), or by the machines owned when there are more of them
+	var slots := maxf(float(machines.size()), floorf(float(factory()["m2"]) / 30.0) if factory_id != "" else 1.0)
+	var fixed_share := (base_rent() + (float(loan["installment"]) if not loan.is_empty() else 0.0)) / maxf(1.0, slots)
 	var lines: Array = []
 	var total := material
 	var base_total := material
@@ -773,8 +798,9 @@ func cost_estimate(offer: Dictionary, edits := {}) -> Dictionary:
 		var months := float(req["count"]) * float(offer["duration"])
 		var rate := Data.scrap_rate(req["kind"], int(req["level"]), yield_factor)
 		var rate_used := maxf(0.0, rate + float(edit.get("scrap_pt", 0.0)) / 100.0)
-		var overhead_base := months * Data.OVERHEAD_ESTIMATE
-		var personnel_base := months * Data.WAGE
+		var energy_month := _estimate_energy(req["kind"], int(req["level"]))
+		var overhead_base := months * (fixed_share + energy_month)
+		var personnel_base := months * Data.WAGE * float(Data.personnel_for(req["kind"], int(req["level"])))
 		var line := {"kind": req["kind"], "level": req["level"], "count": req["count"], "months": months,
 			"material_part": material_part, "scrap_rate": rate, "scrap_rate_used": rate_used, "scrap_range": Data.scrap_range(req["kind"], int(req["level"])),
 			"scrap": material_part * rate_used, "overhead": overhead_base * (1.0 + float(edit.get("overhead_pct", 0.0)) / 100.0),
@@ -785,11 +811,11 @@ func cost_estimate(offer: Dictionary, edits := {}) -> Dictionary:
 		lines.append(line)
 	return {"material": material, "lines": lines, "total": total, "base_total": base_total}
 
-# Material lost to scrap on a finished job: the drawn rate per requirement.
-func scrap_cost_of(job: Dictionary) -> float:
+# Material scrapped this month: the drawn rate of each requirement, on the material of the parts
+# that were actually made (flash and chips are already inside the raw-material price).
+func scrap_cost_month(job: Dictionary) -> float:
 	var order: Dictionary = job.get("order", {})
 	var supplier := Data.supplier_by_id(String(order.get("supplier", default_supplier)))
-	var yield_factor := 1.0
 	var material: float = float(order["amount"]) if order.has("amount") else float(job["material"]) * float(supplier["price"])
 	var weight_sum := 0.0
 	for req in job["reqs"]:
@@ -799,8 +825,8 @@ func scrap_cost_of(job: Dictionary) -> float:
 	for i in job["reqs"].size():
 		var req: Dictionary = job["reqs"][i]
 		var share := float(req["workload"]) * Data.price_x(req["kind"]) / maxf(0.001, weight_sum)
-		var drawn: float = float(draws[i]) if i < draws.size() else float(Data.scrap_rate(req["kind"], int(req["level"])))
-		cost += material * share * Data.scrap_with_yield(drawn, yield_factor)
+		var drawn: float = float(draws[i]) if i < draws.size() else Data.scrap_rate(req["kind"], int(req["level"]))
+		cost += material * share * drawn * float(req.get("made_month", 0.0)) / maxf(1.0, float(req["workload"]))
 	return cost
 
 # The customer's own cost belief (from the reference price and the job's complexity margin).
@@ -1045,6 +1071,7 @@ func _allocate(job_list: Array, cap_left: Dictionary, t: int, record: bool) -> v
 				job["produced"] = float(job.get("produced", 0.0)) + got
 				if record:
 					machine["used_last"] = float(machine.get("used_last", 0.0)) + use
+					req["made_month"] = float(req.get("made_month", 0.0)) + got
 
 func job_done(job: Dictionary) -> bool:
 	for req in job["reqs"]:
@@ -1109,6 +1136,9 @@ func run_report() -> String:
 		cap_left[machine["uid"]] = output
 		for key in sums:
 			sums[key] += float(steps[key]) if package_bought or key == "theoretical" else 0.0
+	for job in jobs:
+		for req in job["reqs"]:
+			req["made_month"] = 0.0
 	_allocate(jobs, cap_left, month, true)
 	var used := 0.0
 	for machine in delivered():
@@ -1149,9 +1179,9 @@ func close_month() -> String:
 	else:
 		cash -= base_rent()
 		lines.append("Kira: %s" % Data.usd(base_rent()))
-	var running := running_cost()
+	var running := running_cost_actual()
 	cash -= running
-	lines.append("Enerji, sarf ve personel: %s" % Data.usd(running))
+	lines.append("Enerji (yalnızca çalışan tezgahlar), sarf ve personel: %s" % Data.usd(running))
 	if not loan.is_empty():
 		var interest := float(loan["balance"]) * float(loan["rate"])
 		var principal := float(loan["installment"]) - interest
@@ -1174,13 +1204,13 @@ func close_month() -> String:
 			cash -= due
 			job["order"]["paid"] = true
 			lines.append("Hammadde ödemesi: %s (%s)" % [Data.usd(due), job["title"]])
+		var scrap_cost := scrap_cost_month(job)
+		if scrap_cost > 0.0:
+			cash -= scrap_cost
+			lines.append("Hurda gideri: %s (%s)" % [Data.usd(scrap_cost), job["title"]])
 		job["elapsed"] = int(job["elapsed"]) + 1
 		if job_done(job):
 			var on_time := month <= int(job["due_month"])
-			var scrap_cost := scrap_cost_of(job)
-			cash -= scrap_cost
-			if scrap_cost > 0.0:
-				lines.append("Hurda gideri: %s (%s)" % [Data.usd(scrap_cost), job["title"]])
 			var remainder := float(job["revenue"]) - float(job["advance"])
 			cash += remainder
 			delivered_revenue += float(job["revenue"])
