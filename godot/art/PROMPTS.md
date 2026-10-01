@@ -1,19 +1,20 @@
 # Gemini istemleri (üstten fabrika sprite'ları)
 
-Önce **bir stil çapası** üretin, sonra diğer istemlerde onu referans verin ("ekteki görselin stilini eşleştir"). Bu, tüm sprite'ların tutarlı görünmesini sağlar.
+Ayrı bir çapa istemi yoktur: **ilk beğendiğiniz Torna sheet'i stil çapasıdır.** Aynı sohbette devam edin, her sonraki isteme "Match the style of the previous image exactly (photorealistic, same lighting, palette, detail level; magenta background, no floor)" ekleyin. Yeni sohbet açarsanız Torna görselini yükleyin.
 
 ## Ortak stil bloğu (her istemin sonuna ekleyin)
 
 ```
 Strict top-down orthographic game sprite, exactly 90 degrees overhead view, no perspective, no horizon.
-Soft light from the top-left with a subtle contact shadow toward the bottom-right.
-Photorealistic industrial look matching a real aerial photograph (same style as the building photos in the game), crisp detail, natural materials, muted palette of steel gray, deep blue, safety yellow and orange accents. The floor under the objects in the game is light gray polished concrete, so keep objects clearly readable against light gray.
+PHOTOREALISTIC, not illustrated and not a 3D render: it must look like a real photograph taken from directly above with a drone or ceiling camera. Real paint with slight wear, scratches, oil stains, dust, metal reflections, visible bolts, welds, cables and coolant residue, natural film grain, uneven real-world lighting. No cartoon look, no vector look, no clean CGI smoothness, no outlines.
+Soft light from the top-left with only a tiny soft contact shadow right under each object.
+Muted palette of steel gray, deep blue, safety yellow and orange accents.
 The front of the object (control panel / operator side) faces the BOTTOM of the image.
-Solid pure magenta background (#FF00FF), nothing else in the image, no floor, no text, no watermark, no logo.
+Solid pure magenta background (#FF00FF) filling the ENTIRE canvas, including around and between the objects. No floor, no concrete, no gray patch behind any object, no text, no watermark, no logo.
 Keep about 10% empty margin around each object.
 ```
 
-Arka plan macenta olduğu için `art_tools.py` onu şeffaf yapar. Gemini arka planı tam macenta vermezse `--tol 90` deneyin.
+Arka plan macenta olduğu için `art_tools.py` onu tona göre şeffaf yapar ve kenardaki pembeyi temizler (saf `#FF00FF` olması gerekmez). Gemini görselin altına gri zemin koyarsa 'remove the gray floor, magenta fills the entire canvas' diye düzelttirin. Pembe kalırsa `--tol 50`, makine silinirse `--tol 90` deneyin.
 
 ## 1. Tezgahlar (4 tür × 3 seviye; her tür için bir istem)
 
