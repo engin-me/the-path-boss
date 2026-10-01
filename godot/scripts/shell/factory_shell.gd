@@ -1001,7 +1001,7 @@ func _detail_quote() -> void:
 	head.add_child(_label("%s = Parça İşleme Katsayısı (yüksek = zor parça). İş yükü = parça × %s." % [Data.DIFFICULTY_SYMBOL, Data.DIFFICULTY_SYMBOL], 11, MUTED))
 	_row(head, "Müşterinin istediği teslim", "%d ay" % offer["months"], TEXT, 14)
 	var estimate: Dictionary = game.cost_estimate(offer, quote_edit)
-	quote_price = ceilf(float(estimate["total"]) * (1.0 + quote_margin))
+	quote_price = ceilf(float(estimate["total"]) * (1.0 + quote_margin) * 100.0) / 100.0
 	var box := _card(content, "Teklifin", GREEN, true)
 	_row(box, "Fiyat", Data.usd(quote_price), GREEN, 20)
 	_row(box, "Toplam maliyet (ayrıntı aşağıda)", Data.usd(float(estimate["total"])), MUTED, 13)

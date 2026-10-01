@@ -245,6 +245,8 @@ static func urgency_hint(offer: Dictionary) -> String:
 const QUALITY_NAMES := ["", "Ekonomik", "Standart", "Premium"]
 const QUALITY_YIELD := {1: 0.96, 2: 1.0, 3: 1.015}
 static var typical_overhead := 0.45   # customers' belief of plant overhead per machine-month (rent, building, office), k$
+static var mid_base := 0.60   # customer reference margin over the typical cost of a plain job (covers capital return and overhead)
+static var mid_slope := 0.40  # extra margin of the most complex job
 static var margin_scale := 1.0   # calibration input: scales the customer margin band
 const ADVANCE_RATE := 0.30  # customer advance on acceptance (proposal; fixed in the first slice)
 
@@ -350,7 +352,7 @@ static func fill_offer(offer: Dictionary, specs: Array, rng: RandomNumberGenerat
 	# Margin grows with complexity (machines needed and level): a plain one-machine Standart job pays the
 	# smallest margin, a four-machine Nitelikli job the largest.
 	var complexity := 0.5 * float(total_n - 1) / 3.0 + 0.5 * float(best - 1) / 2.0
-	var mid := (0.15 + 0.45 * complexity) * margin_scale
+	var mid := (mid_base + mid_slope * complexity) * margin_scale
 	var cost_ref := cost * rng.randf_range(0.95, 1.05) * revenue_scale
 	var revenue := roundf(cost_ref * (1.0 + mid) * 1000.0) / 1000.0
 	offer["reqs"] = reqs

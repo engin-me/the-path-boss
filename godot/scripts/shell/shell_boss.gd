@@ -48,7 +48,7 @@ var plan_patron := true   # the owner runs the first shift of one single-operato
 var layout := {}   # factory_id -> item key -> {x, y, rot}: cosmetic floor arrangement (IDEA-013)
 
 # Fix costs of problems scaled to the real-world money of the shell (operator about $1k a month).
-const SHELL_MONEY_BANDS := {1: [2.4, 4.0], 2: [4.8, 7.2], 3: [10.0, 14.0], 4: [20.0, 28.0], 5: [40.0, 56.0]}
+const SHELL_MONEY_BANDS := {1: [0.9, 1.5], 2: [1.8, 2.7], 3: [3.75, 5.25], 4: [7.5, 10.5], 5: [15.0, 21.0]}
 
 # ---------------------------------------------------------------- save / load
 
@@ -165,7 +165,7 @@ func max_gross_profit(park: Array[Dictionary]) -> float:
 func base_rent() -> float:
 	if factory_id == "":
 		return 0.0
-	return roundf(float(factory()["rent"]) * Data.rent_scale * float(Data.term_by_months(term)["factor"]))
+	return snappedf(float(factory()["rent"]) * Data.rent_scale * float(Data.term_by_months(term)["factor"]), 0.001)
 
 func running_cost() -> float:
 	var cost := plant_fixed_cost()
@@ -560,11 +560,11 @@ func first_payment(offer: Dictionary) -> float:
 	return maxf(0.0, float(offer["material"]) * float(supplier["price"]) - advance_of(offer))
 
 func advance_of(offer: Dictionary) -> float:
-	return roundf(float(offer["revenue"]) * Data.ADVANCE_RATE)
+	return snappedf(float(offer["revenue"]) * Data.ADVANCE_RATE, 0.001)
 
 func material_quote(job_or_offer: Dictionary, supplier_id: String) -> Dictionary:
 	var supplier := Data.supplier_by_id(supplier_id)
-	var amount := roundf(float(job_or_offer["material"]) * float(supplier["price"]))
+	var amount := snappedf(float(job_or_offer["material"]) * float(supplier["price"]), 0.001)
 	return {"supplier": supplier, "amount": amount, "lead": int(supplier["lead"]), "terms": int(supplier["terms"]), "delay": float(supplier["delay"]),
 		"quality": int(supplier["quality"]), "yield": float(Data.QUALITY_YIELD[int(supplier["quality"])])}
 
@@ -583,7 +583,7 @@ func listing_by_uid(uid: int) -> Dictionary:
 func prepay_quote(id: String, months: int) -> Dictionary:
 	var target := Data.factory_by_id(id)
 	var period := Data.term_by_months(months)
-	var rent := roundf(float(target["rent"]) * Data.rent_scale * float(period["factor"]))
+	var rent := snappedf(float(target["rent"]) * Data.rent_scale * float(period["factor"]), 0.001)
 	var half := months / 2
 	var discount := float(period["prepay_discount"])
 	return {"rent": rent, "half": half, "discount": discount, "amount": snappedf(rent * half * (1.0 - discount), 0.01)}
@@ -847,7 +847,7 @@ func accept_offer(id: int) -> String:
 	return ""
 
 func _create_job(offer: Dictionary, price: float, advance_rate: float, due_months: int) -> Dictionary:
-	var advance := roundf(price * advance_rate)
+	var advance := snappedf(price * advance_rate, 0.001)
 	cash += advance
 	var job: Dictionary = offer.duplicate(true)
 	job["revenue"] = price
@@ -926,7 +926,7 @@ func cost_estimate(offer: Dictionary, edits := {}) -> Dictionary:
 	for i in offer["reqs"].size():
 		var req: Dictionary = offer["reqs"][i]
 		var edit: Dictionary = edits.get(i, {})
-		var material_part := float(req["material_part"]) * supplier_price
+		var material_part := float(req.get("material_part", 0.0)) * supplier_price
 		var months := float(req["count"]) * float(offer["duration"])
 		var rate := Data.scrap_rate(req["kind"], int(req["level"]), quality)
 		var rate_used := maxf(0.0, rate + float(edit.get("scrap_pt", 0.0)) / 100.0)
@@ -956,10 +956,10 @@ func material_used_month(job: Dictionary) -> float:
 	var material: float = float(order["amount"]) if order.has("amount") else float(job["material"]) * float(supplier["price"])
 	var weight_sum := 0.0
 	for req in job["reqs"]:
-		weight_sum += float(req["material_part"])
+		weight_sum += float(req.get("material_part", 0.0))
 	var used := 0.0
 	for req in job["reqs"]:
-		var share := float(req["material_part"]) / maxf(0.001, weight_sum)
+		var share := float(req.get("material_part", 0.0)) / maxf(0.001, weight_sum)
 		used += material * share * float(req.get("made_month", 0.0)) / maxf(1.0, float(req["workload"]))
 	return used
 
@@ -972,12 +972,12 @@ func scrap_cost_month(job: Dictionary) -> float:
 	var material: float = float(order["amount"]) if order.has("amount") else float(job["material"]) * float(supplier["price"])
 	var weight_sum := 0.0
 	for req in job["reqs"]:
-		weight_sum += float(req["material_part"])
+		weight_sum += float(req.get("material_part", 0.0))
 	var cost := 0.0
 	var draws: Array = job.get("scrap_draws", [])
 	for i in job["reqs"].size():
 		var req: Dictionary = job["reqs"][i]
-		var share := float(req["material_part"]) / maxf(0.001, weight_sum)
+		var share := float(req.get("material_part", 0.0)) / maxf(0.001, weight_sum)
 		var drawn: float = Data.scrap_at(req["kind"], int(req["level"]), Data.scrap_position(float(draws[i]), quality)) if i < draws.size() else Data.scrap_rate(req["kind"], int(req["level"]), quality)
 		cost += material * share * drawn * float(req.get("made_month", 0.0)) / maxf(1.0, float(req["workload"]))
 	return cost
@@ -1041,7 +1041,7 @@ func submit_quote(offer_id: int, price: float, advance_pct: int, months_offered:
 		var accepted := _mail(offer, "accepted", ["Teklifiniz için teşekkürler, %s fiyatla %d ayda teslim şartıyla anlaştık." % [Data.usd(price), months_offered]])
 		return {"ok": true, "status": "accepted", "mail": accepted, "job": job}
 	if price <= limit * (1.0 + COUNTER_BAND):
-		var counter_price := roundf(limit * rng.randf_range(0.96, 1.0))
+		var counter_price := snappedf(limit * rng.randf_range(0.96, 1.0), 0.001)
 		var mail := _mail(offer, "counter", ["Teklifiniz için teşekkürler. Fiyatı %s'ye çekebilir misiniz?" % Data.usd(counter_price)],
 			{"price": counter_price, "advance_pct": advance_pct, "months": months_offered, "kind": "price"})
 		offers.erase(offer)
@@ -1121,7 +1121,7 @@ func order_material(job_id: int, supplier_id: String) -> String:
 	return ""
 
 func abandon_penalty(job: Dictionary) -> float:
-	return roundf(float(job["revenue"]) * Data.ABANDON_PENALTY)
+	return snappedf(float(job["revenue"]) * Data.ABANDON_PENALTY, 0.001)
 
 func job_by_id(id: int) -> Dictionary:
 	for job in jobs:
@@ -1159,7 +1159,7 @@ func _score_event(target: float) -> void:
 	delivery_score = clampf(delivery_score * 0.8 + target * 0.2, 0.0, 1.0)
 
 func sale_income(machine: Dictionary) -> float:
-	return roundf(float(machine["reference"]) * Data.SALE_RATE)
+	return snappedf(float(machine["reference"]) * Data.SALE_RATE, 0.001)
 
 func sell_block_reason(uid: int) -> String:
 	var machine := machine_by_uid(uid)
@@ -1493,7 +1493,7 @@ func _generate_problems(events: int) -> void:
 		problems["k%d" % next_id] = {
 			"department": department, "tier": tier, "loss": loss, "base_loss": loss, "active": true, "attempted": 0,
 			"scale_tier": int(current["max_tier"]), "factor": float(current["factor"]),
-			"actual_money": roundf(rng.randf_range(band[0], band[1]) * current["factor"]),
+			"actual_money": snappedf(rng.randf_range(band[0], band[1]) * current["factor"], 0.01),
 			"actual_hours": rng.randi_range(hour_band[0], hour_band[1]),
 			"total_loss": 0.0, "ever_seen": false, "solved_month": 0, "born": month
 		}
