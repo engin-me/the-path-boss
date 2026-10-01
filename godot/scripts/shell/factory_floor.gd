@@ -482,21 +482,32 @@ func _draw_item(index: int) -> void:
 			var transit: bool = int(machine["arrive"]) > game.month
 			var working: bool = float(machine.get("used_last", 0.0)) > 0.0
 			var frame := rect
-			draw_rect(frame, Color(SAFETY, 0.14 if not transit else 0.05))
-			draw_rect(frame, Color(0.1, 0.1, 0.1, 0.55 if not transit else 0.25), false, maxf(2.5, zoom * 0.16))
-			draw_rect(frame.grow(-maxf(1.0, zoom * 0.04)), Color(SAFETY, 1.0 if not transit else 0.45), false, maxf(1.5, zoom * 0.12))
+			var fade := 0.4 if transit else 1.0
+			# work zone = yellow floor-tape corners only (no filled box)
+			var tape := Color(SAFETY, 0.75 * fade)
+			var corner := minf(minf(frame.size.x, frame.size.y) * 0.22, zoom * 0.9)
+			var tape_w := maxf(1.5, zoom * 0.1)
+			for corner_pos in [frame.position, Vector2(frame.end.x, frame.position.y), Vector2(frame.position.x, frame.end.y), frame.end]:
+				var dx: float = corner if corner_pos.x == frame.position.x else -corner
+				var dy: float = corner if corner_pos.y == frame.position.y else -corner
+				draw_line(corner_pos, corner_pos + Vector2(dx, 0), tape, tape_w)
+				draw_line(corner_pos, corner_pos + Vector2(0, dy), tape, tape_w)
 			var body := frame.grow(-minf(frame.size.x, frame.size.y) * 0.07)
 			var texture := _sprite_for(item)
 			var tint := Color(1, 1, 1, 0.45) if transit else Color.WHITE
+			var machine_rect := body
 			if texture != null:
-				# frame = work zone (m² in the listing); the sprite is drawn at the real machine size
+				# the sprite is drawn at the real machine size inside its work zone
 				var length_m: float = MACHINE_LENGTH_M.get(machine["kind"], 3.0)
 				var ratio := float(texture.get_width()) / float(texture.get_height())
 				var real := (Vector2(length_m, length_m / ratio) if ratio >= 1.0 else Vector2(length_m * ratio, length_m)) * zoom
 				var shrink := minf(1.0, minf(body.size.x / real.x, body.size.y / real.y))
 				real *= shrink
 				var top_left := Vector2(body.position.x + (body.size.x - real.x) / 2.0, body.position.y + (body.size.y - real.y) * 0.35)
-				draw_texture_rect(texture, Rect2(top_left, real), false, tint)
+				machine_rect = Rect2(top_left, real)
+				draw_rect(Rect2(top_left + Vector2(zoom * 0.12, zoom * 0.18), real), Color(0, 0, 0, 0.22 * fade))
+				draw_texture_rect(texture, machine_rect, false, tint)
+				draw_rect(machine_rect.grow(zoom * 0.25), Color(SAFETY, 0.55 * fade), false, maxf(1.0, zoom * 0.07))
 			else:
 				var base: Color = KIND_COLOR.get(machine["kind"], Color.GRAY).lightened(0.08 * float(int(machine["level"]) - 1))
 				base.a = 0.45 if transit else 1.0
@@ -504,10 +515,10 @@ func _draw_item(index: int) -> void:
 				draw_rect(body, base.darkened(0.5), false, 2.0)
 				draw_rect(Rect2(body.position + body.size * Vector2(0.12, 0.12), body.size * Vector2(0.76, 0.28)), base.darkened(0.25))
 			var dot := Color("#3ddc84") if working else (Color("#eac47a") if transit else Color("#93a3b3"))
-			draw_circle(frame.position + Vector2(frame.size.x - 8.0, 8.0), maxf(4.0, zoom * 0.3), dot)
+			draw_circle(Vector2(machine_rect.end.x, machine_rect.position.y) + Vector2(zoom * 0.25, -zoom * 0.25), maxf(3.5, zoom * 0.28), dot)
 			if zoom >= 7.0:
 				var label := "%s%s" % [String(machine["model"]).get_slice(" ", String(machine["model"]).count(" ")), "  ×%d" % machine["shifts"] if not transit else "  (yolda)"]
-				var label_pos := frame.position + Vector2(4, frame.size.y - 5)
 				var label_size := clampi(int(zoom * 0.8), 9, 16)
-				draw_string_outline(font, label_pos, label, HORIZONTAL_ALIGNMENT_LEFT, frame.size.x - 6.0, label_size, 5, Color(0.05, 0.07, 0.09, 0.95))
-				draw_string(font, label_pos, label, HORIZONTAL_ALIGNMENT_LEFT, frame.size.x - 6.0, label_size, TEXT)
+				var label_pos := Vector2(frame.position.x, minf(machine_rect.end.y + zoom * 0.25 + float(label_size) + 3.0, frame.end.y - 3.0))
+				draw_string_outline(font, label_pos, label, HORIZONTAL_ALIGNMENT_CENTER, frame.size.x, label_size, 5, Color(0.05, 0.07, 0.09, 0.95))
+				draw_string(font, label_pos, label, HORIZONTAL_ALIGNMENT_CENTER, frame.size.x, label_size, TEXT)
