@@ -39,6 +39,19 @@ func _run() -> void:
 			Data.revenue_scale = float(arg.trim_prefix("rev="))
 		elif arg.begins_with("cash="):
 			Data.start_cash = float(arg.trim_prefix("cash="))
+		elif arg.begins_with("scale="):
+			# what-if: shrink money flows (revenue, rent, start cash, plant overhead) while machine prices stay
+			var factor := float(arg.trim_prefix("scale="))
+			Data.revenue_scale = factor
+			Data.rent_scale = factor
+			Data.start_cash = 800.0 * factor
+			Data.plant_overhead = 6.0 * factor
+		elif arg.begins_with("wage="):
+			Data.WAGE = float(arg.trim_prefix("wage="))
+		elif arg.begins_with("rent="):
+			Data.rent_scale = float(arg.trim_prefix("rent="))
+		elif arg.begins_with("overhead="):
+			Data.plant_overhead = float(arg.trim_prefix("overhead="))
 		elif arg.begins_with("policy="):
 			staff_policy = int(arg.trim_prefix("policy="))
 		elif arg.begins_with("floor="):

@@ -9,7 +9,7 @@ const MONEY_UNIT_USD := 1000.0
 const LEVELS := ["", "Standart", "Hassas", "Nitelikli"]
 const TYPES := ["Torna", "Freze", "Taşlama", "Dövme"]
 const STATS_LIST := ["Zeka", "Dikkat", "Hız", "Güç", "Yaratıcılık", "Sosyallik", "Görünüm"]
-const WAGE := 3.0  # per person per month (mock; wage model is open in IDEA-013)
+static var WAGE := 3.0  # per person per month (mock; wage model is open in IDEA-013)
 
 # ---------------------------------------------------------------- factories
 
@@ -219,7 +219,7 @@ static func urgency_hint(offer: Dictionary) -> String:
 
 const QUALITY_NAMES := ["", "Ekonomik", "Standart", "Premium"]
 const QUALITY_YIELD := {1: 0.96, 2: 1.0, 3: 1.015}
-const OVERHEAD_PER_MACHINE_MONTH := 9.0  # plant overhead 6 + personnel share 3 per machine-month (mock)
+static var plant_overhead := 6.0  # customers' belief of plant overhead per machine-month; plus one wage (mock)
 const ADVANCE_RATE := 0.30  # customer advance on acceptance (proposal; fixed in the first slice)
 
 static func supplier_by_id(id: String) -> Dictionary:
@@ -315,7 +315,7 @@ static func fill_offer(offer: Dictionary, specs: Array, rng: RandomNumberGenerat
 		var weight: float = float(req["workload"]) * price_x(req["kind"])
 		weight_sum += weight
 		scrap_weighted += weight * scrap_rate(req["kind"], int(req["level"]))
-	var material := maxf(revenue * 0.15, (cost_ref - machine_months * OVERHEAD_PER_MACHINE_MONTH) / (1.0 + scrap_weighted / maxf(0.001, weight_sum)))
+	var material := maxf(revenue * 0.15, (cost_ref - machine_months * (plant_overhead + WAGE)) / (1.0 + scrap_weighted / maxf(0.001, weight_sum)))
 	offer["reqs"] = reqs
 	offer["count"] = total_n
 	offer["best"] = best
