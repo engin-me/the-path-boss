@@ -905,7 +905,7 @@ func _offer_card(offer: Dictionary, reason: String) -> void:
 		_row(box, "%s %s" % [Data.LEVELS[int(req["level"])], req["kind"]], "%d parça × %s = %s%s" % [req["parts"], Data.mu_text(float(req["difficulty"])), _xfmt(float(req["workload"])), "" if have else "  (makine yok)"], TEXT if have else RED, 14)
 	_row(box, "Teslim süresi", "%d ay" % offer["months"])
 	_row(box, "En erken üretim başlangıcı", "bu ay" if int(offer["start_delay"]) == 0 else "%d ay sonra" % offer["start_delay"], MUTED)
-	box.add_child(_label("%s = Parça İşleme Katsayısı (yüksek = zor parça). İş yükü = parça × %s." % [Data.DIFFICULTY_SYMBOL, Data.DIFFICULTY_SYMBOL], 11, MUTED))
+	box.add_child(_label("%s = Parça İşleme Katsayısı (yüksek = zor parça). İş yükü = parça × %s. Daha yüksek seviye tezgâh alt seviye işi de yapabilir (ama daha pahalıya)." % [Data.DIFFICULTY_SYMBOL, Data.DIFFICULTY_SYMBOL], 11, MUTED))
 	if game.quote_mode:
 		box.add_child(_label(Data.urgency_hint(offer), 12, MUTED))
 		box.add_child(_button("Teklif ver" if reason == "" else reason, _open_detail.bind("quote", str(offer["id"])), reason == "", reason != ""))
@@ -1043,6 +1043,9 @@ func _detail_quote() -> void:
 		var span: Array = line["scrap_range"]
 		card.add_child(_label("Bu tür iş için olağan aralık %%%d–%%%d (ortalama %%%.1f); oran, parçaya dönüşen malzeme üzerinden hesaplanır (çapak ve talaş hammadde fiyatındadır); işi alınca gerçek oran bu aralıkta çıkar ve ay sonunda üretilen miktara göre kasadan düşer. Tahmini düşürmek fiyatı indirir, gerçek hurda aynı kalır." % [int(roundf(float(span[0]) * 100.0)), int(roundf(float(span[1]) * 100.0)), float(line["scrap_rate"]) * 100.0], 11, MUTED))
 		_stepper(card, "Genel giderler (kira, kredi, enerji)", Data.usd(float(line["overhead"])), i, "overhead_pct", 10.0, edit.has("overhead_pct") and float(edit["overhead_pct"]) != 0.0)
+		_stepper(card, "Amortisman (bedel ÷ %d ay)" % Data.AMORT_MONTHS, Data.usd(float(line["amortization"])), i, "amortization_pct", 10.0, edit.has("amortization_pct") and float(edit["amortization_pct"]) != 0.0)
+		if int(line["serving_level"]) > int(line["level"]):
+			card.add_child(_label("Bu işi %s tezgâhın yapar: daha pahalı enerji, personel ve amortisman. Alt seviye tezgâh kullanmak daha ucuzdur." % Data.LEVELS[int(line["serving_level"])], 11, GOLD))
 		_stepper(card, "Personel giderleri", Data.usd(float(line["personnel"])), i, "personnel_pct", 10.0, edit.has("personnel_pct") and float(edit["personnel_pct"]) != 0.0)
 		_row(card, "Tezgah maliyeti", Data.usd(float(line["subtotal"])), GREEN, 15)
 	var totals := _card(content, "Toplam maliyet", BORDER)
@@ -1824,6 +1827,7 @@ func _detail_costs() -> void:
 	_row(box, "Personel (patron vardiyası ücretsiz)", Data.usd(wages), TEXT, 15)
 	if not game.loan.is_empty():
 		_row(box, "Kredi taksidi", Data.usd(float(game.loan["installment"])), TEXT, 15)
-	_row(box, "Toplam", Data.usd(game.ordinary_expense()), GREEN, 17)
+	_row(box, "Toplam (nakit)", Data.usd(game.ordinary_expense()), GREEN, 17)
+	_row(box, "Amortisman (kâğıt üstü, nakit değil)", Data.usd(game.monthly_amortization()), MUTED, 13)
 	box.add_child(_label("Teslim alınmamış makineler gider yaratmaz; personel teslimde işe başlar.", 12, MUTED))
 

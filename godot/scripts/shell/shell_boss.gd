@@ -843,15 +843,32 @@ func _create_job(offer: Dictionary, price: float, advance_rate: float, due_month
 # ---------------------------------------------------------------- quotes (IDEA-017)
 
 # Monthly energy and consumables of one machine of this kind/level on the current shift plan.
-func _estimate_energy(kind: String, level: int) -> float:
+# The machine that would do a job needing this kind/level: the lowest sufficient level owned (in transit
+# included), else a new one of exactly the needed level. A higher level can do lower-level work, but its
+# energy, staffing and write-off are the higher machine's.
+func serving_basis(kind: String, level: int) -> Dictionary:
+	var best: Dictionary = {}
 	for machine in machines:
-		if machine["kind"] == kind and int(machine["level"]) == level:
-			return (float(machine["energy"]) + float(machine["consumables"])) * shift_equiv(machine)
-	var list: float = Data.list_price(kind, level)
+		if machine["kind"] == kind and int(machine["level"]) >= level:
+			if best.is_empty() or int(machine["level"]) < int(best["level"]):
+				best = machine
 	var equiv := 0.0
 	for i in clampi(plan_shifts, 1, 3):
 		equiv += 1.0 + (Data.OT_HOURS_SHARE if plan_ot[i] else 0.0)
-	return list * (Data.ENERGY_RATE + Data.CONSUMABLE_RATE) * minf(equiv, 3.0)
+	equiv = minf(equiv, 3.0)
+	if not best.is_empty():
+		return {"level": int(best["level"]), "owned": true, "energy": (float(best["energy"]) + float(best["consumables"])) * equiv,
+			"price": float(best["price"]), "personnel": int(best["personnel"])}
+	var list: float = Data.list_price(kind, level)
+	return {"level": level, "owned": false, "energy": list * (Data.ENERGY_RATE + Data.CONSUMABLE_RATE) * equiv,
+		"price": list, "personnel": Data.personnel_for(kind, level)}
+
+# Straight-line write-off per month of everything delivered (accounting only; the cash left when it was bought).
+func monthly_amortization() -> float:
+	var total := 0.0
+	for machine in delivered():
+		total += float(machine["price"]) / float(Data.AMORT_MONTHS)
+	return total
 
 # What the player can work out: material at the default supplier plus, per machine kind the job
 # needs, a scrap allowance, the plant overhead and the personnel it occupies. `edits[i]` lets the
@@ -879,16 +896,19 @@ func cost_estimate(offer: Dictionary, edits := {}) -> Dictionary:
 		var months := float(req["count"]) * float(offer["duration"])
 		var rate := Data.scrap_rate(req["kind"], int(req["level"]), quality)
 		var rate_used := maxf(0.0, rate + float(edit.get("scrap_pt", 0.0)) / 100.0)
-		var energy_month := _estimate_energy(req["kind"], int(req["level"]))
-		var overhead_base := months * (fixed_share + energy_month)
-		var personnel_base := months * (Data.WAGE + staff_cost_per_head()) * float(Data.personnel_for(req["kind"], int(req["level"])))
+		var basis := serving_basis(req["kind"], int(req["level"]))
+		var overhead_base := months * (fixed_share + float(basis["energy"]))
+		var personnel_base := months * (Data.WAGE + staff_cost_per_head()) * float(basis["personnel"])
+		var amort_base := months * float(basis["price"]) / float(Data.AMORT_MONTHS)
 		var line := {"kind": req["kind"], "level": req["level"], "count": req["count"], "months": months,
 			"material_part": material_part, "scrap_rate": rate, "scrap_rate_used": rate_used, "scrap_range": Data.scrap_range(req["kind"], int(req["level"])),
 			"scrap": material_part * rate_used, "overhead": overhead_base * (1.0 + float(edit.get("overhead_pct", 0.0)) / 100.0),
-			"personnel": personnel_base * (1.0 + float(edit.get("personnel_pct", 0.0)) / 100.0)}
-		line["subtotal"] = float(line["scrap"]) + float(line["overhead"]) + float(line["personnel"])
+			"personnel": personnel_base * (1.0 + float(edit.get("personnel_pct", 0.0)) / 100.0),
+			"amortization": amort_base * (1.0 + float(edit.get("amortization_pct", 0.0)) / 100.0),
+			"serving_level": basis["level"], "serving_owned": basis["owned"]}
+		line["subtotal"] = float(line["scrap"]) + float(line["overhead"]) + float(line["personnel"]) + float(line["amortization"])
 		total += float(line["subtotal"])
-		base_total += material_part * rate + overhead_base + personnel_base
+		base_total += material_part * rate + overhead_base + personnel_base + amort_base
 		lines.append(line)
 	return {"material": material, "lines": lines, "total": total, "base_total": base_total}
 

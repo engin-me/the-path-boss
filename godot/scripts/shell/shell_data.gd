@@ -251,6 +251,7 @@ const STAFF_POLICIES := [
 	{"name": "İyi", "cost": 1.2, "bonus": 0.20, "note": "Yemek, servis, sağlık ve prim."}
 ]
 const MACHINE_AREA_SHARE := 0.51   # machines (listing area) may cover at most this share of the plant
+const AMORT_MONTHS := 120   # straight-line machine write-off: price / (10 years x 12 months); accounting cost, not cash
 const OT_HOURS_SHARE := 0.5   # overtime adds 4 h to an 8 h shift
 const OT_WAGE_MULT := 1.5     # overtime hours cost 1.5x the hourly wage
 

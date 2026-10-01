@@ -183,6 +183,15 @@ func _run() -> void:
 	for candidate in wait_game.offers:
 		if wait_game.fit_block_reason(candidate["id"]) == "" and wait_game.accept_block_reason(candidate["id"]) == "":
 			return _fail("During the report the phase, not the fit, must block accepting")
+	# ---- a higher level machine serves lower-level work but at its own energy and write-off
+	var basis_low: Dictionary = plan_game.serving_basis("Torna", 1)
+	var basis_exact: Dictionary = plan_game.serving_basis("Torna", int(plan_machine["level"]))
+	if int(basis_low["level"]) != int(plan_machine["level"]) or not _near(float(basis_low["price"]), float(plan_machine["price"]), 0.001):
+		return _fail("A Torna Hassas must serve Standart work with its own price")
+	if not _near(float(basis_exact["energy"]), float(basis_low["energy"]), 0.001):
+		return _fail("Serving lower-level work must cost the serving machine's energy")
+	if not _near(plan_game.monthly_amortization(), float(plan_machine["price"]) / float(Data.AMORT_MONTHS), 0.001):
+		return _fail("Monthly write-off is price / 120")
 	# ---- job scrap: drawn inside the table range, charged at delivery
 	var plan_offer: Dictionary = plan_game.offers[0]
 	var estimate: Dictionary = plan_game.cost_estimate(plan_offer)
