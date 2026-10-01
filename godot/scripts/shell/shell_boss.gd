@@ -746,8 +746,7 @@ func _create_job(offer: Dictionary, price: float, advance_rate: float, due_month
 	scrap_draw.seed = 31 * int(offer["id"]) + 7 * month + 3
 	var draws: Array = []
 	for req in job["reqs"]:
-		var scrap_span: Array = Data.scrap_range(req["kind"], int(req["level"]))
-		draws.append(lerpf(float(scrap_span[0]), float(scrap_span[1]), scrap_draw.randf()))
+		draws.append(scrap_draw.randf())
 	job["scrap_draws"] = draws
 	jobs.append(job)
 	offers.erase(offer)
@@ -779,7 +778,7 @@ func _estimate_energy(kind: String, level: int) -> float:
 func cost_estimate(offer: Dictionary, edits := {}) -> Dictionary:
 	var supplier := Data.supplier_by_id(default_supplier)
 	var material := float(offer["material"]) * float(supplier["price"])
-	var yield_factor := 1.0   # supplier quality already changes the job's output (job["yield"]); not counted twice
+	var quality := int(supplier["quality"])
 	var weight_sum := 0.0
 	for req in offer["reqs"]:
 		weight_sum += float(req["workload"]) * Data.price_x(req["kind"])
@@ -796,7 +795,7 @@ func cost_estimate(offer: Dictionary, edits := {}) -> Dictionary:
 		var share := float(req["workload"]) * Data.price_x(req["kind"]) / maxf(0.001, weight_sum)
 		var material_part := material * share
 		var months := float(req["count"]) * float(offer["duration"])
-		var rate := Data.scrap_rate(req["kind"], int(req["level"]), yield_factor)
+		var rate := Data.scrap_rate(req["kind"], int(req["level"]), quality)
 		var rate_used := maxf(0.0, rate + float(edit.get("scrap_pt", 0.0)) / 100.0)
 		var energy_month := _estimate_energy(req["kind"], int(req["level"]))
 		var overhead_base := months * (fixed_share + energy_month)
@@ -816,6 +815,7 @@ func cost_estimate(offer: Dictionary, edits := {}) -> Dictionary:
 func scrap_cost_month(job: Dictionary) -> float:
 	var order: Dictionary = job.get("order", {})
 	var supplier := Data.supplier_by_id(String(order.get("supplier", default_supplier)))
+	var quality := int(supplier["quality"])
 	var material: float = float(order["amount"]) if order.has("amount") else float(job["material"]) * float(supplier["price"])
 	var weight_sum := 0.0
 	for req in job["reqs"]:
@@ -825,7 +825,7 @@ func scrap_cost_month(job: Dictionary) -> float:
 	for i in job["reqs"].size():
 		var req: Dictionary = job["reqs"][i]
 		var share := float(req["workload"]) * Data.price_x(req["kind"]) / maxf(0.001, weight_sum)
-		var drawn: float = float(draws[i]) if i < draws.size() else Data.scrap_rate(req["kind"], int(req["level"]))
+		var drawn: float = Data.scrap_at(req["kind"], int(req["level"]), Data.scrap_position(float(draws[i]), quality)) if i < draws.size() else Data.scrap_rate(req["kind"], int(req["level"]), quality)
 		cost += material * share * drawn * float(req.get("made_month", 0.0)) / maxf(1.0, float(req["workload"]))
 	return cost
 

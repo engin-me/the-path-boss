@@ -252,13 +252,21 @@ static func mu_text(value: float) -> String:
 static func scrap_range(kind: String, level: int) -> Array:
 	return SCRAP_RANGE[kind][level]
 
-static func scrap_with_yield(rate: float, yield_factor: float) -> float:
-	return maxf(0.0, 1.0 - yield_factor * (1.0 - rate))
+# Where inside the range the drawn scrap lands: a Premium supplier pushes it to the lower half,
+# an Ekonomik one to the upper half (quality 1..3).
+const SCRAP_POSITION := {1: 0.75, 2: 0.5, 3: 0.25}
 
-# Expected job scrap: the middle of the range, made worse or better by the supplier's yield.
-static func scrap_rate(kind: String, level: int, yield_factor := 1.0) -> float:
-	var range_: Array = SCRAP_RANGE[kind][level]
-	return scrap_with_yield((float(range_[0]) + float(range_[1])) / 2.0, yield_factor)
+static func scrap_at(kind: String, level: int, position: float) -> float:
+	var span: Array = SCRAP_RANGE[kind][level]
+	return lerpf(float(span[0]), float(span[1]), clampf(position, 0.0, 1.0))
+
+# Expected job scrap for a supplier quality.
+static func scrap_rate(kind: String, level: int, quality := 2) -> float:
+	return scrap_at(kind, level, float(SCRAP_POSITION[quality]))
+
+# A raw draw u in 0..1 becomes a position that leans with the supplier quality.
+static func scrap_position(u: float, quality: int) -> float:
+	return clampf(u * 0.5 + float(SCRAP_POSITION[quality]) - 0.25, 0.0, 1.0)
 
 static func difficulty(level: int, rng: RandomNumberGenerator) -> float:
 	var pool := {1: [1.0, 1.5], 2: [1.5, 2.0], 3: [2.0, 2.5]}
