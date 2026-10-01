@@ -136,6 +136,29 @@ func _run() -> void:
 	var plan_copy = Boss.new()
 	if plan_copy.from_save(plan_game.to_save()) != "" or plan_copy.plan_shifts != 2 or not bool(plan_copy.plan_ot[1]):
 		return _fail("The shift plan must survive the save round trip")
+	# ---- the realisation floor holds for heavy physical problems too (A, P and Q at their caps)
+	var heavy: Dictionary = plan_game.problem_mults({"A": 0.6, "P": 0.2, "Q": 0.2, "N": 0.3})
+	if float(heavy["phys"]) * float(heavy["non"]) < 0.33 - 0.0001:
+		return _fail("The 33 percent realisation floor must hold for heavy physical problems: %.3f" % (float(heavy["phys"]) * float(heavy["non"])))
+	# ---- leaving the plant drops running jobs like abandoning them: advances come back, penalties apply
+	var exit_game = Boss.new()
+	exit_game.default_setup(12)
+	exit_game.cash = 2000.0
+	exit_game.rent_factory("factory_1", 12, false)
+	exit_game.buy_package()
+	exit_game.buy_listing(13)
+	exit_game.run_report()
+	exit_game.close_month()
+	var offer_for_exit: Dictionary = exit_game.offers[0]
+	exit_game.accept_offer(offer_for_exit["id"])
+	var cash_before_exit: float = exit_game.cash
+	var advance_taken: float = exit_game.advance_of(offer_for_exit)
+	var exit_costs: Dictionary = exit_game.leave_job_costs()
+	if int(exit_costs["jobs"]) != 1 or float(exit_costs["refund"]) < advance_taken - 1.0:
+		return _fail("Leaving must hand back the advance of every running job")
+	exit_game.leave_factory()
+	if exit_game.cash > cash_before_exit - exit_game.leave_fee() - advance_taken * 1.0 + 0.5:
+		return _fail("Leaving with running jobs must not keep their advances")
 	# ---- job scrap: drawn inside the table range, charged at delivery
 	var plan_offer: Dictionary = plan_game.offers[0]
 	var estimate: Dictionary = plan_game.cost_estimate(plan_offer)

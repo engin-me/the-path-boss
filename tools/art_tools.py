@@ -4,6 +4,7 @@
   slice   cut a grid sheet into separate transparent PNGs (chroma-key background)
   key     remove the background of single images
   resize  shrink big images so the game folder stays small
+  fix     find images whose real format does not match the file extension (Godot cannot load them) and convert them
 
 Examples:
   python tools/art_tools.py slice sheet.png --cols 4 --rows 3 --names torna_1,torna_2,torna_3,freze_1,... --out godot/art/floor/machines
@@ -114,6 +115,37 @@ def cmd_resize(args):
     print("done:", changed, "files resized")
 
 
+def cmd_fix(args):
+    """A .png that really holds JPEG data (or the reverse) fails to import in Godot; re-save with the right extension."""
+    wanted = {"PNG": ".png", "JPEG": ".jpg", "WEBP": ".webp"}
+    fixed = 0
+    for root, _dirs, files in os.walk(args.folder):
+        for name in files:
+            stem, ext = os.path.splitext(name)
+            if ext.lower() not in (".png", ".jpg", ".jpeg", ".webp"):
+                continue
+            path = os.path.join(root, name)
+            try:
+                image = Image.open(path)
+                real = image.format
+                image.load()
+            except Exception as error:
+                print("UNREADABLE", path, error)
+                continue
+            right = wanted.get(real)
+            if right is None or ext.lower() == right or (right == ".jpg" and ext.lower() == ".jpeg"):
+                continue
+            target = os.path.join(root, stem + right)
+            if right == ".jpg":
+                image.convert("RGB").save(target, quality=90)
+            else:
+                image.save(target)
+            os.remove(path)
+            print("fixed", path, "->", target)
+            fixed += 1
+    print("done:", fixed, "files fixed")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -138,6 +170,9 @@ def main():
     r.add_argument("folder")
     r.add_argument("--max", type=int, default=1024)
     r.set_defaults(func=cmd_resize)
+    f = sub.add_parser("fix")
+    f.add_argument("folder")
+    f.set_defaults(func=cmd_fix)
     args = parser.parse_args()
     args.func(args)
 

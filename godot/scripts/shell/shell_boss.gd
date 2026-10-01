@@ -380,11 +380,14 @@ func loss_fractions() -> Dictionary:
 # Problem multipliers: physical (availability x performance x quality) and non-physical,
 # with the 33 percent realisation floor on their product.
 func problem_mults(fr: Dictionary) -> Dictionary:
-	var physical := (1.0 - float(fr["A"])) * (1.0 - float(fr["P"])) * (1.0 - float(fr["Q"]))
+	var raw_physical := (1.0 - float(fr["A"])) * (1.0 - float(fr["P"])) * (1.0 - float(fr["Q"]))
+	# the realisation floor holds for the whole product, so the physical part alone cannot sink below it either
+	var physical := maxf(REALIZATION_FLOOR, raw_physical)
 	var non := 1.0 - float(fr["N"])
 	var total := maxf(REALIZATION_FLOOR, physical * non)
-	var non_eff := minf(1.0, total / maxf(physical, 0.0001))
-	return {"phys": physical, "non": non_eff, "a": 1.0 - float(fr["A"]), "p": 1.0 - float(fr["P"]), "q": 1.0 - float(fr["Q"])}
+	var non_eff := minf(1.0, total / physical)
+	var spread := pow(physical / maxf(raw_physical, 0.0001), 1.0 / 3.0)
+	return {"phys": physical, "non": non_eff, "a": minf(1.0, (1.0 - float(fr["A"])) * spread), "p": minf(1.0, (1.0 - float(fr["P"])) * spread), "q": minf(1.0, (1.0 - float(fr["Q"])) * spread)}
 
 func machine_steps(machine: Dictionary, mults: Dictionary) -> Dictionary:
 	var theoretical := float(machine["nameplate"])
@@ -606,6 +609,20 @@ func leave_block_reason() -> String:
 		return "İpotekli kredi kapanmadan sözleşme bırakılamaz."
 	return ""
 
+# Leaving drops every running job exactly like abandoning it: penalty, advance refund, and material already
+# ordered still has to be paid.
+func leave_job_costs() -> Dictionary:
+	var penalty := 0.0
+	var refund := 0.0
+	var orders := 0.0
+	for job in jobs:
+		penalty += abandon_penalty(job)
+		refund += float(job["advance"])
+		var order: Dictionary = job.get("order", {})
+		if not order.is_empty() and not bool(order.get("paid", false)):
+			orders += float(order["amount"])
+	return {"jobs": jobs.size(), "penalty": penalty, "refund": refund, "orders": orders, "total": penalty + refund + orders}
+
 func leave_fee() -> float:
 	return base_rent() * Data.EXIT_FEE_RENTS
 
@@ -614,8 +631,11 @@ func leave_factory() -> String:
 	var reason := leave_block_reason()
 	if reason != "":
 		return reason
-	cash -= leave_fee()
-	history.append("Ay %d: %s bırakıldı (çıkış bedeli %.0f)." % [month, factory()["name"], leave_fee()])
+	var jobs_cost := leave_job_costs()
+	cash -= leave_fee() + float(jobs_cost["total"])
+	for job in jobs:
+		_score_event(0.0)
+	history.append("Ay %d: %s bırakıldı (çıkış bedeli %.0f; %d iş bırakıldı: ceza %.0f, peşinat iadesi %.0f, iptal edilemeyen hammadde %.0f)." % [month, factory()["name"], leave_fee(), jobs_cost["jobs"], jobs_cost["penalty"], jobs_cost["refund"], jobs_cost["orders"]])
 	factory_id = ""
 	machines.clear()
 	jobs.clear()
