@@ -91,9 +91,22 @@ func _equipment_counts() -> Dictionary:
 
 func _add(kind: String, id, rect: Rect2, label: String, extra := {}) -> void:
 	var item := {"kind": kind, "id": id, "rect": rect, "label": label, "rot": 0}
-	item.merge(extra)
+	item.merge(extra, true)
 	item["key"] = "%s:%s:%s" % [kind, str(id), str(item.get("index", 0))]
 	items.append(item)
+
+const EQUIP_SIZE := {"raf": Vector2(1.8, 3.75), "kasa": Vector2(0.8, 0.8), "el_aleti": Vector2(1.6, 3.2), "takim": Vector2(1.8, 0.9),
+	"olcum": Vector2(1.6, 1.6), "transpalet": Vector2(0.8, 1.6), "forklift": Vector2(1.3, 2.6)}
+const PLACE_ORDER := ["raf", "machine", "el_aleti", "olcum", "takim", "forklift", "transpalet", "kasa"]
+const DOCK_APRON := 3.2   # free strip in front of the ramps
+
+# Floor footprint of a machine (real size from its sprite) plus a 0.5 m work margin on every side.
+func _machine_box(machine: Dictionary) -> Vector2:
+	var texture := _sprite_for({"kind": "machine", "machine": machine})
+	var ratio := 1.3 if texture == null else float(texture.get_width()) / float(texture.get_height())
+	var length_m: float = MACHINE_LENGTH_M.get(machine["kind"], 3.0)
+	var footprint := Vector2(length_m, length_m / ratio) if ratio >= 1.0 else Vector2(length_m * ratio, length_m)
+	return footprint + Vector2(1.0, 1.0)
 
 func _layout() -> void:
 	items.clear()
@@ -108,92 +121,110 @@ func _layout() -> void:
 		var cx := width * (float(k) + 0.5) / float(ramps)
 		_add("door", k, Rect2(cx - door_w / 2.0, length, door_w, WALL_T), "Yükleme rampası %d" % (k + 1))
 	var counts := _equipment_counts()
-	# racks along the left wall, work benches and crates along the back wall
-	var racks: int = counts.get("raf", 0)
-	var rack_x := 0.4
-	var rack_y := 0.6
-	var left_end := 0.4
-	for k in racks:
-		if rack_y + 3.75 > length - 7.0 and rack_y > 0.6:
-			rack_y = 0.6
-			rack_x += 2.2
-		_add("equip", "raf", Rect2(rack_x, rack_y, 1.8, 3.75), "Depo rafı", {"index": k})
-		rack_y += 4.15
-		left_end = rack_x + 1.8
-	var top_x0 := left_end + (0.6 if racks > 0 else 0.4)
-	var top_x := top_x0
-	var top_y := 0.6
-	var top_bottom := 0.6
-	for k in counts.get("el_aleti", 0):
-		if top_x + 1.6 > width - 2.4 and top_x > top_x0:
-			top_x = top_x0
-			top_y += 3.6
-		_add("equip", "el_aleti", Rect2(top_x, top_y, 1.6, 3.2), "El aletleri tezgahı", {"index": k})
-		top_bottom = maxf(top_bottom, top_y + 3.2)
-		top_x += 1.9
-	var crate_y := top_bottom + (0.5 if counts.get("el_aleti", 0) > 0 else 0.0)
-	var crate_x := top_x0
-	var crate_bottom := crate_y
-	for k in counts.get("kasa", 0):
-		if crate_x + 0.8 > width - 2.4 and crate_x > top_x0:
-			crate_x = top_x0
-			crate_y += 1.0
-		_add("equip", "kasa", Rect2(crate_x, crate_y, 0.8, 0.8), "Malzeme kasası", {"index": k})
-		crate_bottom = maxf(crate_bottom, crate_y + 0.8)
-		crate_x += 1.0
-	var machine_top := maxf(top_bottom, crate_bottom) + 1.2
-	var right_y := machine_top
-	for k in counts.get("takim", 0):
-		_add("equip", "takim", Rect2(width - 2.4, right_y, 1.8, 0.9), "Takım dolabı", {"index": k})
-		right_y += 1.3
-	for k in counts.get("olcum", 0):
-		_add("equip", "olcum", Rect2(width - 2.0, right_y, 1.6, 1.6), "Kalite ölçüm odası", {"index": k})
-		right_y += 2.0
-	# pallet trucks and forklifts near the first ramp
-	var dock_y := length - 3.2
-	for k in counts.get("transpalet", 0):
-		_add("equip", "transpalet", Rect2(1.2 + 1.0 * float(k % 8), dock_y - 1.8 * float(k / 8), 0.8, 1.6), "Transpalet", {"index": k})
-	for k in counts.get("forklift", 0):
-		_add("equip", "forklift", Rect2(width / 2.0 + 1.5 * float(k), dock_y - 1.0, 1.3, 2.6), "Forklift", {"index": k})
-	# machines in rows between the side equipment and the dock
-	var x0 := maxf(2.4, left_end + 1.0)
-	var x1 := width - 2.4
-	var y0 := machine_top
-	var y1 := length - 6.0
-	var machine_list: Array = game.machines
-	var scale := 1.0
-	var placed: Array = []
-	for attempt in 8:
-		placed = _place_machines(machine_list, x0, x1, y0, y1, scale)
-		if not placed.is_empty() and placed[placed.size() - 1].get("fits", true):
-			break
-		scale *= 0.85
-	for entry in placed:
-		_add("machine", entry["uid"], entry["rect"], entry["label"], {"machine": entry["machine"]})
+	# everything the player owns, in placement order
+	var specs: Array = []
+	for group in PLACE_ORDER:
+		if group == "machine":
+			for machine in game.machines:
+				specs.append({"kind": "machine", "id": machine["uid"], "index": 0, "box": _machine_box(machine), "label": machine["model"], "machine": machine})
+		else:
+			for k in int(counts.get(group, 0)):
+				specs.append({"kind": "equip", "id": group, "index": k, "box": EQUIP_SIZE[group], "label": EQUIP_NAMES[group]})
+	var saved: Dictionary = game.layout.get(factory_id_key(), {})
+	var taken: Array = []
+	# 1) items that already have a place (kept forever, so buying more never shuffles them)
+	for spec in specs:
+		var key := "%s:%s:%s" % [spec["kind"], str(spec["id"]), str(spec["index"])]
+		spec["key"] = key
+		if saved.has(key):
+			var entry: Dictionary = saved[key]
+			var rot := int(entry.get("rot", 0)) % 4
+			var box: Vector2 = spec["box"]
+			if rot % 2 == 1:
+				box = Vector2(box.y, box.x)
+			spec["rot"] = rot
+			spec["rect"] = _clamped(Rect2(Vector2(float(entry.get("x", 0.4)), float(entry.get("y", 0.6))), box))
+			taken.append({"id": spec["id"], "rect": spec["rect"]})
+	# 2) new items: racks form a train along the left wall; the rest is scattered (same seed, same result)
+	var rack_step: float = EQUIP_SIZE["raf"].y / 2.0
+	var per_column := maxi(1, int(floor((length - 4.6 - EQUIP_SIZE["raf"].y) / rack_step)) + 1)
+	var changed := false
+	for spec in specs:
+		if spec.has("rect"):
+			continue
+		var box: Vector2 = spec["box"]
+		var rect := Rect2()
+		var found := false
+		if str(spec["id"]) == "raf":
+			var column := int(spec["index"]) / per_column
+			var row := int(spec["index"]) % per_column
+			rect = Rect2(Vector2(0.4 + float(column) * (box.x + 0.4), 0.6 + float(row) * rack_step), box)
+			found = interior.encloses(rect) and not _is_taken(rect, taken, true)
+		if not found:
+			var rng := RandomNumberGenerator.new()
+			rng.seed = hash(game.factory_id + str(spec["key"]))
+			rect = _auto_spot(box, taken, rng, str(spec["id"]) == "raf")
+		spec["rot"] = 0
+		spec["rect"] = rect
+		taken.append({"id": spec["id"], "rect": rect})
+		saved[spec["key"]] = {"x": rect.position.x, "y": rect.position.y, "rot": 0, "auto": true}
+		changed = true
+	if changed:
+		game.layout[game.factory_id] = saved
+	for spec in specs:
+		var extra := {"index": spec["index"], "rot": spec["rot"]}
+		if spec.has("machine"):
+			extra["machine"] = spec["machine"]
+		_add(spec["kind"], spec["id"], spec["rect"], spec["label"], extra)
 	if counts.get("vinc", 0) > 0:
 		_add("crane", 0, Rect2(0.0, length * 0.45, width, 0.6), "Köprü vinç")
-	_apply_layout_overrides()
+
+func factory_id_key() -> String:
+	return game.factory_id
+
+func _is_taken(rect: Rect2, taken: Array, is_rack: bool) -> bool:
+	for other in taken:
+		if is_rack and str(other["id"]) == "raf":
+			continue
+		if rect.intersects(other["rect"]):
+			return true
+	return false
+
+# A free spot for a box: random tries first, then a grid scan, then the plant's last gap.
+func _auto_spot(box: Vector2, taken: Array, rng: RandomNumberGenerator, is_rack: bool) -> Rect2:
+	var width := interior.size.x
+	var length := interior.size.y
+	var max_x := maxf(0.4, width - 0.4 - box.x)
+	var max_y := maxf(0.6, length - DOCK_APRON - box.y)
+	for attempt in 160:
+		var pos := Vector2(snappedf(rng.randf_range(0.4, max_x), SNAP_M), snappedf(rng.randf_range(0.6, max_y), SNAP_M))
+		var rect := Rect2(pos, box)
+		if interior.encloses(rect) and not _is_taken(rect.grow(0.3), taken, is_rack):
+			return rect
+	for pad in [0.3, 0.0]:
+		var limit_y: float = length - DOCK_APRON if pad > 0.0 else length - 0.2
+		var y := 0.4
+		while y + box.y <= limit_y:
+			var x := 0.4
+			while x + box.x <= width - 0.2:
+				var scan := Rect2(Vector2(x, y), box)
+				if not _is_taken(scan.grow(pad), taken, is_rack):
+					return scan
+				x += 1.0
+			y += 1.0
+	return _clamped(Rect2(Vector2(0.4, 0.6), box))
 
 # Player-moved / rotated items (saved per factory in game.layout).
 func _editable(item: Dictionary) -> bool:
 	return item["kind"] == "equip" or item["kind"] == "machine"
 
-func _apply_layout_overrides() -> void:
-	var saved: Dictionary = game.layout.get(game.factory_id, {})
-	for item in items:
-		if not _editable(item) or not saved.has(item["key"]):
-			continue
-		var entry: Dictionary = saved[item["key"]]
-		var rect: Rect2 = item["rect"]
-		var rot := int(entry.get("rot", 0)) % 4
-		var box := Vector2(rect.size.y, rect.size.x) if rot % 2 == 1 else rect.size
-		item["rot"] = rot
-		item["rect"] = _clamped(Rect2(Vector2(float(entry.get("x", rect.position.x)), float(entry.get("y", rect.position.y))), box))
-
 func _overlaps(rect: Rect2, ignore: int) -> bool:
+	var ignore_id: String = str(items[ignore]["id"]) if ignore >= 0 and ignore < items.size() else ""
 	for i in items.size():
 		if i == ignore or not _editable(items[i]):
 			continue
+		if ignore_id == "raf" and str(items[i]["id"]) == "raf":
+			continue   # racks may overlap each other, like cars of a train
 		if rect.intersects(items[i]["rect"]):
 			return true
 	return false
@@ -287,28 +318,6 @@ func _mirrored_floor(source: Texture2D) -> Texture2D:
 	composite.blit_rect(flipped_y, Rect2i(0, 0, w, h), Vector2i(0, h))
 	composite.blit_rect(flipped_xy, Rect2i(0, 0, w, h), Vector2i(w, h))
 	return ImageTexture.create_from_image(composite)
-
-func _place_machines(list: Array, x0: float, x1: float, y0: float, y1: float, scale: float) -> Array:
-	var out: Array = []
-	var cursor := Vector2(x0, y0)
-	var row_h := 0.0
-	var fits := true
-	for machine in list:
-		var side := sqrt(float(machine["area"])) * scale
-		var box := Vector2(side, side)
-		if cursor.x + box.x > x1 and cursor.x > x0:
-			cursor.x = x0
-			cursor.y += row_h + 1.0
-			row_h = 0.0
-		var rect := Rect2(cursor, box)
-		if rect.end.y > y1:
-			fits = false
-		out.append({"uid": machine["uid"], "rect": rect, "label": machine["model"], "machine": machine, "fits": true})
-		cursor.x += box.x + 1.0
-		row_h = maxf(row_h, box.y)
-	if not out.is_empty():
-		out[out.size() - 1]["fits"] = fits
-	return out
 
 # ------------------------------------------------------------------ view
 
@@ -665,7 +674,7 @@ func _draw_item(index: int) -> void:
 				var dy: float = corner if corner_pos.y == frame.position.y else -corner
 				draw_line(corner_pos, corner_pos + Vector2(dx, 0), tape, tape_w)
 				draw_line(corner_pos, corner_pos + Vector2(0, dy), tape, tape_w)
-			var body := frame.grow(-minf(frame.size.x, frame.size.y) * 0.07)
+			var body := frame.grow(-zoom * 0.5)
 			var texture := _sprite_for(item)
 			var tint := Color(1, 1, 1, 0.45) if transit else Color.WHITE
 			var machine_rect := body

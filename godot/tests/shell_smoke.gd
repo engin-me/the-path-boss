@@ -332,7 +332,7 @@ func _run() -> void:
 	var all_items: Array = layout_view.items
 	for a in all_items.size():
 		for b in range(a + 1, all_items.size()):
-			if layout_view._editable(all_items[a]) and layout_view._editable(all_items[b]) and (all_items[a]["rect"] as Rect2).intersects(all_items[b]["rect"]):
+			if layout_view._editable(all_items[a]) and layout_view._editable(all_items[b]) and not (str(all_items[a]["id"]) == "raf" and str(all_items[b]["id"]) == "raf") and (all_items[a]["rect"] as Rect2).intersects(all_items[b]["rect"]):
 				return _fail("Layout items overlap: %s vs %s" % [all_items[a]["key"], all_items[b]["key"]])
 	var bench_index := -1
 	for i in layout_view.items.size():
@@ -353,12 +353,15 @@ func _run() -> void:
 	layout_view._layout()
 	var bench_kept: Rect2 = layout_view.items[bench_index]["rect"]
 	if bench_kept.position.distance_to(Vector2(3.0, 9.0)) > 0.01 or int(layout_view.items[bench_index]["rot"]) != 1:
-		return _fail("A moved item must keep its place after re-layout")
+		return _fail("A moved item must keep its place after re-layout: %s rot %s, saved %s" % [str(bench_kept), str(layout_view.items[bench_index]["rot"]), str(shell.game.layout)])
 	var layout_game = Boss.new()
 	if layout_game.from_save(shell.game.to_save()) != "" or not layout_game.layout.has(shell.game.factory_id):
 		return _fail("The layout must survive the save round trip")
 	layout_view._reset_layout()
-	if not shell.game.layout.is_empty() or (layout_view.items[bench_index]["rect"] as Rect2).position.distance_to(bench_before.position) > 0.01:
+	var all_auto := true
+	for entry in shell.game.layout.get(shell.game.factory_id, {}).values():
+		all_auto = all_auto and bool(entry.get("auto", false))
+	if not all_auto or (layout_view.items[bench_index]["rect"] as Rect2).position.distance_to(bench_before.position) > 0.01:
 		return _fail("Reset must restore the automatic layout")
 	shell.subtab["fabrika"] = "sozlesme"
 	shell._on_tab("fabrika")

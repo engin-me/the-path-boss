@@ -471,7 +471,7 @@ func rent_factory(id: String, months: int, prepay: bool) -> String:
 	_generate_offers()
 	_generate_problems(2)
 	history.append("Ay %d: %s kiralandı (%d ay, kira %.0f)." % [month, factory()["name"], term, base_rent()])
-	notice = "%s kiralandı. Önce zorunlu ekipmanı al, sonra tezgah ve iş." % factory()["name"]
+	notice = "%s kiralandı. Önce gerekli ekipmanı al, sonra tezgah ve iş." % factory()["name"]
 	return ""
 
 func leave_block_reason() -> String:
@@ -534,8 +534,8 @@ func buy_package() -> String:
 	cash -= float(info["price"])
 	invested += float(info["price"])
 	package_bought = true
-	history.append("Ay %d: zorunlu ekipman paketi alındı (%.0f)." % [month, info["price"]])
-	notice = "Zorunlu ekipman tamam; kapasite kullanılabilir."
+	history.append("Ay %d: gerekli ekipman seti alındı (%.0f)." % [month, info["price"]])
+	notice = "Gerekli ekipman tamam; kapasite kullanılabilir."
 	return ""
 
 func equipment_block_reason(id: String, qty: int) -> String:
@@ -639,7 +639,7 @@ func accept_block_reason(id: int) -> String:
 	if offer.is_empty():
 		return "İlan bulunamadı."
 	if not package_bought:
-		return "Zorunlu ekipman eksik"
+		return "Gerekli ekipman eksik"
 	var missing: Array = []
 	for req in offer["reqs"]:
 		if not owns(req):
@@ -685,16 +685,39 @@ func _create_job(offer: Dictionary, price: float, advance_rate: float, due_month
 
 # ---------------------------------------------------------------- quotes (IDEA-017)
 
-# What the player can work out: material at the default supplier, a scrap allowance,
-# and the plant overhead and personnel that the job occupies.
-func cost_estimate(offer: Dictionary) -> Dictionary:
+# What the player can work out: material at the default supplier plus, per machine kind the job
+# needs, a scrap allowance, the plant overhead and the personnel it occupies. `edits[i]` lets the
+# player change the assumptions of requirement i (scrap in points, overhead and personnel in percent);
+# material is never editable.
+func cost_estimate(offer: Dictionary, edits := {}) -> Dictionary:
 	var supplier := Data.supplier_by_id(default_supplier)
 	var material := float(offer["material"]) * float(supplier["price"])
-	var scrap := material * 0.15
-	var machine_months := float(offer["count"]) * float(offer["duration"])
-	var overhead := machine_months * 6.0
-	var personnel := machine_months * Data.WAGE
-	return {"material": material, "scrap": scrap, "overhead": overhead, "personnel": personnel, "total": material + scrap + overhead + personnel}
+	var yield_factor: float = float(Data.QUALITY_YIELD[int(supplier["quality"])])
+	var weight_sum := 0.0
+	for req in offer["reqs"]:
+		weight_sum += float(req["workload"]) * Data.price_x(req["kind"])
+	var lines: Array = []
+	var total := material
+	var base_total := material
+	for i in offer["reqs"].size():
+		var req: Dictionary = offer["reqs"][i]
+		var edit: Dictionary = edits.get(i, {})
+		var share := float(req["workload"]) * Data.price_x(req["kind"]) / maxf(0.001, weight_sum)
+		var material_part := material * share
+		var months := float(req["count"]) * float(offer["duration"])
+		var rate := Data.scrap_rate(req["kind"], int(req["level"]), yield_factor)
+		var rate_used := maxf(0.0, rate + float(edit.get("scrap_pt", 0.0)) / 100.0)
+		var overhead_base := months * Data.OVERHEAD_ESTIMATE
+		var personnel_base := months * Data.WAGE
+		var line := {"kind": req["kind"], "level": req["level"], "count": req["count"], "months": months,
+			"material_part": material_part, "scrap_rate": rate, "scrap_rate_used": rate_used,
+			"scrap": material_part * rate_used, "overhead": overhead_base * (1.0 + float(edit.get("overhead_pct", 0.0)) / 100.0),
+			"personnel": personnel_base * (1.0 + float(edit.get("personnel_pct", 0.0)) / 100.0)}
+		line["subtotal"] = float(line["scrap"]) + float(line["overhead"]) + float(line["personnel"])
+		total += float(line["subtotal"])
+		base_total += material_part * rate + overhead_base + personnel_base
+		lines.append(line)
+	return {"material": material, "lines": lines, "total": total, "base_total": base_total}
 
 # The customer's own cost belief (from the reference price and the job's complexity margin).
 func customer_cost(offer: Dictionary) -> float:
@@ -786,7 +809,7 @@ func answer_counter(mail_id: int, yes: bool) -> String:
 	var probe := offer.duplicate(true)
 	probe["id"] = offer["id"]
 	if not package_bought:
-		return "Zorunlu ekipman eksik"
+		return "Gerekli ekipman eksik"
 	for req in offer["reqs"]:
 		if not owns(req):
 			return "Makine yok"

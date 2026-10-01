@@ -130,18 +130,18 @@ static func _listing(uid: int, type: String, level: int, age: int, discount: flo
 
 # ---------------------------------------------------------------- equipment
 
-# Mandatory package per factory size class; optional items are bought singly.
+# Required equipment set per factory size class; optional items are bought singly.
 const PACKAGE_CLASSES := {
-	"small": {"transpalet": 1, "kasa": 10, "raf": 8, "el_aleti": 2, "takim": 2},
+	"small": {"transpalet": 1, "kasa": 10, "raf": 4, "el_aleti": 2, "takim": 5},
 	"medium": {"transpalet": 2, "kasa": 16, "raf": 14, "el_aleti": 3, "takim": 3},
 	"large": {"transpalet": 4, "kasa": 30, "raf": 28, "el_aleti": 6, "takim": 6}
 }
 const EQUIPMENT := {
 	"transpalet": {"name": "Transpalet", "price": 5.0, "area": 0.0, "required": true, "note": "Kasa ve palet taşıma"},
 	"kasa": {"name": "Malzeme kasası", "price": 0.4, "area": 0.3, "required": true, "note": "Hammadde ve yarı mamul"},
-	"raf": {"name": "Depo rafı", "price": 3.0, "area": 3.0, "required": true, "note": "Depolama alanı tüketir"},
-	"el_aleti": {"name": "El aletleri seti", "price": 10.0, "area": 1.0, "required": true, "note": "Bakım ve ayar"},
-	"takim": {"name": "Takım ve fikstür seti", "price": 25.0, "area": 1.0, "required": true, "note": "Tezgah bağlama takımları"},
+	"raf": {"name": "Depo rafı", "price": 4.0, "area": 3.0, "required": true, "note": "Depolama alanı tüketir"},
+	"el_aleti": {"name": "El aletleri seti", "price": 2.0, "area": 1.0, "required": true, "note": "Bakım ve ayar"},
+	"takim": {"name": "Takım ve fikstür seti", "price": 2.0, "area": 1.0, "required": true, "note": "Tezgah bağlama takımları"},
 	"forklift": {"name": "Forklift", "price": 40.0, "area": 0.0, "required": false, "note": "Depo & Sevkiyat sorun ihtimalini azaltır; OEE'ye yansır (test)"},
 	"olcum": {"name": "Kalite ölçüm seti", "price": 20.0, "area": 1.5, "required": false, "note": "Kalite sorun ihtimalini azaltır (test)"},
 	"vinc": {"name": "Köprü vinç", "price": 90.0, "area": 0.0, "required": false, "min_height": 5.0, "note": "Ağır parçalar; en az 5,0 m tavan gerekir (test)"}
@@ -200,14 +200,14 @@ static func urgency_hint(offer: Dictionary) -> String:
 	var contact: String = CONTACTS[int(offer["id"]) % CONTACTS.size()]
 	var noisy: int = clampi(int(offer["urgency"]) + (int(offer["id"]) % 3) - 1, 1, 10)
 	if noisy >= 9:
-		return "%s (%s) bu hafta 4 kez aradı." % [contact, offer["customer"]]
+		return "Senin aldığın not: %s (%s) bu hafta 4 kez aradı." % [contact, offer["customer"]]
 	if noisy >= 7:
-		return "%s (%s) iki kez arayıp durumu sordu." % [contact, offer["customer"]]
+		return "Senin aldığın not: %s (%s) iki kez arayıp durumu sordu." % [contact, offer["customer"]]
 	if noisy >= 5:
-		return "%s (%s) e-posta attı; ton sakin." % [contact, offer["customer"]]
+		return "Senin aldığın not: %s (%s) e-posta attı; ton sakin." % [contact, offer["customer"]]
 	if noisy >= 3:
-		return "%s (%s) başka tedarikçilere de soruyor gibi." % [contact, offer["customer"]]
-	return "%s (%s) yanıt vermesi iki hafta sürdü; acelesi yok." % [contact, offer["customer"]]
+		return "Senin aldığın not: %s (%s) başka tedarikçilere de soruyor gibi." % [contact, offer["customer"]]
+	return "Senin aldığın not: %s (%s) yanıt vermesi iki hafta sürdü; acelesi yok." % [contact, offer["customer"]]
 
 const QUALITY_NAMES := ["", "Ekonomik", "Standart", "Premium"]
 const QUALITY_YIELD := {1: 0.96, 2: 1.0, 3: 1.015}
@@ -232,6 +232,17 @@ static func ref_output(kind: String) -> float:
 
 static func price_x(kind: String) -> float:
 	return price_per_x * revenue_scale * float(TYPE_PRICE[kind]) / 80.0 * 2000.0 / float(NAMEPLATE[kind])
+
+const DIFFICULTY_SYMBOL := "μ"   # Parça İşleme Katsayısı: higher = harder part
+const OVERHEAD_ESTIMATE := 6.0   # plant overhead share per machine-month used in the cost estimate (mock)
+
+static func mu_text(value: float) -> String:
+	return "%s %s" % [DIFFICULTY_SYMBOL, str(value).trim_suffix(".0")]
+
+# Scrap share of a machine kind/level (the listing's own value), made worse or better by the supplier's yield.
+static func scrap_rate(kind: String, level: int, yield_factor := 1.0) -> float:
+	var base := maxf(SCRAP_FLOOR, float(SCRAP_BASE[kind]) + float(SCRAP_LEVEL_DELTA[level]))
+	return maxf(0.0, 1.0 - yield_factor * (1.0 - base))
 
 static func difficulty(level: int, rng: RandomNumberGenerator) -> float:
 	var pool := {1: [1.0, 1.5], 2: [1.5, 2.0], 3: [2.0, 2.5]}
@@ -265,7 +276,13 @@ static func fill_offer(offer: Dictionary, specs: Array, rng: RandomNumberGenerat
 	var machine_months := 0.0
 	for spec in specs:
 		machine_months += float(spec["n"]) * float(offer["duration"])
-	var material := maxf(revenue * 0.15, (cost_ref - machine_months * OVERHEAD_PER_MACHINE_MONTH) / 1.15)
+	var weight_sum := 0.0
+	var scrap_weighted := 0.0
+	for req in reqs:
+		var weight: float = float(req["workload"]) * price_x(req["kind"])
+		weight_sum += weight
+		scrap_weighted += weight * scrap_rate(req["kind"], int(req["level"]))
+	var material := maxf(revenue * 0.15, (cost_ref - machine_months * OVERHEAD_PER_MACHINE_MONTH) / (1.0 + scrap_weighted / maxf(0.001, weight_sum)))
 	offer["reqs"] = reqs
 	offer["count"] = total_n
 	offer["best"] = best
