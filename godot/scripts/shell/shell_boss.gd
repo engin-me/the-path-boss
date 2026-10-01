@@ -43,6 +43,7 @@ var mails: Array = []
 var next_mail := 1
 var plan_shifts := 1   # factory shift plan (applies to every machine; machines can still differ in tests)
 var plan_ot := [false, false, false]   # overtime per shift row
+var staff_policy := 1   # index into Data.STAFF_POLICIES
 var plan_patron := true   # the owner runs the first shift of one single-operator machine
 var layout := {}   # factory_id -> item key -> {x, y, rot}: cosmetic floor arrangement (IDEA-013)
 
@@ -63,6 +64,7 @@ func to_save() -> Dictionary:
 	data["plan_shifts"] = plan_shifts
 	data["plan_ot"] = plan_ot.duplicate()
 	data["plan_patron"] = plan_patron
+	data["staff_policy"] = staff_policy
 	data["offers"] = offers.duplicate(true)
 	data["rng_seed"] = rng.seed
 	data["rng_state"] = rng.state
@@ -84,6 +86,7 @@ func from_save(data: Dictionary) -> String:
 	plan_shifts = int(copy.get("plan_shifts", 1))
 	plan_ot = copy.get("plan_ot", [false, false, false]).duplicate()
 	plan_patron = bool(copy.get("plan_patron", true))
+	staff_policy = clampi(int(copy.get("staff_policy", 1)), 0, Data.STAFF_POLICIES.size() - 1)
 	offers.assign(copy["offers"])
 	rng.seed = int(copy["rng_seed"])
 	rng.state = int(copy["rng_state"])
@@ -203,10 +206,20 @@ func machine_wages(machine: Dictionary) -> float:
 		if shift == 1 and machine.get("patron", false):
 			continue
 		wages += Data.WAGE * int(machine["personnel"]) * (1.0 + (Data.OT_HOURS_SHARE * Data.OT_WAGE_MULT if plan_ot[shift - 1] else 0.0))
+		wages += staff_cost_per_head() * int(machine["personnel"])
 	return wages
 
 func machine_running_cost(machine: Dictionary) -> float:
 	return (float(machine["energy"]) + float(machine["consumables"])) * shift_equiv(machine) + machine_wages(machine)
+
+func staff_cost_per_head() -> float:
+	return float(Data.STAFF_POLICIES[staff_policy]["cost"])
+
+func set_staff_policy(index: int) -> String:
+	if phase != "offers":
+		return "Personel politikası ay başında (rapordan önce) değişir."
+	staff_policy = clampi(index, 0, Data.STAFF_POLICIES.size() - 1)
+	return ""
 
 # People on the payroll for the current plan.
 func staff_count() -> int:
@@ -441,6 +454,49 @@ func package_info() -> Dictionary:
 		return {"items": {}, "price": 0.0, "area": 0.0}
 	return Data.package_for(int(factory()["m2"]))
 
+func machine_area_used() -> float:
+	var used := 0.0
+	for machine in machines:
+		used += float(machine["area"])
+	return used
+
+func machine_area_limit() -> float:
+	return float(factory()["m2"]) * Data.MACHINE_AREA_SHARE if factory_id != "" else 0.0
+
+func equipment_owned(id: String) -> int:
+	var count := int(equip.get(id, 0))
+	if package_bought:
+		count += int(package_info()["items"].get(id, 0))
+	return count
+
+func machines_owned(kind: String, level: int) -> int:
+	var count := 0
+	for machine in machines:
+		if machine["kind"] == kind and int(machine["level"]) == level:
+			count += 1
+	return count
+
+# Machines the current jobs will actually load this month (FIFO on a copy); after the report, the real use.
+func busy_machines() -> Dictionary:
+	var busy := {}
+	if phase == "report" and not report.is_empty():
+		for machine in delivered():
+			busy[machine["uid"]] = float(machine.get("used_last", 0.0)) > 0.0
+		return busy
+	if not package_bought:
+		return busy
+	var mults := problem_mults(loss_fractions())
+	var cap_left := {}
+	for machine in delivered():
+		cap_left[machine["uid"]] = machine_output(machine, mults)
+		busy[machine["uid"]] = false
+	var copy: Array = jobs.duplicate(true)
+	var before := cap_left.duplicate()
+	_allocate(copy, cap_left, month, false)
+	for uid in cap_left:
+		busy[uid] = float(cap_left[uid]) < float(before[uid]) - 0.0001
+	return busy
+
 func area_used() -> float:
 	var used := 0.0
 	for machine in machines:
@@ -636,6 +692,8 @@ func listing_block_reason(uid: int) -> String:
 		return reason
 	if area_used() + float(listing["area"]) > float(factory()["m2"]):
 		return "Alan yetmiyor"
+	if machine_area_used() + float(listing["area"]) > machine_area_limit():
+		return "Makine alanı sınırı (%%%d)" % int(Data.MACHINE_AREA_SHARE * 100.0)
 	if float(listing["height"]) > float(factory()["height"]):
 		return "Tavan çok alçak"
 	return ""
@@ -799,7 +857,7 @@ func cost_estimate(offer: Dictionary, edits := {}) -> Dictionary:
 		var rate_used := maxf(0.0, rate + float(edit.get("scrap_pt", 0.0)) / 100.0)
 		var energy_month := _estimate_energy(req["kind"], int(req["level"]))
 		var overhead_base := months * (fixed_share + energy_month)
-		var personnel_base := months * Data.WAGE * float(Data.personnel_for(req["kind"], int(req["level"])))
+		var personnel_base := months * (Data.WAGE + staff_cost_per_head()) * float(Data.personnel_for(req["kind"], int(req["level"])))
 		var line := {"kind": req["kind"], "level": req["level"], "count": req["count"], "months": months,
 			"material_part": material_part, "scrap_rate": rate, "scrap_rate_used": rate_used, "scrap_range": Data.scrap_range(req["kind"], int(req["level"])),
 			"scrap": material_part * rate_used, "overhead": overhead_base * (1.0 + float(edit.get("overhead_pct", 0.0)) / 100.0),
@@ -1277,7 +1335,7 @@ func _generate_problems(events: int) -> void:
 	var current: Dictionary = scale()
 	var capacity := capacity_at_least(1)
 	for i in events:
-		if rng.randf() < PERSON_SHARE and rng.randf() < MAX_PREVENTION * skills[HR_SKILL] / 100.0:
+		if rng.randf() < PERSON_SHARE and rng.randf() < MAX_PREVENTION * skills[HR_SKILL] / 100.0 + float(Data.STAFF_POLICIES[staff_policy]["bonus"]):
 			prevented_this_month += 1
 			prevented_total += 1
 			continue

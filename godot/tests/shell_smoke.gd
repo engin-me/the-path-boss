@@ -131,7 +131,7 @@ func _run() -> void:
 	if not _near(plan_game.shift_equiv(plan_machine), 3.0, 0.001):
 		return _fail("Two shifts with overtime equal 3 shift-equivalents")
 	var crews := float(plan_machine["personnel"])
-	if not _near(plan_game.machine_wages(plan_machine), Data.WAGE * crews * 2.0 * (1.0 + Data.OT_HOURS_SHARE * Data.OT_WAGE_MULT), 0.001):
+	if not _near(plan_game.machine_wages(plan_machine), (Data.WAGE * (1.0 + Data.OT_HOURS_SHARE * Data.OT_WAGE_MULT) + plan_game.staff_cost_per_head()) * crews * 2.0, 0.001):
 		return _fail("Overtime hours must cost 1.5x the wage")
 	var plan_copy = Boss.new()
 	if plan_copy.from_save(plan_game.to_save()) != "" or plan_copy.plan_shifts != 2 or not bool(plan_copy.plan_ot[1]):
