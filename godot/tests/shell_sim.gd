@@ -12,12 +12,12 @@ const Data = preload("res://scripts/shell/shell_data.gd")
 # 16 Taşlama-Has 5y, 17 Taşlama-Std 9y, 18 Dövme-Std 7y, 19 Dövme-Has 4y.
 # "grow": add a shift to machines whose backlog is high (when cash allows).
 const PERSONAS := [
-	{"name": "Tek makine", "factory": "ridgeway", "term": 12, "prepay": false, "buys": [[1, 13]], "grow": false, "supplier": "nord", "margin": 0.30},
-	{"name": "Küçük temkinli", "factory": "ridgeway", "term": 12, "prepay": false, "buys": [[1, 13], [1, 14]], "grow": false, "supplier": "pacific", "margin": 0.30},
-	{"name": "Küçük vardiyacı", "factory": "ridgeway", "term": 12, "prepay": false, "buys": [[1, 13], [1, 14]], "grow": true, "supplier": "nord", "margin": 0.45},
-	{"name": "Orta ikinci el", "factory": "harbor", "term": 12, "prepay": false, "buys": [[1, 13], [1, 14], [1, 17]], "grow": true, "supplier": "midland", "margin": 0.30},
-	{"name": "Orta yeni makine", "factory": "harbor", "term": 12, "prepay": false, "buys": [[1, 1], [1, 4]], "grow": true, "supplier": "atlas", "margin": 0.60},
-	{"name": "Büyük iddialı", "factory": "millbrook", "term": 24, "prepay": false, "buys": [[1, 13], [1, 14], [1, 16], [2, 12]], "grow": true, "supplier": "nord", "margin": 0.45}
+	{"name": "Tek makine", "factory": "factory_1", "term": 12, "prepay": false, "buys": [[1, 13]], "grow": false, "supplier": "nord", "margin": 0.30},
+	{"name": "Küçük temkinli", "factory": "factory_1", "term": 12, "prepay": false, "buys": [[1, 13], [1, 14]], "grow": false, "supplier": "pacific", "margin": 0.30},
+	{"name": "Küçük vardiyacı", "factory": "factory_1", "term": 12, "prepay": false, "buys": [[1, 13], [1, 14]], "grow": true, "supplier": "nord", "margin": 0.45},
+	{"name": "Orta ikinci el", "factory": "factory_3", "term": 12, "prepay": false, "buys": [[1, 13], [1, 14], [1, 17]], "grow": true, "supplier": "midland", "margin": 0.30},
+	{"name": "Orta yeni makine", "factory": "factory_3", "term": 12, "prepay": false, "buys": [[1, 1], [1, 4]], "grow": true, "supplier": "atlas", "margin": 0.60},
+	{"name": "Büyük iddialı", "factory": "factory_4", "term": 24, "prepay": false, "buys": [[1, 13], [1, 14], [1, 16], [2, 12]], "grow": true, "supplier": "nord", "margin": 0.45}
 ]
 
 func _initialize() -> void:
