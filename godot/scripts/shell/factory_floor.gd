@@ -17,7 +17,8 @@ const FLOOR_FALLBACK := Color("#46505b")
 const SAFETY := Color("#e0a800")
 const TEXT := Color("#e8eef4")
 const WALL_T := 0.8   # wall thickness (m)
-const TILE_M := 2.0   # one floor texture covers 2 x 2 m (alternate tiles are mirrored to hide seams)
+const TILE_M := 2.0   # the floor photo covers 2 x 2 m; a 2 x 2 mirrored composite repeats every 4 m
+const MACHINE_LENGTH_M := {"Torna": 3.0, "Freze": 2.6, "Taşlama": 3.2, "Dövme": 3.2}   # real machine length (m), sprite keeps its own aspect
 
 const KIND_COLOR := {"Torna": Color("#5f7a96"), "Freze": Color("#4f8f86"), "Taşlama": Color("#8a6fa8"), "Dövme": Color("#b0764a")}
 const EQUIP_COLOR := {"transpalet": Color("#d9a23a"), "kasa": Color("#a47a4b"), "raf": Color("#3b6ea5"), "el_aleti": Color("#7a8591"),
@@ -48,7 +49,7 @@ func setup(game_ref, saved_zoom := 0.0, saved_pan := Vector2.ZERO) -> void:
 	game = game_ref
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = true
-	floor_tex = Art.find("res://art/floor/floor")
+	floor_tex = _mirrored_floor(Art.find("res://art/floor/floor"))
 	wall_tex = Art.find("res://art/floor/props/wall")
 	door_tex = Art.find("res://art/floor/props/door")
 	_layout()
@@ -158,12 +159,30 @@ func _layout() -> void:
 	if counts.get("vinc", 0) > 0:
 		_add("crane", 0, Rect2(0.0, length * 0.45, width, 0.6), "Köprü vinç")
 
-# Width/depth of the machine sprite (1.0 when there is no art); the footprint keeps its area.
-func _machine_aspect(machine: Dictionary) -> float:
-	var texture := _sprite_for({"kind": "machine", "machine": machine})
-	if texture == null:
-		return 1.0
-	return clampf(float(texture.get_width()) / float(texture.get_height()), 0.6, 1.8)
+# 2 x 2 mirrored composite of the floor photo: tiling it has no visible seams.
+func _mirrored_floor(source: Texture2D) -> Texture2D:
+	if source == null:
+		return null
+	var image := source.get_image()
+	if image == null or image.is_empty():
+		return source
+	if image.is_compressed():
+		image.decompress()
+	image.convert(Image.FORMAT_RGB8)
+	var w := image.get_width()
+	var h := image.get_height()
+	var flipped_x := image.duplicate() as Image
+	flipped_x.flip_x()
+	var flipped_y := image.duplicate() as Image
+	flipped_y.flip_y()
+	var flipped_xy := flipped_x.duplicate() as Image
+	flipped_xy.flip_y()
+	var composite := Image.create(w * 2, h * 2, false, Image.FORMAT_RGB8)
+	composite.blit_rect(image, Rect2i(0, 0, w, h), Vector2i(0, 0))
+	composite.blit_rect(flipped_x, Rect2i(0, 0, w, h), Vector2i(w, 0))
+	composite.blit_rect(flipped_y, Rect2i(0, 0, w, h), Vector2i(0, h))
+	composite.blit_rect(flipped_xy, Rect2i(0, 0, w, h), Vector2i(w, h))
+	return ImageTexture.create_from_image(composite)
 
 func _place_machines(list: Array, x0: float, x1: float, y0: float, y1: float, scale: float) -> Array:
 	var out: Array = []
@@ -172,8 +191,7 @@ func _place_machines(list: Array, x0: float, x1: float, y0: float, y1: float, sc
 	var fits := true
 	for machine in list:
 		var side := sqrt(float(machine["area"])) * scale
-		var aspect := _machine_aspect(machine)
-		var box := Vector2(side * sqrt(aspect), side / sqrt(aspect))
+		var box := Vector2(side, side)
 		if cursor.x + box.x > x1 and cursor.x > x0:
 			cursor.x = x0
 			cursor.y += row_h + 1.0
@@ -367,25 +385,18 @@ func _draw() -> void:
 	# floor
 	var floor_rect := _screen_rect(interior)
 	if floor_tex != null:
-		var tiles_x := int(ceil(interior.size.x / TILE_M))
-		var tiles_y := int(ceil(interior.size.y / TILE_M))
 		var texture_size := floor_tex.get_size()
+		var period := TILE_M * 2.0   # composite = texture + its mirror images
+		var tiles_x := int(ceil(interior.size.x / period))
+		var tiles_y := int(ceil(interior.size.y / period))
 		for ty in tiles_y:
 			for tx in tiles_x:
-				var width_m := minf(TILE_M, interior.size.x - float(tx) * TILE_M)
-				var height_m := minf(TILE_M, interior.size.y - float(ty) * TILE_M)
-				var dest := Rect2(_to_screen(Vector2(float(tx) * TILE_M, float(ty) * TILE_M)), Vector2(width_m, height_m) * zoom)
+				var width_m := minf(period, interior.size.x - float(tx) * period)
+				var height_m := minf(period, interior.size.y - float(ty) * period)
+				var dest := Rect2(_to_screen(Vector2(float(tx) * period, float(ty) * period)), Vector2(width_m, height_m) * zoom)
 				if dest.end.x < 0.0 or dest.end.y < 0.0 or dest.position.x > size.x or dest.position.y > size.y:
 					continue
-				var frac_x := width_m / TILE_M
-				var frac_y := height_m / TILE_M
-				var src := Rect2(Vector2.ZERO, Vector2(frac_x * texture_size.x, frac_y * texture_size.y))
-				if tx % 2 == 1:
-					src.position.x = texture_size.x - src.size.x
-					dest = Rect2(Vector2(dest.end.x, dest.position.y), Vector2(-dest.size.x, dest.size.y))
-				if ty % 2 == 1:
-					src.position.y = texture_size.y - src.size.y
-					dest = Rect2(Vector2(dest.position.x, dest.end.y), Vector2(dest.size.x, -dest.size.y))
+				var src := Rect2(Vector2.ZERO, Vector2(width_m / period * texture_size.x, height_m / period * texture_size.y))
 				draw_texture_rect_region(floor_tex, dest, src)
 	else:
 		draw_rect(floor_rect, FLOOR_FALLBACK)
@@ -470,7 +481,14 @@ func _draw_item(index: int) -> void:
 			var texture := _sprite_for(item)
 			var tint := Color(1, 1, 1, 0.45) if transit else Color.WHITE
 			if texture != null:
-				_draw_sprite_fit(texture, body, tint)
+				# frame = work zone (m² in the listing); the sprite is drawn at the real machine size
+				var length_m: float = MACHINE_LENGTH_M.get(machine["kind"], 3.0)
+				var ratio := float(texture.get_width()) / float(texture.get_height())
+				var real := Vector2(length_m, length_m / ratio) * zoom
+				var shrink := minf(1.0, minf(body.size.x / real.x, body.size.y / real.y))
+				real *= shrink
+				var top_left := Vector2(body.position.x + (body.size.x - real.x) / 2.0, body.position.y + (body.size.y - real.y) * 0.35)
+				draw_texture_rect(texture, Rect2(top_left, real), false, tint)
 			else:
 				var base: Color = KIND_COLOR.get(machine["kind"], Color.GRAY).lightened(0.08 * float(int(machine["level"]) - 1))
 				base.a = 0.45 if transit else 1.0
