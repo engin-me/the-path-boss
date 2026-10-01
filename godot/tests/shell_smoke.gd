@@ -366,6 +366,12 @@ func _run() -> void:
 		for b in range(a + 1, all_items.size()):
 			if layout_view._editable(all_items[a]) and layout_view._editable(all_items[b]) and not (str(all_items[a]["id"]) == "raf" and str(all_items[b]["id"]) == "raf") and (all_items[a]["rect"] as Rect2).intersects(all_items[b]["rect"]):
 				return _fail("Layout items overlap: %s vs %s" % [all_items[a]["key"], all_items[b]["key"]])
+	for door in layout_view.items:
+		if door["kind"] != "door":
+			continue
+		for other in layout_view.items:
+			if layout_view._editable(other) and (other["rect"] as Rect2).intersects(door["zone"]):
+				return _fail("Nothing may stand on the striped dock entrance: " + str(other["key"]))
 	var nearest_to_middle := INF
 	for entry in layout_view.items:
 		if entry["kind"] == "machine":

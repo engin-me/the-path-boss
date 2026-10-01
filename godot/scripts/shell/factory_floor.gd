@@ -128,7 +128,11 @@ func _layout() -> void:
 	var door_w := minf(4.0, width / float(ramps) - 1.0)
 	for k in ramps:
 		var cx := width * (float(k) + 0.5) / float(ramps)
-		_add("door", k, Rect2(cx - door_w / 2.0, length, door_w, WALL_T), "Yükleme rampası %d" % (k + 1))
+		# the whole dock plate (photo ratio) shows; its striped part inside the plant is a keep-out zone
+		var ratio := 1.6 if door_tex == null else float(door_tex.get_width()) / float(door_tex.get_height())
+		var depth := minf(door_w / ratio, 3.0)
+		_add("door", k, Rect2(cx - door_w / 2.0, length - depth + WALL_T, door_w, depth), "Yükleme rampası %d" % (k + 1),
+			{"zone": Rect2(cx - door_w / 2.0, length - depth, door_w, depth)})
 	var counts := _equipment_counts()
 	# everything the player owns, in placement order
 	var specs: Array = []
@@ -141,6 +145,9 @@ func _layout() -> void:
 				specs.append({"kind": "equip", "id": group, "index": k, "box": EQUIP_SIZE[group], "label": EQUIP_NAMES[group]})
 	var saved: Dictionary = game.layout.get(factory_id_key(), {})
 	var taken: Array = []
+	for item in items:
+		if item["kind"] == "door":
+			taken.append({"id": "door", "rect": (item["zone"] as Rect2).grow(0.3)})
 	# 1) items that already have a place (kept forever, so buying more never shuffles them)
 	for spec in specs:
 		var key := "%s:%s:%s" % [spec["kind"], str(spec["id"]), str(spec["index"])]
@@ -352,6 +359,8 @@ func _editable(item: Dictionary) -> bool:
 func _overlaps(rect: Rect2, ignore: int) -> bool:
 	var ignore_id: String = str(items[ignore]["id"]) if ignore >= 0 and ignore < items.size() else ""
 	for i in items.size():
+		if items[i]["kind"] == "door" and rect.intersects(items[i]["zone"]):
+			return true
 		if i == ignore or not _editable(items[i]):
 			continue
 		if ignore_id == "raf" and str(items[i]["id"]) == "raf":
@@ -565,7 +574,7 @@ func _item_text(item: Dictionary) -> String:
 			var note: String = Data.EQUIPMENT[item["id"]]["note"]
 			return "%s\\n%s" % [item["label"], note]
 		"door":
-			return "%s\\nTır ve forklift girişi" % item["label"]
+			return "%s\\nTır ve forklift girişi; şeritli alana hiçbir şey konamaz" % item["label"]
 	return item["label"]
 
 func _show_info() -> void:
@@ -812,7 +821,7 @@ func _draw_item(index: int) -> void:
 	match item["kind"]:
 		"door":
 			if door_tex != null:
-				_draw_sprite_cover(door_tex, rect)
+				_draw_sprite_fit(door_tex, rect)
 			else:
 				draw_rect(rect, SAFETY)
 				var stripes := int(rect.size.x / maxf(6.0, zoom * 0.5))
