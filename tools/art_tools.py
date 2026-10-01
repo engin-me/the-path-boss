@@ -27,19 +27,34 @@ def distance(a, b):
 
 
 def key_image(image, bg, tolerance):
-    """Make pixels close to the background colour transparent (soft edge) and trim."""
+    """Remove a magenta-ish background by hue (not by distance to one exact colour) and trim.
+
+    Magentaness m = min(r, b) - g. It is large for any magenta (pure or dull), and
+    near zero or negative for grays, blues, yellows and oranges, so dull/darker
+    backgrounds are removed without eating the machine. Edge pixels are despilled
+    so no pink fringe remains. `tolerance` shifts the sensitivity (default 70).
+    """
     image = image.convert("RGBA")
     pixels = image.load()
-    soft = tolerance * 0.5
+    lo = 30.0 + (70.0 - tolerance) * 0.3   # below this: fully kept
+    hi = lo + 70.0                          # above this: fully transparent
     for y in range(image.height):
         for x in range(image.width):
             r, g, b, a = pixels[x, y]
-            d = distance((r, g, b), bg)
-            if d <= tolerance:
-                pixels[x, y] = (r, g, b, 0)
-            elif d < tolerance + soft:
-                pixels[x, y] = (r, g, b, int(a * (d - tolerance) / soft))
-    box = image.getbbox()
+            m = min(r, b) - g
+            if m <= lo:
+                if m > 0:
+                    cap = g + int(lo * 0.5)
+                    pixels[x, y] = (min(r, cap), g, min(b, cap), a)
+                continue
+            if m >= hi:
+                pixels[x, y] = (0, 0, 0, 0)
+                continue
+            alpha = int(a * (hi - m) / (hi - lo))
+            cap = g
+            pixels[x, y] = (min(r, cap), g, min(b, cap), alpha)
+    alpha_band = image.getchannel("A").point(lambda v: 255 if v > 128 else 0)
+    box = alpha_band.getbbox()
     if box:
         pad = 2
         box = (max(0, box[0] - pad), max(0, box[1] - pad), min(image.width, box[2] + pad), min(image.height, box[3] + pad))
