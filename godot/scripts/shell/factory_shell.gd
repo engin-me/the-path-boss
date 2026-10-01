@@ -10,6 +10,7 @@ const ShellBoss = preload("res://scripts/shell/shell_boss.gd")
 const SaveStore = preload("res://scripts/shell/save_store.gd")
 const Art = preload("res://scripts/shell/art.gd")
 const FloorScript = preload("res://scripts/shell/factory_floor.gd")
+const AudioDirector = preload("res://scripts/shell/audio_director.gd")
 
 const BG := Color("#0f1720")
 const PANEL := Color("#1a232e")
@@ -51,6 +52,12 @@ var equip_qty := {}
 var pending := Callable()
 var press_pos := Vector2.ZERO
 
+var audio: Node
+var last_cash := NAN
+var last_month := -1
+var last_view_key := ""
+var fade_tween: Tween
+var money_tween: Tween
 var header_date: Label
 var header_money: Label
 var header_hours: Label
@@ -71,6 +78,8 @@ var area_used_bar: ProgressBar
 var area_preview_bar: ProgressBar
 
 func _ready() -> void:
+	audio = AudioDirector.new()
+	add_child(audio)
 	_reset_state()
 	if SaveStore.exists():
 		var loaded := ShellBoss.new()
@@ -192,6 +201,7 @@ func _build_tab_bar() -> Control:
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.add_theme_font_size_override("font_size", 13)
 		button.pressed.connect(_on_tab.bind(tab["id"]))
+		_juice(button)
 		row.add_child(button)
 		tab_buttons[tab["id"]] = button
 	return bar
@@ -265,7 +275,21 @@ func _button(text: String, callback: Callable, primary := false, disabled := fal
 		button.add_theme_stylebox_override("hover", _box(Color("#26955e"), GREEN, 10, 1))
 		button.add_theme_stylebox_override("pressed", _box(Color("#186040"), GREEN, 10, 1))
 	button.pressed.connect(callback)
+	_juice(button)
 	return button
+
+# Tap sound and a small press animation for any button.
+func _juice(button: Button) -> void:
+	button.pressed.connect(func() -> void: audio.play("tap"))
+	button.button_down.connect(func() -> void: _press_scale(button, 0.96))
+	button.button_up.connect(func() -> void: _press_scale(button, 1.0))
+
+func _press_scale(button: Button, target: float) -> void:
+	if not is_instance_valid(button) or not button.is_inside_tree():
+		return
+	button.pivot_offset = button.size / 2.0
+	var tween := button.create_tween()
+	tween.tween_property(button, "scale", Vector2(target, target), 0.07)
 
 func _row(parent: Control, left: String, right: String, color := TEXT, size := 14) -> void:
 	var row := HBoxContainer.new()
@@ -308,6 +332,7 @@ func _chips(parent: Control, options: Array, current: String, callback: Callable
 			button.add_theme_stylebox_override(style_name, chip)
 		button.add_theme_color_override("font_color", GREEN if active else TEXT)
 		button.pressed.connect(callback.bind(option["id"]))
+		_juice(button)
 		row.add_child(button)
 	parent.add_child(scroll)
 	if active_button != null:
@@ -369,6 +394,7 @@ func _confirm(title: String, lines: Array, ok_text: String, on_ok: Callable, war
 	box.add_child(_button("Vazgeç", _confirm_no))
 
 func _confirm_yes() -> void:
+	audio.play("confirm")
 	var action := pending
 	_close_overlay()
 	if action.is_valid():
@@ -410,6 +436,41 @@ func _say(message: String) -> void:
 	flash = message
 
 func _render() -> void:
+	var key := "%s|%s|%s" % [page, detail, str(subtab.get(page, ""))]
+	_render_inner()
+	var cash_now := float(game.cash)
+	if not is_nan(last_cash) and absf(cash_now - last_cash) > 0.5:
+		audio.play("coin_up" if cash_now > last_cash else "coin_down")
+		_animate_money(last_cash, cash_now)
+	if last_month >= 0 and int(game.month) > last_month:
+		audio.play("month")
+	last_cash = cash_now
+	last_month = int(game.month)
+	if last_view_key != "" and key != last_view_key:
+		_fade_in()
+	last_view_key = key
+
+func _animate_money(from: float, to: float) -> void:
+	if money_tween != null and money_tween.is_valid():
+		money_tween.kill()
+	header_money.modulate = Color(0.7, 1.7, 0.9) if to > from else Color(1.8, 0.65, 0.65)
+	money_tween = create_tween()
+	money_tween.set_parallel(true)
+	money_tween.tween_method(func(value: float) -> void: header_money.text = Data.usd(value), from, to, 0.4)
+	money_tween.tween_property(header_money, "modulate", Color.WHITE, 0.6)
+
+# Soft fade when the visible screen changes.
+func _fade_in() -> void:
+	var target: CanvasItem = floor_view if floor_view != null else content
+	if target == null:
+		return
+	if fade_tween != null and fade_tween.is_valid():
+		fade_tween.kill()
+	target.modulate.a = 0.0
+	fade_tween = create_tween()
+	fade_tween.tween_property(target, "modulate:a", 1.0, 0.2)
+
+func _render_inner() -> void:
 	_autosave()
 	header_date.text = Data.month_label(int(game.month))
 	header_money.text = Data.usd(float(game.cash))
@@ -448,7 +509,9 @@ func _render() -> void:
 		var keep: bool = floor_state.get("factory", "") == game.factory_id
 		floor_view.setup(game, float(floor_state.get("zoom", 0.0)) if keep else 0.0, floor_state.get("pan", Vector2.ZERO) if keep else Vector2.ZERO)
 		floor_view.detail_requested.connect(func(kind: String) -> void: _open_detail(kind))
-		floor_view.layout_changed.connect(func() -> void: SaveStore.write(game.to_save()))
+		floor_view.layout_changed.connect(func() -> void:
+			audio.play("drop")
+			SaveStore.write(game.to_save()))
 		if flash != "":
 			floor_view.info_label.text = flash
 			floor_view.info_button.visible = false
@@ -1399,6 +1462,16 @@ func _apply_plan(shifts: int, overtime: Array, patron: bool) -> void:
 # ------------------------------------------------------------------ Profil
 
 func _page_profil() -> void:
+	var sound := _card(content, "Ses")
+	for entry in [["Müzik", audio.music_on, audio.set_music], ["Ses efektleri", audio.sfx_on, audio.set_sfx], ["Titreşim (telefon)", audio.haptics_on, audio.set_haptics]]:
+		var tick := CheckBox.new()
+		tick.text = entry[0]
+		tick.add_theme_font_size_override("font_size", 15)
+		tick.custom_minimum_size = Vector2(0, 48)
+		tick.button_pressed = entry[1]
+		tick.toggled.connect(entry[2])
+		sound.add_child(tick)
+	sound.add_child(_label("Müzik dosyası: godot/audio/music/main.ogg (yoksa sessiz). Efektler kodla üretilir.", 11, MUTED))
 	var skills := _card(content, "Yetkinlikler")
 	for name in BossState.SKILLS:
 		var row := HBoxContainer.new()
