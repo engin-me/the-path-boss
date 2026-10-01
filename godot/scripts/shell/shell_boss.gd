@@ -782,6 +782,10 @@ func _apply_pool_floor() -> void:
 func accept_block_reason(id: int) -> String:
 	if phase != "offers":
 		return "İş, ay başında (rapordan önce) kabul edilir."
+	return fit_block_reason(id)
+
+# Whether the offer suits the plant (equipment, machines, cash), whatever the phase of the month.
+func fit_block_reason(id: int) -> String:
 	var offer := offer_by_id(id)
 	if offer.is_empty():
 		return "İlan bulunamadı."
@@ -1150,6 +1154,31 @@ func _allocate(job_list: Array, cap_left: Dictionary, t: int, record: bool) -> v
 				if record:
 					machine["used_last"] = float(machine.get("used_last", 0.0)) + use
 					req["made_month"] = float(req.get("made_month", 0.0)) + got
+
+# Why an accepted job is not being produced (empty when it is, or will be, loaded this month).
+func job_wait_reason(job: Dictionary) -> String:
+	var order: Dictionary = job.get("order", {})
+	if order.is_empty():
+		return "Hammadde siparişi verilmedi"
+	if int(order["arrive_month"]) > month:
+		return "Hammadde Ay %d'de gelir" % int(order["arrive_month"])
+	if int(job["start_month"]) > month:
+		return "Müşteri hazırlığı sürüyor; üretim Ay %d'de başlar" % int(job["start_month"])
+	var missing: Array = []
+	for req in job["reqs"]:
+		if float(req["remaining"]) > 0.5 and _eligible(req["kind"], int(req["level"]), month).is_empty():
+			missing.append("%s %s" % [Data.LEVELS[int(req["level"])], req["kind"]])
+	if not missing.is_empty():
+		return "Teslim alınmış tezgah yok: " + ", ".join(missing)
+	if not package_bought:
+		return "Gerekli ekipman eksik"
+	if phase == "report" and not report.is_empty():
+		var made := 0.0
+		for req in job["reqs"]:
+			made += float(req.get("made_month", 0.0))
+		if made <= 0.0001 and not job_done(job):
+			return "Bu ayın kapasitesi önceki işlere gitti (FIFO sırası)"
+	return ""
 
 func job_done(job: Dictionary) -> bool:
 	for req in job["reqs"]:

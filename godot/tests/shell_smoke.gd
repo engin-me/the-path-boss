@@ -159,6 +159,30 @@ func _run() -> void:
 	exit_game.leave_factory()
 	if exit_game.cash > cash_before_exit - exit_game.leave_fee() - advance_taken * 1.0 + 0.5:
 		return _fail("Leaving with running jobs must not keep their advances")
+	# ---- waiting reasons and the "can do" filter do not depend on the phase of the month
+	var wait_game = Boss.new()
+	wait_game.default_setup(21)
+	wait_game.cash = 2000.0
+	wait_game.rent_factory("factory_1", 12, false)
+	wait_game.buy_package()
+	wait_game.buy_listing(13)
+	wait_game.run_report()
+	wait_game.close_month()
+	var fit_id := -1
+	for candidate in wait_game.offers:
+		if wait_game.fit_block_reason(candidate["id"]) == "":
+			fit_id = int(candidate["id"])
+			break
+	if fit_id < 0:
+		return _fail("An offer that fits the Torna must exist for this check")
+	wait_game.accept_offer(fit_id)
+	var waiting_job: Dictionary = wait_game.jobs[0]
+	if wait_game.job_wait_reason(waiting_job) == "" and int(waiting_job["order"]["arrive_month"]) > wait_game.month:
+		return _fail("A job waiting for material must say why")
+	wait_game.run_report()
+	for candidate in wait_game.offers:
+		if wait_game.fit_block_reason(candidate["id"]) == "" and wait_game.accept_block_reason(candidate["id"]) == "":
+			return _fail("During the report the phase, not the fit, must block accepting")
 	# ---- job scrap: drawn inside the table range, charged at delivery
 	var plan_offer: Dictionary = plan_game.offers[0]
 	var estimate: Dictionary = plan_game.cost_estimate(plan_offer)
