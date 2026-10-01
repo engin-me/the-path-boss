@@ -436,6 +436,7 @@ func _render() -> void:
 		var keep: bool = floor_state.get("factory", "") == game.factory_id
 		floor_view.setup(game, float(floor_state.get("zoom", 0.0)) if keep else 0.0, floor_state.get("pan", Vector2.ZERO) if keep else Vector2.ZERO)
 		floor_view.detail_requested.connect(func(kind: String) -> void: _open_detail(kind))
+		floor_view.layout_changed.connect(func() -> void: SaveStore.write(game.to_save()))
 		if flash != "":
 			floor_view.info_label.text = flash
 			floor_view.info_button.visible = false

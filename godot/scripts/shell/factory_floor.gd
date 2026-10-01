@@ -7,6 +7,7 @@ extends Control
 # equipment/<id>. See godot/art/PROMPTS.md.
 
 signal detail_requested(kind: String)
+signal layout_changed
 
 const Data = preload("res://scripts/shell/shell_data.gd")
 const Art = preload("res://scripts/shell/art.gd")
@@ -44,6 +45,11 @@ var info_label: Label
 var info_button: Button
 var info_kind := ""
 var user_adjusted := false
+var edit_mode := false
+var drag_item := false
+var rotate_button: Button
+var reset_button: Button
+var edit_button: Button
 
 func setup(game_ref, saved_zoom := 0.0, saved_pan := Vector2.ZERO) -> void:
 	game = game_ref
@@ -82,8 +88,9 @@ func _equipment_counts() -> Dictionary:
 	return counts
 
 func _add(kind: String, id, rect: Rect2, label: String, extra := {}) -> void:
-	var item := {"kind": kind, "id": id, "rect": rect, "label": label}
+	var item := {"kind": kind, "id": id, "rect": rect, "label": label, "rot": 0}
 	item.merge(extra)
+	item["key"] = "%s:%s:%s" % [kind, str(id), str(item.get("index", 0))]
 	items.append(item)
 
 func _layout() -> void:
@@ -99,35 +106,40 @@ func _layout() -> void:
 		var cx := width * (float(k) + 0.5) / float(ramps)
 		_add("door", k, Rect2(cx - door_w / 2.0, length, door_w, WALL_T), "Yükleme rampası %d" % (k + 1))
 	var counts := _equipment_counts()
-	# racks and crates along the back wall
-	var y_cursor := 0.6
+	# racks along the left wall, work benches and crates along the back wall
 	var racks: int = counts.get("raf", 0)
-	var x := 0.8
-	var row_bottom := y_cursor
+	var rack_x := 0.4
+	var rack_y := 0.6
+	var left_end := 0.4
 	for k in racks:
-		if x + 1.2 > width - 0.8:
-			x = 0.8
-			y_cursor = row_bottom + 0.6
-		_add("equip", "raf", Rect2(x, y_cursor, 1.2, 2.5), "Depo rafı", {"index": k})
-		row_bottom = maxf(row_bottom, y_cursor + 2.5)
-		x += 1.5
-	y_cursor = row_bottom + 0.5
-	var crates: int = counts.get("kasa", 0)
-	x = 0.8
-	var crate_bottom := y_cursor
-	for k in crates:
-		if x + 0.55 > width - 0.8:
-			x = 0.8
-			y_cursor += 0.7
-		_add("equip", "kasa", Rect2(x, y_cursor, 0.55, 0.55), "Malzeme kasası", {"index": k})
-		crate_bottom = maxf(crate_bottom, y_cursor + 0.55)
-		x += 0.7
-	var machine_top := crate_bottom + 1.2
-	# benches along the left wall, cabinets and measuring rooms along the right wall
-	var left_y := machine_top
+		if rack_y + 2.5 > length - 7.0 and rack_y > 0.6:
+			rack_y = 0.6
+			rack_x += 1.6
+		_add("equip", "raf", Rect2(rack_x, rack_y, 1.2, 2.5), "Depo rafı", {"index": k})
+		rack_y += 2.9
+		left_end = rack_x + 1.2
+	var top_x0 := left_end + (0.6 if racks > 0 else 0.4)
+	var top_x := top_x0
+	var top_y := 0.6
+	var top_bottom := 0.6
 	for k in counts.get("el_aleti", 0):
-		_add("equip", "el_aleti", Rect2(0.4, left_y, 0.8, 1.6), "El aletleri tezgahı", {"index": k})
-		left_y += 1.9
+		if top_x + 1.6 > width - 2.4 and top_x > top_x0:
+			top_x = top_x0
+			top_y += 3.6
+		_add("equip", "el_aleti", Rect2(top_x, top_y, 1.6, 3.2), "El aletleri tezgahı", {"index": k})
+		top_bottom = maxf(top_bottom, top_y + 3.2)
+		top_x += 1.9
+	var crate_y := top_bottom + (0.5 if counts.get("el_aleti", 0) > 0 else 0.0)
+	var crate_x := top_x0
+	var crate_bottom := crate_y
+	for k in counts.get("kasa", 0):
+		if crate_x + 1.1 > width - 2.4 and crate_x > top_x0:
+			crate_x = top_x0
+			crate_y += 1.3
+		_add("equip", "kasa", Rect2(crate_x, crate_y, 1.1, 1.1), "Malzeme kasası", {"index": k})
+		crate_bottom = maxf(crate_bottom, crate_y + 1.1)
+		crate_x += 1.3
+	var machine_top := maxf(top_bottom, crate_bottom) + 1.2
 	var right_y := machine_top
 	for k in counts.get("takim", 0):
 		_add("equip", "takim", Rect2(width - 1.6, right_y, 1.2, 0.6), "Takım dolabı", {"index": k})
@@ -142,7 +154,7 @@ func _layout() -> void:
 	for k in counts.get("forklift", 0):
 		_add("equip", "forklift", Rect2(width / 2.0 + 1.5 * float(k), dock_y - 1.0, 1.3, 2.6), "Forklift", {"index": k})
 	# machines in rows between the side equipment and the dock
-	var x0 := 2.4
+	var x0 := maxf(2.4, left_end + 1.0)
 	var x1 := width - 2.4
 	var y0 := machine_top
 	var y1 := length - 6.0
@@ -158,6 +170,62 @@ func _layout() -> void:
 		_add("machine", entry["uid"], entry["rect"], entry["label"], {"machine": entry["machine"]})
 	if counts.get("vinc", 0) > 0:
 		_add("crane", 0, Rect2(0.0, length * 0.45, width, 0.6), "Köprü vinç")
+	_apply_layout_overrides()
+
+# Player-moved / rotated items (saved per factory in game.layout).
+func _editable(item: Dictionary) -> bool:
+	return item["kind"] == "equip" or item["kind"] == "machine"
+
+func _apply_layout_overrides() -> void:
+	var saved: Dictionary = game.layout.get(game.factory_id, {})
+	for item in items:
+		if not _editable(item) or not saved.has(item["key"]):
+			continue
+		var entry: Dictionary = saved[item["key"]]
+		var rect: Rect2 = item["rect"]
+		var rot := int(entry.get("rot", 0)) % 4
+		var box := Vector2(rect.size.y, rect.size.x) if rot % 2 == 1 else rect.size
+		item["rot"] = rot
+		item["rect"] = _clamped(Rect2(Vector2(float(entry.get("x", rect.position.x)), float(entry.get("y", rect.position.y))), box))
+
+func _clamped(rect: Rect2) -> Rect2:
+	rect.position.x = clampf(rect.position.x, 0.0, maxf(0.0, interior.size.x - rect.size.x))
+	rect.position.y = clampf(rect.position.y, 0.0, maxf(0.0, interior.size.y - rect.size.y))
+	return rect
+
+func _store_override(index: int) -> void:
+	var item: Dictionary = items[index]
+	var saved: Dictionary = game.layout.get(game.factory_id, {})
+	var rect: Rect2 = item["rect"]
+	saved[item["key"]] = {"x": rect.position.x, "y": rect.position.y, "rot": int(item["rot"])}
+	game.layout[game.factory_id] = saved
+	layout_changed.emit()
+
+func _rotate_selected() -> void:
+	if selected < 0 or not _editable(items[selected]):
+		return
+	var item: Dictionary = items[selected]
+	var rect: Rect2 = item["rect"]
+	var center := rect.get_center()
+	var box := Vector2(rect.size.y, rect.size.x)
+	item["rect"] = _clamped(Rect2(center - box / 2.0, box))
+	item["rot"] = (int(item["rot"]) + 1) % 4
+	_store_override(selected)
+	queue_redraw()
+
+func _reset_layout() -> void:
+	game.layout.erase(game.factory_id)
+	selected = -1
+	_layout()
+	_show_info()
+	layout_changed.emit()
+	queue_redraw()
+
+func _on_edit_toggled(on: bool) -> void:
+	edit_mode = on
+	reset_button.visible = on
+	_show_info()
+	queue_redraw()
 
 # 2 x 2 mirrored composite of the floor photo: tiling it has no visible seams.
 func _mirrored_floor(source: Texture2D) -> Texture2D:
@@ -240,14 +308,30 @@ func _gui_input(event: InputEvent) -> void:
 				pressing = true
 				moved = false
 				press_pos = event.position
+				drag_item = false
+				if edit_mode:
+					var hit := _item_at(_to_world(event.position))
+					if hit >= 0 and _editable(items[hit]):
+						selected = hit
+						drag_item = true
+						_show_info()
+						queue_redraw()
 			else:
 				pressing = false
-				if not moved:
+				if drag_item:
+					drag_item = false
+					if moved:
+						_store_override(selected)
+				elif not moved:
 					_pick(event.position)
 	elif event is InputEventMouseMotion and pressing:
 		if event.position.distance_to(press_pos) > 10.0:
 			moved = true
-		if moved:
+		if moved and drag_item and selected >= 0:
+			var item: Dictionary = items[selected]
+			item["rect"] = _clamped(Rect2((item["rect"] as Rect2).position + event.relative / zoom, (item["rect"] as Rect2).size))
+			queue_redraw()
+		elif moved:
 			user_adjusted = true
 			pan += event.relative
 			queue_redraw()
@@ -257,16 +341,16 @@ func _gui_input(event: InputEvent) -> void:
 		pan -= event.delta * 8.0
 		queue_redraw()
 
-func _pick(screen_point: Vector2) -> void:
-	var world := _to_world(screen_point)
-	selected = -1
+func _item_at(world: Vector2) -> int:
 	for i in range(items.size() - 1, -1, -1):
-		var rect: Rect2 = items[i]["rect"]
 		if items[i]["kind"] == "crane":
 			continue
-		if rect.grow(0.4).has_point(world):
-			selected = i
-			break
+		if (items[i]["rect"] as Rect2).grow(0.4).has_point(world):
+			return i
+	return -1
+
+func _pick(screen_point: Vector2) -> void:
+	selected = _item_at(_to_world(screen_point))
 	_show_info()
 	queue_redraw()
 
@@ -297,7 +381,8 @@ func _show_info() -> void:
 	var item: Dictionary = items[selected]
 	info_label.text = _item_text(item).replace("\\n", "\n")
 	info_kind = "machines" if item["kind"] == "machine" else ""
-	info_button.visible = info_kind != ""
+	info_button.visible = info_kind != "" and not edit_mode
+	rotate_button.visible = edit_mode and _editable(item)
 	info_panel.visible = true
 
 func _build_controls() -> void:
@@ -315,6 +400,21 @@ func _build_controls() -> void:
 		button.add_theme_font_size_override("font_size", 20)
 		button.pressed.connect(_on_zoom_button.bind(float(spec[1])))
 		box.add_child(button)
+	edit_button = Button.new()
+	edit_button.text = "✎"
+	edit_button.toggle_mode = true
+	edit_button.button_pressed = edit_mode
+	edit_button.custom_minimum_size = Vector2(48, 48)
+	edit_button.add_theme_font_size_override("font_size", 20)
+	edit_button.toggled.connect(_on_edit_toggled)
+	box.add_child(edit_button)
+	reset_button = Button.new()
+	reset_button.text = "↺"
+	reset_button.visible = edit_mode
+	reset_button.custom_minimum_size = Vector2(48, 48)
+	reset_button.add_theme_font_size_override("font_size", 20)
+	reset_button.pressed.connect(_reset_layout)
+	box.add_child(reset_button)
 	info_panel = PanelContainer.new()
 	info_panel.visible = false
 	info_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
@@ -340,6 +440,12 @@ func _build_controls() -> void:
 	info_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info_label.add_theme_font_size_override("font_size", 14)
 	row.add_child(info_label)
+	rotate_button = Button.new()
+	rotate_button.text = "⟳ Döndür"
+	rotate_button.visible = false
+	rotate_button.custom_minimum_size = Vector2(110, 44)
+	rotate_button.pressed.connect(_rotate_selected)
+	row.add_child(rotate_button)
 	info_button = Button.new()
 	info_button.text = "Detay ›"
 	info_button.custom_minimum_size = Vector2(96, 44)
@@ -377,6 +483,16 @@ func _draw_sprite_fit(texture: Texture2D, rect: Rect2, modulate_color := Color.W
 	var factor := minf(rect.size.x / texture_size.x, rect.size.y / texture_size.y)
 	var fitted := texture_size * factor
 	draw_texture_rect(texture, Rect2(rect.position + (rect.size - fitted) / 2.0, fitted), false, modulate_color)
+
+# Draws the sprite fitted to rect, turned by rot quarter turns (rect is the already-rotated box).
+func _draw_rotated(texture: Texture2D, rect: Rect2, rot: int, modulate_color := Color.WHITE) -> void:
+	if rot % 4 == 0:
+		_draw_sprite_fit(texture, rect, modulate_color)
+		return
+	var unrotated := Vector2(rect.size.y, rect.size.x) if rot % 2 == 1 else rect.size
+	draw_set_transform(rect.get_center(), float(rot % 4) * PI / 2.0, Vector2.ONE)
+	_draw_sprite_fit(texture, Rect2(-unrotated / 2.0, unrotated), modulate_color)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 # Fills the rect without distortion by cropping the texture centre.
 func _draw_sprite_cover(texture: Texture2D, rect: Rect2) -> void:
@@ -443,7 +559,12 @@ func _draw() -> void:
 		_draw_item(i)
 	# selection frame
 	if selected >= 0:
-		draw_rect(_screen_rect(items[selected]["rect"]).grow(3.0), Color("#3ddc84"), false, 3.0)
+		draw_rect(_screen_rect(items[selected]["rect"]).grow(3.0), Color("#4aa8ff") if edit_mode else Color("#3ddc84"), false, 3.0)
+	if edit_mode:
+		var font := ThemeDB.fallback_font
+		var hint := "DÜZENLE: öğeyi sürükle · ⟳ ile döndür"
+		draw_string_outline(font, Vector2(10, 22), hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, 5, Color(0.05, 0.07, 0.09, 0.95))
+		draw_string(font, Vector2(10, 22), hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color("#4aa8ff"))
 	# title
 	var factory: Dictionary = game.factory()
 	var title := "%s · %d × %d m · %d m²" % [factory["name"], factory["width"], factory["length"], factory["m2"]]
@@ -472,7 +593,7 @@ func _draw_item(index: int) -> void:
 		"equip":
 			var texture := _sprite_for(item)
 			if texture != null:
-				_draw_sprite_fit(texture, rect)
+				_draw_rotated(texture, rect, int(item["rot"]))
 			else:
 				var color: Color = EQUIP_COLOR.get(item["id"], Color.GRAY)
 				draw_rect(rect, color)
@@ -501,12 +622,14 @@ func _draw_item(index: int) -> void:
 				var length_m: float = MACHINE_LENGTH_M.get(machine["kind"], 3.0)
 				var ratio := float(texture.get_width()) / float(texture.get_height())
 				var real := (Vector2(length_m, length_m / ratio) if ratio >= 1.0 else Vector2(length_m * ratio, length_m)) * zoom
+				if int(item["rot"]) % 2 == 1:
+					real = Vector2(real.y, real.x)
 				var shrink := minf(1.0, minf(body.size.x / real.x, body.size.y / real.y))
 				real *= shrink
 				var top_left := Vector2(body.position.x + (body.size.x - real.x) / 2.0, body.position.y + (body.size.y - real.y) * 0.35)
 				machine_rect = Rect2(top_left, real)
-				draw_texture_rect(texture, Rect2(top_left + Vector2(zoom * 0.14, zoom * 0.2), real), false, Color(0, 0, 0, 0.3 * fade))
-				draw_texture_rect(texture, machine_rect, false, tint)
+				_draw_rotated(texture, Rect2(top_left + Vector2(zoom * 0.14, zoom * 0.2), real), int(item["rot"]), Color(0, 0, 0, 0.3 * fade))
+				_draw_rotated(texture, machine_rect, int(item["rot"]), tint)
 				draw_rect(machine_rect.grow(zoom * 0.25), Color(SAFETY, 0.55 * fade), false, maxf(1.0, zoom * 0.07))
 			else:
 				var base: Color = KIND_COLOR.get(machine["kind"], Color.GRAY).lightened(0.08 * float(int(machine["level"]) - 1))

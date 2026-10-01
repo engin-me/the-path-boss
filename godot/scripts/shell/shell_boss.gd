@@ -41,6 +41,7 @@ var default_supplier := "nord"
 var quote_mode := true
 var mails: Array = []
 var next_mail := 1
+var layout := {}   # factory_id -> item key -> {x, y, rot}: cosmetic floor arrangement (IDEA-013)
 
 # ---------------------------------------------------------------- save / load
 
@@ -55,6 +56,7 @@ func to_save() -> Dictionary:
 	for field in BASE_FIELDS + SHELL_FIELDS:
 		data[field] = get(field)
 	data["machines"] = machines.duplicate(true)
+	data["layout"] = layout.duplicate(true)
 	data["offers"] = offers.duplicate(true)
 	data["rng_seed"] = rng.seed
 	data["rng_state"] = rng.state
@@ -72,6 +74,7 @@ func from_save(data: Dictionary) -> String:
 	for field in BASE_FIELDS + SHELL_FIELDS:
 		set(field, copy[field])
 	machines.assign(copy["machines"])
+	layout = copy.get("layout", {})
 	offers.assign(copy["offers"])
 	rng.seed = int(copy["rng_seed"])
 	rng.state = int(copy["rng_state"])

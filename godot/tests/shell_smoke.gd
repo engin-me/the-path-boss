@@ -327,6 +327,34 @@ func _run() -> void:
 				return _fail("Machines must not overlap in the layout")
 	if machine_rects.size() != shell.game.machines.size():
 		return _fail("Every machine must appear in the layout")
+	# ---- editable layout: rotate/move are stored per factory, survive re-layout and the save round trip
+	var layout_view = shell.floor_view
+	var bench_index := -1
+	for i in layout_view.items.size():
+		if layout_view.items[i]["kind"] == "equip" and layout_view.items[i]["id"] == "el_aleti":
+			bench_index = i
+			break
+	if bench_index < 0:
+		return _fail("The bench must appear in the layout")
+	var bench_before: Rect2 = layout_view.items[bench_index]["rect"]
+	layout_view.selected = bench_index
+	layout_view.edit_mode = true
+	layout_view._rotate_selected()
+	var bench_turned: Rect2 = layout_view.items[bench_index]["rect"]
+	if absf(bench_turned.size.x - bench_before.size.y) > 0.01 or int(layout_view.items[bench_index]["rot"]) != 1:
+		return _fail("Rotating must swap the footprint and store the turn")
+	layout_view.items[bench_index]["rect"] = layout_view._clamped(Rect2(Vector2(3.0, 9.0), bench_turned.size))
+	layout_view._store_override(bench_index)
+	layout_view._layout()
+	var bench_kept: Rect2 = layout_view.items[bench_index]["rect"]
+	if bench_kept.position.distance_to(Vector2(3.0, 9.0)) > 0.01 or int(layout_view.items[bench_index]["rot"]) != 1:
+		return _fail("A moved item must keep its place after re-layout")
+	var layout_game = Boss.new()
+	if layout_game.from_save(shell.game.to_save()) != "" or not layout_game.layout.has(shell.game.factory_id):
+		return _fail("The layout must survive the save round trip")
+	layout_view._reset_layout()
+	if not shell.game.layout.is_empty() or (layout_view.items[bench_index]["rect"] as Rect2).position.distance_to(bench_before.position) > 0.01:
+		return _fail("Reset must restore the automatic layout")
 	shell.subtab["fabrika"] = "sozlesme"
 	shell._on_tab("fabrika")
 	if shell.floor_view != null or not shell.scroll_view.visible:
