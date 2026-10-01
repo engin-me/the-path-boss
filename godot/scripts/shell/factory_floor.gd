@@ -378,6 +378,14 @@ func _draw_sprite_fit(texture: Texture2D, rect: Rect2, modulate_color := Color.W
 	var fitted := texture_size * factor
 	draw_texture_rect(texture, Rect2(rect.position + (rect.size - fitted) / 2.0, fitted), false, modulate_color)
 
+# Fills the rect without distortion by cropping the texture centre.
+func _draw_sprite_cover(texture: Texture2D, rect: Rect2) -> void:
+	var texture_size := texture.get_size()
+	var factor := maxf(rect.size.x / texture_size.x, rect.size.y / texture_size.y)
+	var source_size := rect.size / factor
+	var source := Rect2((texture_size - source_size) / 2.0, source_size)
+	draw_texture_rect_region(texture, rect, source)
+
 func _draw() -> void:
 	if game == null:
 		return
@@ -449,7 +457,7 @@ func _draw_item(index: int) -> void:
 	match item["kind"]:
 		"door":
 			if door_tex != null:
-				draw_texture_rect(door_tex, rect, false)
+				_draw_sprite_cover(door_tex, rect)
 			else:
 				draw_rect(rect, SAFETY)
 				var stripes := int(rect.size.x / maxf(6.0, zoom * 0.5))
@@ -484,7 +492,7 @@ func _draw_item(index: int) -> void:
 				# frame = work zone (m² in the listing); the sprite is drawn at the real machine size
 				var length_m: float = MACHINE_LENGTH_M.get(machine["kind"], 3.0)
 				var ratio := float(texture.get_width()) / float(texture.get_height())
-				var real := Vector2(length_m, length_m / ratio) * zoom
+				var real := (Vector2(length_m, length_m / ratio) if ratio >= 1.0 else Vector2(length_m * ratio, length_m)) * zoom
 				var shrink := minf(1.0, minf(body.size.x / real.x, body.size.y / real.y))
 				real *= shrink
 				var top_left := Vector2(body.position.x + (body.size.x - real.x) / 2.0, body.position.y + (body.size.y - real.y) * 0.35)
