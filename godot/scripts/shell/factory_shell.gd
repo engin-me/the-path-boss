@@ -8,6 +8,8 @@ const Data = preload("res://scripts/shell/shell_data.gd")
 const BossState = preload("res://scripts/boss_state.gd")
 const ShellBoss = preload("res://scripts/shell/shell_boss.gd")
 const SaveStore = preload("res://scripts/shell/save_store.gd")
+const Art = preload("res://scripts/shell/art.gd")
+const FloorScript = preload("res://scripts/shell/factory_floor.gd")
 
 const BG := Color("#0f1720")
 const PANEL := Color("#1a232e")
@@ -32,7 +34,7 @@ const TABS := [
 var game = ShellBoss.new()
 var flash := ""
 var page := "ozet"
-var subtab := {"ozet": "genel", "isler": "tum", "tezgah": "tezgah"}
+var subtab := {"ozet": "genel", "isler": "tum", "tezgah": "tezgah", "fabrika": "yerlesim"}
 var type_filter := "Tümü"
 var detail := ""
 var detail_arg := ""
@@ -55,6 +57,9 @@ var stage: Control
 var background: TextureRect
 var content: VBoxContainer
 var tab_buttons := {}
+var scroll_view: ScrollContainer
+var floor_view: Control
+var floor_state := {}
 var overlay: Control
 var safe_top: Control
 var safe_bottom: Control
@@ -130,6 +135,7 @@ func _build() -> void:
 	background.stretch_mode = TextureRect.STRETCH_SCALE
 	stage.add_child(background)
 	var scroll := ScrollContainer.new()
+	scroll_view = scroll
 	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.scroll_deadzone = 12  # a drag steals the touch from buttons under the finger
@@ -302,10 +308,10 @@ func _chips(parent: Control, options: Array, current: String, callback: Callable
 
 # Image slot: loads res://art/<kind>/<id>.png when it exists, else a placeholder.
 func _image_slot(kind: String, id: String, tint: Color, height := 170) -> Control:
-	var path := "res://art/%s/%s.png" % [kind, id]
-	if ResourceLoader.exists(path):
+	var texture: Texture2D = Art.find("res://art/%s/%s" % [kind, id])
+	if texture != null:
 		var rect := TextureRect.new()
-		rect.texture = load(path)
+		rect.texture = texture
 		rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 		rect.custom_minimum_size = Vector2(0, height)
@@ -315,7 +321,7 @@ func _image_slot(kind: String, id: String, tint: Color, height := 170) -> Contro
 	holder.color = tint
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.custom_minimum_size = Vector2(0, height)
-	var caption := _label("Görsel: art/%s/%s.png" % [kind, id], 12, Color(1, 1, 1, 0.35), false)
+	var caption := _label("Görsel: art/%s/%s" % [kind, id], 12, Color(1, 1, 1, 0.35), false)
 	caption.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	caption.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	caption.grow_vertical = Control.GROW_DIRECTION_BOTH
@@ -409,7 +415,33 @@ func _render() -> void:
 		child.queue_free()
 	listing_cards.clear()
 	area_label = null
+	if floor_view != null:
+		floor_state = floor_view.view_state()
+		stage.remove_child(floor_view)
+		floor_view.queue_free()
+		floor_view = null
+	var rented: bool = page == "fabrika" and detail == "" and game.factory_id != ""
+	var show_floor: bool = rented and subtab["fabrika"] == "yerlesim"
+	scroll_view.visible = not show_floor
+	if rented:
+		_chips(sticky, [{"id": "yerlesim", "title": "Yerleşim (üstten)"}, {"id": "sozlesme", "title": "Sözleşme"}], subtab["fabrika"],
+			func(id: String) -> void:
+				subtab["fabrika"] = id
+				_render())
 	background.texture = _background_texture()
+	if show_floor:
+		floor_view = FloorScript.new()
+		floor_view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		stage.add_child(floor_view)
+		var keep: bool = floor_state.get("factory", "") == game.factory_id
+		floor_view.setup(game, float(floor_state.get("zoom", 0.0)) if keep else 0.0, floor_state.get("pan", Vector2.ZERO) if keep else Vector2.ZERO)
+		floor_view.detail_requested.connect(func(kind: String) -> void: _open_detail(kind))
+		if flash != "":
+			floor_view.info_label.text = flash
+			floor_view.info_button.visible = false
+			floor_view.info_panel.visible = true
+			flash = ""
+		return
 	if flash != "":
 		var note := _card(content, "", GOLD)
 		note.add_child(_label(flash, 14, GOLD))

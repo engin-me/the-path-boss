@@ -13,16 +13,33 @@ const WAGE := 3.0  # per person per month (mock; wage model is open in IDEA-013)
 
 # ---------------------------------------------------------------- factories
 
-const FACTORIES := [
-	{"id": "ridgeway", "name": "Ridgeway Workshop", "region": "Riverside District", "m2": 100, "height": 4.0, "rent": 15.0,
-		"age": 34, "floor": "Beton, hafif yük", "ramps": 1, "kva": 150, "tint": Color("#2b3a4a")},
-	{"id": "harbor", "name": "Harbor Point Hall", "region": "Harbor Point", "m2": 150, "height": 5.0, "rent": 22.5,
-		"age": 18, "floor": "Beton, orta yük", "ramps": 2, "kva": 250, "tint": Color("#2f4a45")},
-	{"id": "millbrook", "name": "Millbrook Bay Plant", "region": "Millbrook Bay", "m2": 200, "height": 6.0, "rent": 30.0,
-		"age": 25, "floor": "Takviyeli beton", "ramps": 2, "kva": 320, "tint": Color("#3a3f52")},
-	{"id": "ironvalley", "name": "Iron Valley Hangar", "region": "Iron Valley", "m2": 300, "height": 7.0, "rent": 45.0,
-		"age": 6, "floor": "Takviyeli beton, ağır yük", "ramps": 4, "kva": 600, "tint": Color("#4a3a2b")}
+# Rentable buildings: width x length x height (m) from the art table; the image id is
+# factory_<n>. Rent grows with area^0.85 (22.5k at 150 m2) and +1% per metre of height over 8 m.
+const FACTORY_SIZES := [
+	[10, 15, 8], [15, 15, 10], [15, 20, 8], [20, 20, 10], [15, 35, 10], [20, 30, 10], [20, 40, 10],
+	[20, 50, 12], [30, 50, 15], [40, 50, 15], [50, 50, 15], [50, 60, 15], [50, 70, 15]
 ]
+const FACTORY_NAMES := ["Cedar Lane Workshop", "Maple Street Unit", "Riverside Works", "Oakridge Shop", "Harbor Point Hall", "Millbrook Bay Plant",
+	"Granite Yard Factory", "Northfield Plant", "Iron Valley Hangar", "Stonebridge Mill", "Eastport Works", "Lakeshore Industrial", "Summit Ridge Complex"]
+const FACTORY_REGIONS := ["Riverside District", "Maple Heights", "Old Harbor", "Oakridge", "Harbor Point", "Millbrook Bay", "Granite Yard",
+	"Northfield", "Iron Valley", "Stonebridge", "Eastport", "Lakeshore", "Summit Ridge"]
+const FACTORY_AGES := [34, 28, 22, 18, 25, 12, 15, 9, 6, 20, 14, 8, 4]
+static var FACTORIES: Array = _build_factories()
+
+static func _build_factories() -> Array:
+	var list: Array = []
+	for i in FACTORY_SIZES.size():
+		var width: int = FACTORY_SIZES[i][0]
+		var length: int = FACTORY_SIZES[i][1]
+		var height: int = FACTORY_SIZES[i][2]
+		var area := width * length
+		var rent := 22.5 * pow(float(area) / 150.0, 0.85) * (1.0 + 0.01 * float(height - 8))
+		var tint := Color.from_hsv(0.58 + 0.03 * float(i % 4), 0.25, 0.28 + 0.01 * float(i))
+		list.append({"id": "factory_%d" % (i + 1), "name": FACTORY_NAMES[i], "region": FACTORY_REGIONS[i], "m2": area, "width": width, "length": length,
+			"height": float(height), "rent": snappedf(rent, 0.5), "age": FACTORY_AGES[i],
+			"floor": "Takviyeli beton" if area >= 500 else "Beton, hafif yük", "ramps": clampi(int(roundf(float(area) / 500.0)) + 1, 1, 6),
+			"kva": int(float(area) * 1.2), "tint": tint})
+	return list
 
 const TERMS := [
 	{"months": 6, "factor": 1.10, "prepay_discount": 0.05},
@@ -132,9 +149,9 @@ const EQUIPMENT := {
 const OPTIONAL_ORDER := ["forklift", "olcum", "vinc", "transpalet", "kasa", "raf"]
 
 static func size_class(m2: int) -> String:
-	if m2 >= 250:
+	if m2 >= 1500:
 		return "large"
-	if m2 >= 150:
+	if m2 >= 500:
 		return "medium"
 	return "small"
 
@@ -293,6 +310,9 @@ static func _level(rng: RandomNumberGenerator) -> int:
 	return 1 if roll < 0.5 else (2 if roll < 0.85 else 3)
 
 # ---------------------------------------------------------------- helpers
+
+static func x_text(value: float) -> String:
+	return "%dx" % int(roundf(value))
 
 static func usd(units: float) -> String:
 	var value := int(roundf(absf(units) * MONEY_UNIT_USD))

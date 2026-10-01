@@ -60,21 +60,21 @@ func _run() -> void:
 	if game.buy_listing(0) == "" or game.buy_package() == "":
 		return _fail("Purchases must be refused before renting")
 	# ---- rent Harbor (medium) with prepaid half term and a confirmation
-	shell._open_detail("factory", "harbor")
+	shell._open_detail("factory", "factory_5")
 	shell._pick_term(12)
 	shell._toggle_prepay(true)
 	var cash0: float = game.cash
-	shell._ask_rent("harbor")
+	shell._ask_rent("factory_5")
 	if shell.overlay.get_child_count() == 0:
 		return _fail("Renting must ask for confirmation")
 	shell._confirm_yes()
-	var quote: Dictionary = game.prepay_quote("harbor", 12)
-	if game.factory_id != "harbor" or not _near(cash0 - quote["amount"], game.cash, 0.001) or game.prepaid_months != 6:
+	var quote: Dictionary = game.prepay_quote("factory_5", 12)
+	if game.factory_id != "factory_5" or not _near(cash0 - quote["amount"], game.cash, 0.001) or game.prepaid_months != 6:
 		return _fail("Prepaid rent should be charged and recorded")
 	var poor = Boss.new()
 	poor.default_setup(1)
 	poor.cash = 100.0
-	if poor.rent_block_reason("ironvalley", 12, false) == "":
+	if poor.rent_block_reason("factory_9", 12, false) == "":
 		return _fail("Renting a large plant with 100 units must be refused")
 	# ---- machines, equipment gate, delivery
 	game.cash = 1000.0
@@ -115,7 +115,7 @@ func _run() -> void:
 	var fresh = Boss.new()
 	fresh.default_setup(5)
 	fresh.cash = 1500.0
-	fresh.rent_factory("ridgeway", 12, false)
+	fresh.rent_factory("factory_1", 12, false)
 	fresh.buy_package()
 	fresh.buy_listing(13)
 	fresh.run_report()
@@ -155,7 +155,7 @@ func _run() -> void:
 	var p2 = Boss.new()
 	p2.default_setup(77)
 	p2.cash = 1500.0
-	p2.rent_factory("ridgeway", 12, false)
+	p2.rent_factory("factory_1", 12, false)
 	p2.buy_package()
 	p2.buy_listing(13)
 	p2.run_report()
@@ -203,7 +203,7 @@ func _run() -> void:
 	var q = Boss.new()
 	q.default_setup(91)
 	q.cash = 1500.0
-	q.rent_factory("harbor", 12, false)
+	q.rent_factory("factory_5", 12, false)
 	q.buy_package()
 	q.buy_listing(13)
 	q.buy_listing(14)
@@ -277,7 +277,7 @@ func _run() -> void:
 	# quote screens render
 	shell._reset_state(4)
 	shell.game.cash = 1200.0
-	shell.game.rent_factory("harbor", 12, false)
+	shell.game.rent_factory("factory_5", 12, false)
 	shell.game.buy_package()
 	shell.game.buy_listing(13)
 	shell.game.run_report()
@@ -301,11 +301,42 @@ func _run() -> void:
 	shell._on_tab("isler")
 	if shell.game.mails.is_empty() or shell.content.get_child_count() < 3:
 		return _fail("Sending a quote must create a mail and show it")
+	# ---- top-down factory view: layout stays inside the building and machines do not overlap
+	shell._reset_state(8)
+	shell.game.cash = 1500.0
+	shell.game.rent_factory("factory_5", 12, false)
+	shell.game.buy_package()
+	for uid in [13, 14, 17, 16]:
+		shell.game.buy_listing(uid)
+	shell.game.buy_equipment("forklift", 1)
+	shell.game.buy_equipment("vinc", 1)
+	shell.subtab["fabrika"] = "yerlesim"
+	shell._on_tab("fabrika")
+	if shell.floor_view == null or shell.floor_view.items.is_empty():
+		return _fail("The top-down factory view must build with items")
+	var machine_rects: Array = []
+	var plant: Rect2 = shell.floor_view.interior
+	for item in shell.floor_view.items:
+		if item["kind"] == "machine":
+			if not plant.encloses(item["rect"]):
+				return _fail("A machine was placed outside the building: " + str(item["rect"]))
+			machine_rects.append(item["rect"])
+	for i in machine_rects.size():
+		for j in range(i + 1, machine_rects.size()):
+			if machine_rects[i].intersects(machine_rects[j]):
+				return _fail("Machines must not overlap in the layout")
+	if machine_rects.size() != shell.game.machines.size():
+		return _fail("Every machine must appear in the layout")
+	shell.subtab["fabrika"] = "sozlesme"
+	shell._on_tab("fabrika")
+	if shell.floor_view != null or not shell.scroll_view.visible:
+		return _fail("The contract tab must show the scrolling page, not the floor")
+	shell.subtab["fabrika"] = "yerlesim"
 	# ---- abandon and sell
 	var g2 = Boss.new()
 	g2.default_setup(31)
 	g2.cash = 1000.0
-	g2.rent_factory("harbor", 12, false)
+	g2.rent_factory("factory_5", 12, false)
 	g2.buy_package()
 	g2.buy_listing(13)
 	g2.buy_listing(14)
@@ -337,7 +368,7 @@ func _run() -> void:
 	var g3 = Boss.new()
 	g3.default_setup(41)
 	g3.cash = 1200.0
-	g3.rent_factory("harbor", 12, false)
+	g3.rent_factory("factory_5", 12, false)
 	g3.buy_package()
 	g3.buy_listing(0)
 	g3.buy_listing(3)
@@ -370,7 +401,7 @@ func _run() -> void:
 	# ---- summary details render
 	shell._reset_state(2)
 	shell.game.cash = 900.0
-	shell.game.rent_factory("harbor", 12, false)
+	shell.game.rent_factory("factory_5", 12, false)
 	shell.game.buy_package()
 	shell.game.buy_listing(13)
 	for kind in ["machines", "oee", "costs"]:
@@ -386,7 +417,7 @@ func _run() -> void:
 	# ---- save / load round trip
 	var a = Boss.new()
 	a.default_setup(21)
-	a.rent_factory("ridgeway", 12, false)
+	a.rent_factory("factory_1", 12, false)
 	a.buy_package()
 	a.buy_listing(13)
 	a.buy_listing(14)

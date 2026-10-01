@@ -1,0 +1,19 @@
+# Android exports and keys
+build/
+*.apk
+*.aab
+*.idsig
+*.keystore
+*.jks
+export_credentials.cfg
+
+# Godot caches
+.godot/
+.mono/
+
+# Python caches
+__pycache__/
+*.pyc
+
+# Local scratch
+.claude/
