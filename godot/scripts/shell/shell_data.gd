@@ -243,6 +243,14 @@ static func price_x(kind: String) -> float:
 
 const DIFFICULTY_SYMBOL := "μ"   # Parça İşleme Katsayısı: higher = harder part
 const OVERHEAD_ESTIMATE := 6.0   # plant overhead share per machine-month in the cost estimate (placeholder; see the open question on deriving it)
+# Staff care (meals, shuttle, ...): monthly cost per head and the extra chance that a people-related
+# problem is prevented before it starts. Placeholder numbers.
+const STAFF_POLICIES := [
+	{"name": "Yok", "cost": 0.0, "bonus": 0.0, "note": "Gider yok; kimse korunmaz."},
+	{"name": "Standart", "cost": 0.6, "bonus": 0.10, "note": "Yemek ve servis."},
+	{"name": "İyi", "cost": 1.2, "bonus": 0.20, "note": "Yemek, servis, sağlık ve prim."}
+]
+const MACHINE_AREA_SHARE := 0.51   # machines (listing area) may cover at most this share of the plant
 const OT_HOURS_SHARE := 0.5   # overtime adds 4 h to an 8 h shift
 const OT_WAGE_MULT := 1.5     # overtime hours cost 1.5x the hourly wage
 
@@ -353,7 +361,7 @@ static func _level(rng: RandomNumberGenerator) -> int:
 # ---------------------------------------------------------------- helpers
 
 static func x_text(value: float) -> String:
-	return "%dx" % int(roundf(value))
+	return "%d %s" % [int(roundf(value)), DIFFICULTY_SYMBOL]
 
 static func usd(units: float) -> String:
 	var value := int(roundf(absf(units) * MONEY_UNIT_USD))

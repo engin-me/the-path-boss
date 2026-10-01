@@ -49,6 +49,11 @@ var user_adjusted := false
 var edit_mode := false
 var drag_item := false
 var drag_raw := Vector2.ZERO
+var drag_start := Rect2()
+var anim_time := 0.0
+var busy := {}
+var any_busy := false
+var worker_tex: Texture2D
 var rotate_button: Button
 var reset_button: Button
 var edit_button: Button
@@ -60,6 +65,7 @@ func setup(game_ref, saved_zoom := 0.0, saved_pan := Vector2.ZERO) -> void:
 	floor_tex = _mirrored_floor(Art.find("res://art/floor/floor"))
 	wall_tex = Art.find("res://art/floor/props/wall")
 	door_tex = Art.find("res://art/floor/props/door")
+	worker_tex = Art.find("res://art/floor/props/worker")
 	_layout()
 	_build_controls()
 	resized.connect(_on_resized)
@@ -97,7 +103,10 @@ func _add(kind: String, id, rect: Rect2, label: String, extra := {}) -> void:
 
 const EQUIP_SIZE := {"raf": Vector2(1.8, 3.75), "kasa": Vector2(0.8, 0.8), "el_aleti": Vector2(1.6, 3.2), "takim": Vector2(1.8, 0.9),
 	"olcum": Vector2(1.6, 1.6), "transpalet": Vector2(0.8, 1.6), "forklift": Vector2(1.3, 2.6)}
-const PLACE_ORDER := ["raf", "machine", "el_aleti", "olcum", "takim", "forklift", "transpalet", "kasa"]
+const PLACE_ORDER := ["raf", "el_aleti", "olcum", "takim", "kasa", "forklift", "transpalet", "machine"]
+const WALL_PREF := {"raf": ["left", "right"], "el_aleti": ["top", "right"], "kasa": ["top", "right", "left"], "takim": ["right", "top"],
+	"olcum": ["right", "top"], "forklift": ["bottom"], "transpalet": ["bottom"]}
+const LAYOUT_VERSION := 2   # older auto placements are laid out again
 const DOCK_APRON := 3.2   # free strip in front of the ramps
 
 # Floor footprint of a machine (real size from its sprite) plus a 0.5 m work margin on every side.
@@ -136,7 +145,7 @@ func _layout() -> void:
 	for spec in specs:
 		var key := "%s:%s:%s" % [spec["kind"], str(spec["id"]), str(spec["index"])]
 		spec["key"] = key
-		if saved.has(key):
+		if saved.has(key) and not (bool(saved[key].get("auto", false)) and int(saved[key].get("v", 1)) < LAYOUT_VERSION):
 			var entry: Dictionary = saved[key]
 			var rot := int(entry.get("rot", 0)) % 4
 			var box: Vector2 = spec["box"]
@@ -145,29 +154,46 @@ func _layout() -> void:
 			spec["rot"] = rot
 			spec["rect"] = _clamped(Rect2(Vector2(float(entry.get("x", 0.4)), float(entry.get("y", 0.6))), box))
 			taken.append({"id": spec["id"], "rect": spec["rect"]})
-	# 2) new items: racks form a train along the left wall; the rest is scattered (same seed, same result)
+	# 2) new items: machines go to the middle of the plant, everything else leans on the walls
+	#    (racks form a train on the left wall); the rest is a seeded fallback
 	var rack_step: float = EQUIP_SIZE["raf"].y / 2.0
 	var per_column := maxi(1, int(floor((length - 4.6 - EQUIP_SIZE["raf"].y) / rack_step)) + 1)
 	var changed := false
+	var centers: Array = []
 	for spec in specs:
 		if spec.has("rect"):
 			continue
 		var box: Vector2 = spec["box"]
+		var id := str(spec["id"])
 		var rect := Rect2()
 		var found := false
-		if str(spec["id"]) == "raf":
+		if id == "raf":
 			var column := int(spec["index"]) / per_column
 			var row := int(spec["index"]) % per_column
 			rect = Rect2(Vector2(0.4 + float(column) * (box.x + 0.4), 0.6 + float(row) * rack_step), box)
 			found = interior.encloses(rect) and not _is_taken(rect, taken, true)
+		if not found and spec["kind"] == "machine":
+			if centers.is_empty():
+				centers = _center_candidates()
+			var spot = _center_spot(box, taken, centers)
+			if spot != null:
+				rect = spot
+				found = true
+		if not found and spec["kind"] != "machine":
+			for wall in WALL_PREF.get(id, ["top"]):
+				var wall_rect = _wall_spot(box, wall, taken, id == "raf")
+				if wall_rect != null:
+					rect = wall_rect
+					found = true
+					break
 		if not found:
 			var rng := RandomNumberGenerator.new()
 			rng.seed = hash(game.factory_id + str(spec["key"]))
-			rect = _auto_spot(box, taken, rng, str(spec["id"]) == "raf")
+			rect = _auto_spot(box, taken, rng, id == "raf")
 		spec["rot"] = 0
 		spec["rect"] = rect
 		taken.append({"id": spec["id"], "rect": rect})
-		saved[spec["key"]] = {"x": rect.position.x, "y": rect.position.y, "rot": 0, "auto": true}
+		saved[spec["key"]] = {"x": rect.position.x, "y": rect.position.y, "rot": 0, "auto": true, "v": LAYOUT_VERSION}
 		changed = true
 	if changed:
 		game.layout[game.factory_id] = saved
@@ -178,9 +204,114 @@ func _layout() -> void:
 		_add(spec["kind"], spec["id"], spec["rect"], spec["label"], extra)
 	if counts.get("vinc", 0) > 0:
 		_add("crane", 0, Rect2(0.0, length * 0.45, width, 0.6), "Köprü vinç")
+	_prepare_motion()
+
+# Who works this month, and the routes of the pallet trucks and forklifts.
+func _prepare_motion() -> void:
+	busy = game.busy_machines()
+	any_busy = false
+	for uid in busy:
+		any_busy = any_busy or bool(busy[uid])
+	var machine_items: Array = []
+	var rack_items: Array = []
+	for item in items:
+		if item["kind"] == "machine" and int(item["machine"]["arrive"]) <= game.month:
+			machine_items.append(item)
+		elif item["kind"] == "equip" and str(item["id"]) == "raf":
+			rack_items.append(item)
+	for item in items:
+		if item["kind"] != "equip" or not ["transpalet", "forklift"].has(str(item["id"])):
+			continue
+		var home: Vector2 = (item["rect"] as Rect2).get_center()
+		var index := int(item["index"])
+		var goal := home
+		if str(item["id"]) == "transpalet" and not machine_items.is_empty():
+			var target: Rect2 = machine_items[index % machine_items.size()]["rect"]
+			goal = Vector2(target.get_center().x + 1.4, target.end.y + 0.2)
+		elif not rack_items.is_empty():
+			var rack: Rect2 = rack_items[index % rack_items.size()]["rect"]
+			goal = Vector2(rack.end.x + 1.0, rack.get_center().y)
+		item["anim_a"] = home
+		item["anim_b"] = goal
+
+func _process(delta: float) -> void:
+	if game == null or edit_mode or not is_visible_in_tree():
+		return
+	anim_time += delta
+	queue_redraw()
+
+# Position and heading of a moving truck: it drives out, waits, and drives back.
+func _mover_pose(item: Dictionary) -> Dictionary:
+	var a: Vector2 = item["anim_a"]
+	var b: Vector2 = item["anim_b"]
+	var distance := a.distance_to(b)
+	if not any_busy or edit_mode or distance < 0.5:
+		return {"center": (item["rect"] as Rect2).get_center(), "angle": float(int(item["rot"])) * PI / 2.0}
+	var speed := 1.6 if str(item["id"]) == "forklift" else 0.9
+	var travel := distance / speed
+	var pause := 1.2
+	var t := fposmod(anim_time + float(int(item["index"])) * 3.7, 2.0 * (travel + pause))
+	var forward := true
+	var progress := 0.0
+	if t < travel:
+		progress = t / travel
+	elif t < travel + pause:
+		progress = 1.0
+	elif t < 2.0 * travel + pause:
+		forward = false
+		progress = 1.0 - (t - travel - pause) / travel
+	else:
+		forward = false
+	var heading := (b - a).normalized() * (1.0 if forward else -1.0)
+	return {"center": a.lerp(b, progress), "angle": heading.angle() - PI / 2.0}
 
 func factory_id_key() -> String:
 	return game.factory_id
+
+# Grid points of the plant, nearest to the middle first.
+func _center_candidates() -> Array:
+	var middle := interior.size / 2.0
+	var points: Array = []
+	var gx := 0.0
+	while gx <= interior.size.x:
+		var gy := 0.0
+		while gy <= interior.size.y:
+			points.append(Vector2(gx, gy))
+			gy += 1.0
+		gx += 1.0
+	points.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.distance_squared_to(middle) < b.distance_squared_to(middle))
+	return points
+
+func _center_spot(box: Vector2, taken: Array, centers: Array):
+	for point in centers:
+		var rect := Rect2(_snapped_position(point - box / 2.0), box)
+		if interior.grow(-0.3).encloses(rect) and not _is_taken(rect.grow(0.4), taken, false):
+			return rect
+	return null
+
+# First free place along a wall: next to the wall first, then a row further in.
+func _wall_spot(box: Vector2, wall: String, taken: Array, is_rack: bool):
+	var width := interior.size.x
+	var length := interior.size.y
+	for row in 14:
+		var depth := float(row) * 0.5
+		var along := 0.4
+		var limit := (width - 0.4 - box.x) if (wall == "top" or wall == "bottom") else (length - DOCK_APRON - box.y)
+		while along <= limit:
+			var rect := Rect2()
+			match wall:
+				"top":
+					rect = Rect2(Vector2(along, 0.6 + depth), box)
+				"bottom":
+					rect = Rect2(Vector2(along, length - 0.4 - box.y - depth), box)
+				"left":
+					rect = Rect2(Vector2(0.4 + depth, maxf(0.6, along)), box)
+				_:
+					rect = Rect2(Vector2(width - 0.4 - box.x - depth, maxf(0.6, along)), box)
+			if interior.encloses(rect) and not _is_taken(rect.grow(0.15), taken, is_rack):
+				return rect
+			along += 1.0
+	return null
 
 func _is_taken(rect: Rect2, taken: Array, is_rack: bool) -> bool:
 	for other in taken:
@@ -260,6 +391,17 @@ func _store_override(index: int) -> void:
 	saved[item["key"]] = {"x": rect.position.x, "y": rect.position.y, "rot": int(item["rot"])}
 	game.layout[game.factory_id] = saved
 	layout_changed.emit()
+
+# After a drag: stay if the place is free, else go to the nearest free spot (or back where it came from).
+func _drop_selected() -> void:
+	var item: Dictionary = items[selected]
+	var rect: Rect2 = item["rect"]
+	if _overlaps(rect, selected):
+		var spot = _free_spot(rect.size, rect.position, selected)
+		item["rect"] = spot if spot != null else drag_start
+	item["clash"] = false
+	_store_override(selected)
+	queue_redraw()
 
 func _rotate_selected() -> void:
 	if selected < 0 or not _editable(items[selected]):
@@ -360,6 +502,8 @@ func _gui_input(event: InputEvent) -> void:
 						selected = hit
 						drag_item = true
 						drag_raw = (items[hit]["rect"] as Rect2).position
+						drag_start = items[hit]["rect"]
+						items[hit]["clash"] = false
 						_show_info()
 						queue_redraw()
 			else:
@@ -367,7 +511,7 @@ func _gui_input(event: InputEvent) -> void:
 				if drag_item:
 					drag_item = false
 					if moved:
-						_store_override(selected)
+						_drop_selected()
 				elif not moved:
 					_pick(event.position)
 	elif event is InputEventMouseMotion and pressing:
@@ -378,10 +522,8 @@ func _gui_input(event: InputEvent) -> void:
 			var current: Rect2 = item["rect"]
 			drag_raw += event.relative / zoom
 			var wanted := _clamped(Rect2(_snapped_position(drag_raw), current.size))
-			for candidate in [wanted, Rect2(Vector2(wanted.position.x, current.position.y), current.size), Rect2(Vector2(current.position.x, wanted.position.y), current.size)]:
-				if not _overlaps(candidate, selected):
-					item["rect"] = candidate
-					break
+			item["rect"] = wanted
+			item["clash"] = _overlaps(wanted, selected)
 			queue_redraw()
 		elif moved:
 			user_adjusted = true
@@ -410,11 +552,11 @@ func _item_text(item: Dictionary) -> String:
 	match item["kind"]:
 		"machine":
 			var machine: Dictionary = item["machine"]
-			var status := "Boşta"
+			var status := "Boşta · iş bekliyor"
 			if int(machine["arrive"]) > game.month:
 				status = "Yolda · %d ay sonra teslim" % (int(machine["arrive"]) - game.month)
-			elif float(machine.get("used_last", 0.0)) > 0.0:
-				status = "Üretimde"
+			elif bool(busy.get(machine["uid"], false)):
+				status = "Çalışıyor"
 			var extra := ""
 			if int(machine["arrive"]) <= game.month:
 				extra = " · %d vardiya%s · %s/ay" % [machine["shifts"], " (patron)" if machine.get("patron", false) else "", Data.x_text(game.machine_output(machine, game.problem_mults(game.loss_fractions())))]
@@ -554,6 +696,36 @@ func _draw_sprite_cover(texture: Texture2D, rect: Rect2) -> void:
 	var source := Rect2((texture_size - source_size) / 2.0, source_size)
 	draw_texture_rect_region(texture, rect, source)
 
+# One visible worker per person the machine needs; a question mark when the machine has no work.
+func _draw_workers() -> void:
+	var font := ThemeDB.fallback_font
+	for item in items:
+		if item["kind"] != "machine":
+			continue
+		var machine: Dictionary = item["machine"]
+		if int(machine["arrive"]) > game.month:
+			continue
+		var rect: Rect2 = item["rect"]
+		var people := int(machine["personnel"])
+		var working: bool = bool(busy.get(machine["uid"], false))
+		for i in people:
+			var spot := Vector2(rect.get_center().x + (float(i) - float(people - 1) / 2.0) * 0.9, rect.end.y - 0.3)
+			var bob := sin(anim_time * 6.0 + float(i) * 1.7) * 0.05 if working and not edit_mode else 0.0
+			var center := _to_screen(spot + Vector2(0.0, bob))
+			var radius := maxf(4.0, 0.3 * zoom)
+			if worker_tex != null:
+				draw_texture_rect(worker_tex, Rect2(center - Vector2(radius, radius), Vector2(radius, radius) * 2.0), false)
+			else:
+				draw_circle(center, radius, Color("#2e5d9f"))
+				draw_circle(center + Vector2(0.0, -radius * 0.15), radius * 0.62, Color("#f0c64a"))
+			if bool(machine.get("patron", false)) and i == 0:
+				draw_arc(center, radius * 1.25, 0.0, TAU, 20, SAFETY, maxf(1.5, zoom * 0.07))
+			if not working:
+				var bubble := center + Vector2(0.0, -radius * 2.3 + (sin(anim_time * 3.0) * radius * 0.2 if not edit_mode else 0.0))
+				var bubble_radius := maxf(6.0, 0.36 * zoom)
+				draw_circle(bubble, bubble_radius, Color(1, 1, 1, 0.95))
+				draw_string(font, bubble + Vector2(-bubble_radius * 0.38, bubble_radius * 0.42), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, int(bubble_radius * 1.4), Color("#1d232a"))
+
 func _draw() -> void:
 	if game == null:
 		return
@@ -618,9 +790,10 @@ func _draw() -> void:
 	# items
 	for i in items.size():
 		_draw_item(i)
+	_draw_workers()
 	# selection frame
 	if selected >= 0:
-		draw_rect(_screen_rect(items[selected]["rect"]).grow(3.0), Color("#4aa8ff") if edit_mode else Color("#3ddc84"), false, 3.0)
+		draw_rect(_screen_rect(items[selected]["rect"]).grow(3.0), Color("#ff5a4a") if bool(items[selected].get("clash", false)) else (Color("#4aa8ff") if edit_mode else Color("#3ddc84")), false, 3.0)
 	if edit_mode:
 		var font := ThemeDB.fallback_font
 		var hint := "DÜZENLE: öğeyi sürükle · ⟳ ile döndür"
@@ -653,7 +826,14 @@ func _draw_item(index: int) -> void:
 			draw_string(font, rail_pos, "Köprü vinç rayı", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#ffd24a"))
 		"equip":
 			var texture := _sprite_for(item)
-			if texture != null:
+			if texture != null and item.has("anim_a"):
+				var pose := _mover_pose(item)
+				var base: Vector2 = EQUIP_SIZE[str(item["id"])]
+				var center := _to_screen(pose["center"])
+				draw_set_transform(center, float(pose["angle"]), Vector2.ONE)
+				_draw_sprite_fit(texture, Rect2(-base * zoom / 2.0, base * zoom))
+				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			elif texture != null:
 				_draw_rotated(texture, rect, int(item["rot"]))
 			else:
 				var color: Color = EQUIP_COLOR.get(item["id"], Color.GRAY)

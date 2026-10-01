@@ -510,7 +510,7 @@ func _skip_month() -> void:
 
 func _phase_button() -> void:
 	if game.phase == "offers":
-		content.add_child(_button("Raporu aç ▶", _open_report, true, false, true))
+		content.add_child(_button("Ayı çalıştır ▶", _open_report, true, false, true))
 		if game.delivered().is_empty() and game.jobs.is_empty():
 			content.add_child(_button("Ayı atla ⏭ (üretim yok)", _skip_month))
 	elif game.phase == "report":
@@ -580,7 +580,7 @@ func _ozet_report() -> void:
 	if game.phase != "report":
 		var box := _card(content, "Ay raporu")
 		if game.last_lines.is_empty():
-			box.add_child(_label("Rapor, ay başında \"Raporu aç\" ile açılır.", 14, MUTED))
+			box.add_child(_label("Rapor, ay başında \"Ayı çalıştır\" ile açılır.", 14, MUTED))
 		else:
 			box.add_child(_label("Geçen ayın kapanışı:", 13, MUTED))
 			for line in game.last_lines:
@@ -607,7 +607,7 @@ func _ozet_report() -> void:
 	_phase_button()
 
 func _xfmt(value: float) -> String:
-	return "%dx" % int(roundf(value))
+	return Data.x_text(value)
 
 # Waterfall from theoretical capacity to good output, then how much went to jobs.
 func _waterfall_card(parent: Control, title: String, report: Dictionary) -> void:
@@ -1144,6 +1144,7 @@ func _machine_card(listing: Dictionary) -> void:
 	box.add_child(_label(listing["model"], 22, TEXT))
 	var age_text := "Yeni (sıfır)" if int(listing["age"]) == 0 else "İkinci el · %d yaşında" % listing["age"]
 	box.add_child(_label("%s · %s · %s" % [listing["kind"], Data.LEVELS[int(listing["level"])], age_text], 15, MUTED))
+	box.add_child(_label("Mevcut: %d ad (%s %s)" % [game.machines_owned(listing["kind"], int(listing["level"])), Data.LEVELS[int(listing["level"])], listing["kind"]], 13, GOLD if game.machines_owned(listing["kind"], int(listing["level"])) > 0 else MUTED))
 	if float(listing["discount"]) > 0.0:
 		box.add_child(_rich("[s][color=#93a3b3]%s[/color][/s]  [color=#3ddc84][b]%s[/b][/color]  [color=#eac47a](-%%%d)[/color]" % [
 			Data.usd(float(listing["base_price"])), Data.usd(float(listing["price"])), int(roundf(float(listing["discount"]) * 100.0))], 22))
@@ -1223,7 +1224,7 @@ func _page_equipment() -> void:
 func _equipment_card(id: String) -> void:
 	var item: Dictionary = Data.EQUIPMENT[id]
 	var qty: int = equip_qty.get(id, 1)
-	var box := _card(content, "%s  (sahip: %d)" % [item["name"], game.equip.get(id, 0)], BORDER, true)
+	var box := _card(content, "%s  (Mevcut: %d ad)" % [item["name"], game.equipment_owned(id)], BORDER, true)
 	box.add_child(_label(item["note"], 13, MUTED))
 	_row(box, "Birim fiyat", Data.usd(float(item["price"])), TEXT, 16)
 	_row(box, "Alan / adet", "%.1f m²" % float(item["area"]) if float(item["area"]) > 0.0 else "Alan tüketmez", TEXT, 16)
@@ -1332,6 +1333,18 @@ func _page_shifts() -> void:
 	patron.toggled.connect(_on_patron_tick)
 	box.add_child(patron)
 	box.add_child(_label("Patron tek operatörlü bir tezgahın 1. vardiyasını kendisi çalıştırır (otomatik atanır); o tezgahta 2 vardiya için tek personel yeter. Yönetim saatinden %d sa harcar." % game.patron_hours(), 12, MUTED))
+	var care := _card(content, "Personel politikası (yemek, servis…)", BORDER)
+	care.add_child(_label("Kişi başı aylık yan gider. Güçlü politika, insanla ilgili sorunların başlamadan önlenme şansını artırır.", 12, MUTED))
+	var care_options: Array = []
+	for i in Data.STAFF_POLICIES.size():
+		var policy: Dictionary = Data.STAFF_POLICIES[i]
+		care_options.append({"id": str(i), "title": "%s · %s" % [policy["name"], Data.usd(float(policy["cost"]))]})
+	_chips(care, care_options, str(game.staff_policy), func(id: String) -> void:
+		var result: String = game.set_staff_policy(int(id))
+		if result != "":
+			_say(result)
+		_render())
+	care.add_child(_label("%s Önleme şansı +%%%d puan." % [Data.STAFF_POLICIES[game.staff_policy]["note"], int(roundf(float(Data.STAFF_POLICIES[game.staff_policy]["bonus"]) * 100.0))], 12, MUTED))
 	var summary := _card(content, "Sonuç", BORDER)
 	_row(summary, "Personel (otomatik istihdam)", "%d kişi" % game.staff_count(), TEXT, 15)
 	var wages := 0.0

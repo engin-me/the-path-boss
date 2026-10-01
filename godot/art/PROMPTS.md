@@ -94,3 +94,35 @@ Kaydet: `python tools\art_tools.py key kapi.png --out godot\art\floor\props` →
 - Sprite oranı ayak izine yakın olsun; oyun görseli ayak izine **oranı bozmadan sığdırır**.
 - Boyut: tezgah ve ekipman sprite'ları 512 px, doku 1024 px yeter (`--max` varsayılanı 512).
 - Görseller bittiğinde `git add godot/art` ve push edin; ben bakıp ölçek/konum ayarını yaparım.
+
+## 4. Makine ilan kartı görselleri (16:9 fotoğraf, `art/machines/<tür>_<seviye>.jpg`)
+
+Ortak stil (her istemin sonuna ekleyin):
+```
+Photorealistic industrial photograph, 16:9, three-quarter front view from slightly above eye level, the machine centered, a real machine shop in the background softly blurred (concrete floor, other machines far away), natural window light, muted palette of steel gray, deep blue, safety yellow and orange accents. No text, no logo, no people, no watermark.
+```
+İlk beğendiğiniz görselden sonra her istemin başına "Match the style of the previous image exactly." ekleyin.
+
+| Dosya | İstem (stil bloğundan önce) |
+| --- | --- |
+| `torna_1` | An older worn manual-looking engine lathe, gray-green paint, exposed chuck, long bed, oil stains |
+| `torna_2` | A newer enclosed CNC lathe, blue-gray paint, small control panel, half-open sliding door |
+| `torna_3` | A modern premium fully enclosed CNC turning center, white and black, large touchscreen, safety glass window, yellow accents |
+| `freze_1` | An older open vertical milling machine, gray-green paint, exposed table and manual handwheels |
+| `freze_2` | A newer semi-enclosed CNC vertical milling machine, blue-gray paint, tool changer visible |
+| `freze_3` | A modern premium fully enclosed 5-axis machining center, white and black, big touchscreen, yellow accents |
+| `taslama_1` | An older open surface grinding machine, gray-green paint, long table, yellow wheel guard, coolant tank |
+| `taslama_2` | A newer enclosed CNC grinding machine, blue-gray paint, small control panel |
+| `taslama_3` | A modern premium fully enclosed CNC grinder, white and black, glass enclosure, touchscreen, yellow accents |
+| `dovme_1` | A rough dark-orange hydraulic forging press, open frame, anvil, hydraulic tanks, small induction furnace beside it |
+| `dovme_2` | A heavy blue-gray hydraulic forging press with guarded frame and control cabinet |
+| `dovme_3` | A modern gray-white servo forging press with safety light curtains, glass guard, yellow accents |
+
+Kaydet: `godot/art/machines/<ad>.jpg` ve `python tools\art_tools.py resize godot\art\machines --max 1024`.
+
+## 5. İşçi (üstten, saydam PNG)
+
+```
+A single factory worker seen strictly from above (top-down orthographic), standing, blue work overalls, yellow hard hat, safety vest, arms slightly forward as if operating a machine. Solid pure magenta background (#FF00FF) filling the whole canvas, no floor, no shadow rectangle, photorealistic, about 0.6 x 0.6 m footprint, front of the body faces the BOTTOM of the image.
+```
+Kesme: `python tools\art_tools.py key worker.png --out godot\art\floor\props` → `worker.png` (oyun yoksa çizilmiş yer tutucu kullanır).
