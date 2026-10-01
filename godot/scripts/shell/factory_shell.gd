@@ -457,7 +457,7 @@ func _render() -> void:
 		"profil": _page_profil()
 
 func _background_texture() -> Texture2D:
-	if page != "ozet" or detail != "" or game.factory_id == "":
+	if page != "ozet" or detail != "" or game.factory_id == "" or game.factory().is_empty():
 		return null
 	var gradient := Gradient.new()
 	var tint: Color = game.factory()["tint"]

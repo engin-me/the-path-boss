@@ -65,6 +65,9 @@ func from_save(data: Dictionary) -> String:
 	for field in BASE_FIELDS + SHELL_FIELDS + ["machines", "offers", "rng_seed", "rng_state"]:
 		if not data.has(field):
 			return "Kayıtta '%s' alanı yok." % field
+	var saved_factory := String(data.get("factory_id", ""))
+	if saved_factory != "" and Data.factory_by_id(saved_factory).is_empty():
+		return "Kayıttaki fabrika ('%s') artık yok; eski sürümden kalmış." % saved_factory
 	var copy: Dictionary = data.duplicate(true)
 	for field in BASE_FIELDS + SHELL_FIELDS:
 		set(field, copy[field])
