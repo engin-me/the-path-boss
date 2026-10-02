@@ -176,7 +176,15 @@ func running_cost() -> float:
 	var cost := plant_fixed_cost()
 	for machine in delivered():
 		cost += machine_running_cost(machine)
-	return cost
+	return cost + moving_wages()
+
+# Crews of machines that are being moved stay on the payroll.
+func moving_wages() -> float:
+	var wages := 0.0
+	for machine in machines:
+		if bool(machine.get("moving", false)) and int(machine["arrive"]) > month:
+			wages += machine_wages(machine)
+	return wages
 
 # Building overhead (tax, service charge, heating, security), indirect staff and the office, paid every month.
 func building_overhead() -> float:
@@ -219,7 +227,7 @@ func running_cost_actual() -> float:
 		var potential := float(machine.get("output_last", 0.0))
 		var worked := clampf(float(machine.get("used_last", 0.0)) / potential, 0.0, 1.0) if potential > 0.0 else 0.0
 		cost += (machine_energy(machine) * shift_equiv(machine) + machine_maintenance(machine)) * worked + machine_wages(machine)
-	return cost
+	return cost + moving_wages()
 
 func delivered() -> Array:
 	var list: Array = []
@@ -734,20 +742,47 @@ var moving_until := 0   # month in which the machines run again after a move (0 
 func is_moving() -> bool:
 	return moving_until > month
 
-# Months the plant stands still: 1 up to 10 machines, 2 up to 20, and so on.
+# Production stands still for one month at most, however many machines move.
 func move_months() -> int:
-	return maxi(1, int(ceil(float(machines.size()) / float(Data.MOVE_MACHINES_PER_MONTH))))
+	return Data.MOVE_MONTHS
 
-func move_cost(new_id: String) -> Dictionary:
+# What the equipment set looks like in the new plant: the old set and every extra item are counted one by one,
+# the new class needs its list, the deficit is bought now and the surplus stays as extra items.
+func move_equipment_plan(new_id: String) -> Dictionary:
 	var target := Data.factory_by_id(new_id)
-	var transport := Data.MOVE_COST_PER_MACHINE * float(machines.size())
-	var extra_set := 0.0
-	if package_bought and not target.is_empty():
-		extra_set = maxf(0.0, float(Data.package_for(int(target["m2"]))["price"]) - float(package_info()["price"]))
-	var exit_fee := leave_fee()
-	return {"exit": exit_fee, "transport": transport, "extra_set": extra_set, "total": exit_fee + transport + extra_set}
+	var plan := {"deficit": {}, "surplus": {}, "cost": 0.0}
+	if not package_bought or target.is_empty():
+		return plan
+	var old_items: Dictionary = package_info()["items"]
+	var new_items: Dictionary = Data.package_for(int(target["m2"]))["items"]
+	for id in new_items:
+		var have := int(old_items.get(id, 0)) + int(equip.get(id, 0))
+		var need := int(new_items[id])
+		if have >= need:
+			if have > need:
+				plan["surplus"][id] = have - need
+		else:
+			plan["deficit"][id] = need - have
+			plan["cost"] = float(plan["cost"]) + float(Data.EQUIPMENT[id]["price"]) * float(need - have)
+	return plan
 
-func move_block_reason(id: String, months: int, prepay: bool) -> String:
+func move_cost(new_id: String, sell_uids: Array = []) -> Dictionary:
+	var moving_count := machines.size() - sell_uids.size()
+	var transport := Data.MOVE_COST_PER_MACHINE * float(maxi(0, moving_count))
+	var extra_set := float(move_equipment_plan(new_id)["cost"])
+	var sale := 0.0
+	for uid in sell_uids:
+		var machine := machine_by_uid(int(uid))
+		if not machine.is_empty():
+			sale += sale_income(machine)
+	var exit_fee := leave_fee()
+	return {"exit": exit_fee, "transport": transport, "extra_set": extra_set, "sale": sale, "total": exit_fee + transport + extra_set - sale}
+
+# Machines that do not fit the new plant's slots and must be sold first.
+func move_excess(new_id: String) -> int:
+	return maxi(0, machines.size() - Data.slot_count(new_id))
+
+func move_block_reason(id: String, months: int, prepay: bool, sell_uids: Array = []) -> String:
 	if phase != "offers":
 		return "Taşınma ay başında (rapordan önce) yapılır."
 	if factory_id == "":
@@ -759,37 +794,62 @@ func move_block_reason(id: String, months: int, prepay: bool) -> String:
 	var target := Data.factory_by_id(id)
 	if target.is_empty():
 		return "Bilinmeyen yer."
-	if machines.size() > Data.slot_count(id):
-		return "Yeni yerde yuva yetmiyor (%d tezgah için %d yuva)." % [machines.size(), Data.slot_count(id)]
+	for uid in sell_uids:
+		var machine := machine_by_uid(int(uid))
+		if machine.is_empty():
+			return "Satılacak makine bulunamadı."
+		if machine["mortgaged"]:
+			return "%s ipotekli: kredi kapanmadan satılamaz." % machine["model"]
+	var staying := machines.size() - sell_uids.size()
+	if staying > Data.slot_count(id):
+		return "Yeni yerde %d yuva var; %d tezgahı daha satman gerekiyor." % [Data.slot_count(id), staying - Data.slot_count(id)]
 	for machine in machines:
+		if sell_uids.has(machine["uid"]):
+			continue
 		if float(machine["height"]) > float(target["height"]):
-			return "Tavan çok alçak: %s sığmıyor." % machine["model"]
+			return "Tavan çok alçak: %s sığmıyor (satabilirsin)." % machine["model"]
 	var quote := prepay_quote(id, months)
 	var due := float(quote["amount"]) if prepay else 0.0
 	var first_rent := 0.0 if prepay else float(quote["rent"])
 	var size_scale := SCALES[2] if Data.size_class(int(target["m2"])) == "large" else (SCALES[1] if Data.size_class(int(target["m2"])) == "medium" else SCALES[0])
 	var guarantee: float = float(SHELL_MONEY_BANDS[int(size_scale["max_tier"])][1]) * float(size_scale["factor"])
-	var costs := move_cost(id)
+	var costs := move_cost(id, sell_uids)
 	if cash - float(costs["total"]) - due < first_rent + guarantee:
 		return "Taşınmadan sonra kasa %.0f; çıkış, taşıma, kira ve gizli sorun güvencesi için en az %.0f gerekli." % [cash - float(costs["total"]) - due, first_rent + guarantee]
 	return ""
 
-# The machines are taken down, driven over and set up again: they behave like machines in transit for the
-# move's months (no production, jobs wait), the old contract ends with its exit fee, the new rent starts now.
-func move_factory(id: String, months: int, prepay: bool) -> String:
-	var reason := move_block_reason(id, months, prepay)
+# The machines are taken down, driven over and set up again: for one month they stand still (no production,
+# jobs wait, the crews stay on the payroll). The old contract ends with its exit fee and the new rent starts now.
+# Machines that do not fit the new plant are sold first (the player chooses which).
+func move_factory(id: String, months: int, prepay: bool, sell_uids: Array = []) -> String:
+	var reason := move_block_reason(id, months, prepay, sell_uids)
 	if reason != "":
 		notice = reason
 		return reason
-	var costs := move_cost(id)
+	var costs := move_cost(id, sell_uids)
+	var equipment_plan := move_equipment_plan(id)
 	var quote := prepay_quote(id, months)
 	var old_name: String = factory()["name"]
-	cash -= float(costs["total"])
+	for uid in sell_uids:
+		var sold := machine_by_uid(int(uid))
+		cash += sale_income(sold)
+		machines.erase(sold)
+	cash -= float(costs["exit"]) + float(costs["transport"]) + float(costs["extra_set"])
 	invested += float(costs["extra_set"])
+	if package_bought:
+		# the old set and the extras become single items again: the new class takes its list, the rest stays as extras
+		var new_items: Dictionary = Data.package_for(int(Data.factory_by_id(id)["m2"]))["items"]
+		var old_items: Dictionary = package_info()["items"]
+		for item in new_items:
+			equip[item] = int(equipment_plan["surplus"].get(item, 0))
+		for item in old_items:
+			if not new_items.has(item):
+				equip[item] = int(equip.get(item, 0)) + int(old_items[item])
 	var arrive := month + move_months()
 	var slot := 0
 	for machine in machines:
 		machine["arrive"] = maxi(int(machine["arrive"]), arrive)
+		machine["moving"] = true
 		machine["slot"] = slot
 		slot += 1
 	moving_until = arrive
@@ -800,8 +860,8 @@ func move_factory(id: String, months: int, prepay: bool) -> String:
 	if prepay:
 		cash -= float(quote["amount"])
 		prepaid_months = int(quote["half"])
-	history.append("Ay %d: %s → %s taşındı (%d ay üretim durur; çıkış %.0f, taşıma %.0f, ek ekipman %.0f)." % [month, old_name, factory()["name"], move_months(), costs["exit"], costs["transport"], costs["extra_set"]])
-	notice = "%s taşındın; tezgahlar %d ay sonra çalışır." % [factory()["name"], arrive - month]
+	history.append("Ay %d: %s → %s taşındı (%d ay üretim durur; çıkış %.0f, taşıma %.0f, ek ekipman %.0f, %d tezgah satıldı)." % [month, old_name, factory()["name"], move_months(), costs["exit"], costs["transport"], costs["extra_set"], sell_uids.size()])
+	notice = "%s taşındın; tezgahlar %d ay sonra çalışır, personel ücretleri sürer." % [factory()["name"], arrive - month]
 	return ""
 
 func leave_block_reason() -> String:

@@ -50,6 +50,7 @@ var clock_progress: ProgressBar
 var clock_buttons := {}
 var office_last := "ozet"
 var open_offer := -1
+var move_sell: Array = []
 var job_filters: Array = []
 var job_sort := "yeni"
 var mail_open := -1
@@ -648,6 +649,8 @@ func _open_detail(kind: String, arg := "") -> void:
 	detail_arg = arg
 	if kind == "quote":
 		quote_months = 0
+	if kind == "factory":
+		move_sell = []
 	_render()
 
 func _back() -> void:
@@ -2262,7 +2265,7 @@ func _page_fabrika() -> void:
 		if game.is_moving():
 			content.add_child(_label("Taşınma sürüyor: tezgahlar %d ay sonra çalışır." % (game.moving_until - game.month), 14, GOLD))
 		content.add_child(_label("Taşın ya da büyü", 20, TEXT))
-		content.add_child(_label("Başka bir yere taşınırsan çıkış bedeli ve taşıma bedeli ödersin; 10 tezgaha kadar 1 ay, 20'ye kadar 2 ay üretim durur.", 12, MUTED))
+		content.add_child(_label("Başka bir yere taşınırsan çıkış ve taşıma bedeli ödersin; üretim en fazla 1 ay durur, personel ücretleri sürer.", 12, MUTED))
 		for other in Data.FACTORIES:
 			if other["id"] == game.factory_id:
 				continue
@@ -2537,40 +2540,70 @@ func _detail_factory(factory: Dictionary) -> void:
 
 # Moving from the rented plant into this one (bigger, smaller or just different).
 func _move_section(factory: Dictionary) -> void:
-	var costs: Dictionary = game.move_cost(factory["id"])
-	var quote: Dictionary = game.prepay_quote(factory["id"], picked_term)
+	var excess: int = game.move_excess(factory["id"])
+	var valid: Array = []
+	for uid in move_sell:
+		if not game.machine_by_uid(int(uid)).is_empty():
+			valid.append(uid)
+	move_sell = valid
+	var costs: Dictionary = game.move_cost(factory["id"], move_sell)
+	var equipment_plan: Dictionary = game.move_equipment_plan(factory["id"])
 	var card := _card(content, "Buraya taşın", GOLD, true)
-	card.add_child(_label("Tezgahlar sökülüp taşınır ve yeni yuvalara kurulur. Bu sırada üretim durur, işler bekler, teslim tarihleri kayabilir; eski sözleşme çıkış bedeliyle biter, yeni kira hemen başlar.", 13, MUTED))
+	card.add_child(_label("Tezgahlar sökülüp taşınır ve yeni yuvalara kurulur. Üretim 1 ay durur, işler bekler, personel ücretleri sürer; eski sözleşme çıkış bedeliyle biter, yeni kira hemen başlar.", 13, MUTED))
 	_row(card, "Yeni yer", "%s · %d yuva" % [factory["name"], Data.slot_count(factory["id"])], TEXT, 15)
-	_row(card, "Üretim durur", "%d ay (%d tezgah)" % [game.move_months(), game.machines.size()], RED, 15)
+	_row(card, "Taşınan tezgah", "%d / %d" % [game.machines.size() - move_sell.size(), game.machines.size()], TEXT, 15)
+	_row(card, "Üretim durur", "%d ay" % game.move_months(), RED, 15)
 	_row(card, "Çıkış bedeli (%d kira)" % Data.EXIT_FEE_RENTS, Data.usd(float(costs["exit"])), TEXT, 14)
 	_row(card, "Taşıma bedeli", Data.usd(float(costs["transport"])), TEXT, 14)
-	if float(costs["extra_set"]) > 0.0:
-		_row(card, "Ek ekipman (fabrika sınıfı büyür)", Data.usd(float(costs["extra_set"])), TEXT, 14)
+	if float(costs["sale"]) > 0.0:
+		_row(card, "Satılan tezgahlardan gelir", "-" + Data.usd(float(costs["sale"])), GREEN, 14)
 	_row(card, "Yeni aylık kira (12 ay)", Data.usd(float(factory["rent"])), TEXT, 14)
 	_row(card, "Şimdi çıkacak", Data.usd(float(costs["total"])), GOLD, 17)
-	picked_term = 12
-	var reason: String = game.move_block_reason(factory["id"], 12, false)
+	if not equipment_plan["deficit"].is_empty() or not equipment_plan["surplus"].is_empty():
+		var equip_card := _card(content, "Ekipman ayrıştırması", BORDER)
+		equip_card.add_child(_label("Eldeki ekipman tek tek sayılır: yeni fabrikanın listesi için eksik olanlar alınır, fazlası ek ekipman olarak kalır.", 12, MUTED))
+		for id in equipment_plan["deficit"]:
+			_row(equip_card, "%s: %d adet alınır" % [Data.EQUIPMENT[id]["name"], equipment_plan["deficit"][id]], Data.usd(float(Data.EQUIPMENT[id]["price"]) * float(equipment_plan["deficit"][id])), TEXT, 13)
+		for id in equipment_plan["surplus"]:
+			_row(equip_card, "%s: %d adet fazla kalır" % [Data.EQUIPMENT[id]["name"], equipment_plan["surplus"][id]], "ek", MUTED, 13)
+	if excess > 0:
+		var pick_card := _card(content, "Küçülüyorsun: %d tezgah sat" % excess, RED)
+		pick_card.add_child(_label("Yeni yerde %d yuva var. Satacağın tezgahları sen seç; kalanlarla devam edersin, satılanların personeli düşer." % Data.slot_count(factory["id"]), 12, MUTED))
+		for machine in game.machines:
+			var check := CheckBox.new()
+			check.text = "%s · %s %s · satış %s" % [machine["model"], Data.LEVELS[int(machine["level"])], machine["kind"], Data.usd(game.sale_income(machine))]
+			check.add_theme_font_size_override("font_size", _fs(14))
+			check.custom_minimum_size = Vector2(0, 46)
+			check.button_pressed = move_sell.has(machine["uid"])
+			check.toggled.connect(func(on: bool) -> void:
+				if on and not move_sell.has(machine["uid"]):
+					move_sell.append(machine["uid"])
+				elif not on:
+					move_sell.erase(machine["uid"])
+				_render_keep_scroll())
+			pick_card.add_child(check)
+	var reason: String = game.move_block_reason(factory["id"], 12, false, move_sell)
 	if reason != "":
-		card.add_child(_label(reason, 13, RED))
-	card.add_child(_button("Taşın" if reason == "" else "Taşınılamaz", _ask_move.bind(factory["id"]), reason == "", reason != "", true))
+		content.add_child(_label(reason, 13, RED))
+	content.add_child(_button(("Sat ve taşın" if move_sell.size() > 0 else "Taşın") if reason == "" else "Taşınılamaz", _ask_move.bind(factory["id"]), reason == "", reason != "", true))
 
 func _ask_move(id: String) -> void:
 	var factory := Data.factory_by_id(id)
-	var costs: Dictionary = game.move_cost(id)
-	_confirm("Taşınma onayı", [
+	var costs: Dictionary = game.move_cost(id, move_sell)
+	var lines: Array = [
 		"%s → %s" % [game.factory()["name"], factory["name"]],
-		"%d tezgah taşınır; üretim %d ay durur." % [game.machines.size(), game.move_months()],
-		"Şimdi çıkacak: %s (çıkış %s, taşıma %s, ek ekipman %s)." % [Data.usd(float(costs["total"])), Data.usd(float(costs["exit"])), Data.usd(float(costs["transport"])), Data.usd(float(costs["extra_set"]))]],
-		"Taşın", _move_factory.bind(id), "Bu işlem geri alınamaz; taşınma süresince işler bekler.")
+		"%d tezgah taşınır; üretim %d ay durur, personel ücretleri sürer." % [game.machines.size() - move_sell.size(), game.move_months()],
+		"Şimdi çıkacak: %s (çıkış %s, taşıma %s, ek ekipman %s%s)." % [Data.usd(float(costs["total"])), Data.usd(float(costs["exit"])), Data.usd(float(costs["transport"])), Data.usd(float(costs["extra_set"])), (", satıştan -" + Data.usd(float(costs["sale"]))) if move_sell.size() > 0 else ""]]
+	_confirm("Taşınma onayı", lines, "Taşın", _move_factory.bind(id), "Bu işlem geri alınamaz; taşınma süresince işler bekler.")
 
 func _move_factory(id: String) -> void:
-	var result: String = game.move_factory(id, 12, false)
+	var result: String = game.move_factory(id, 12, false, move_sell)
 	if result != "":
 		_say(result)
 		_render()
 		return
 	_say(game.notice)
+	move_sell = []
 	detail = ""
 	page = "ozet"
 	subtab["ozet"] = "genel"

@@ -652,13 +652,33 @@ func _run() -> void:
 	if mv.cash > cash_before_move - float(move_costs["total"]) + 0.01 or mv.effective_capacity() != 0.0:
 		return _fail("A move costs exit and transport money and stops production")
 	if int(mv.moving_until) - int(mv.month) != 1 or mv.move_months() != 1:
-		return _fail("Two machines move in one month")
+		return _fail("A move stops production for one month at most")
+	var wage_stop: float = mv.moving_wages()
+	if wage_stop <= 0.0:
+		return _fail("Crews of moving machines stay on the payroll")
 	mv.machines = mv.machines + mv.machines + mv.machines + mv.machines + mv.machines
 	if mv.move_months() != 1:
-		return _fail("Ten machines still move in one month")
-	mv.machines.append(mv.machines[0].duplicate())
-	if mv.move_months() != 2:
-		return _fail("Eleven machines need two months")
+		return _fail("Even many machines move in one month")
+	# downsizing: machines beyond the new slots must be sold, the player picks which
+	var dn = Boss.new()
+	dn.default_setup(16)
+	dn.cash = 6000.0
+	dn.rent_factory("factory_3", 12, false)
+	dn.buy_package()
+	for uid in [13, 14, 15, 16]:
+		dn.buy_listing(uid)
+	if dn.machines.size() != 4 or dn.move_excess("factory_1") != 2:
+		return _fail("Moving 4 machines into 2 slots leaves an excess of 2")
+	if dn.move_block_reason("factory_1", 12, false) == "":
+		return _fail("A downsizing move without selling must be refused")
+	var picks: Array = [dn.machines[1]["uid"], dn.machines[3]["uid"]]
+	var stays: int = dn.machines[0]["uid"]
+	if dn.move_block_reason("factory_1", 12, false, picks) != "" or dn.move_factory("factory_1", 12, false, picks) != "":
+		return _fail("Selling the excess machines must allow the move: " + dn.move_block_reason("factory_1", 12, false, picks))
+	if dn.machines.size() != 2 or dn.machine_by_uid(stays).is_empty() or int(dn.machines[1]["slot"]) != 1:
+		return _fail("Only the unsold machines move, into the first slots")
+	if dn.equipment_owned("raf") < int(Data.package_for(150)["items"]["raf"]):
+		return _fail("The smaller plant keeps at least its own equipment list")
 	shell._reset_state(15)
 	shell.game.cash = 2000.0
 	shell.game.rent_factory("factory_1", 12, false)
