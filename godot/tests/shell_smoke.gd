@@ -834,5 +834,13 @@ func _run() -> void:
 	var full_left: float = fullmonth.job_remaining(fullmonth.jobs[0]) if not fullmonth.jobs.is_empty() else 0.0
 	if halfway.days_run != 30 or absf(half_left - full_left) > 1.0:
 		return _fail("Opening the report mid-month must play the missing days (%.1f vs %.1f)" % [half_left, full_left])
+	# ---- old mid-month saves (no month_running) estimate the expenses of the days already played
+	var legacy: Dictionary = snapshot_day.duplicate(true)
+	legacy["days_run"] = 15
+	legacy["day"] = 16
+	legacy.erase("month_running")
+	var legacy_game = Boss.new()
+	if legacy_game.from_save(legacy) != "" or legacy_game.month_running < 0.45 * legacy_game.running_cost() or legacy_game.month_running > 0.55 * legacy_game.running_cost():
+		return _fail("A mid-month save without month_running must estimate half a month of expenses (%.3f of %.3f)" % [legacy_game.month_running, legacy_game.running_cost()])
 	print("Shell smoke passed")
 	quit(0)

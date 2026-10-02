@@ -111,6 +111,8 @@ func from_save(data: Dictionary) -> String:
 	month_revenue = float(copy.get("month_revenue", 0.0))
 	month_late = int(copy.get("month_late", 0))
 	month_running = float(copy.get("month_running", 0.0))
+	if days_run > 0 and not copy.has("month_running") and factory_id != "":
+		month_running = running_cost() * float(days_run) / float(Data.MONTH_DAYS)   # save from before the daily accrual: estimate the days already played
 	rent_markup = float(copy.get("rent_markup", 0.0))
 	renewal_term = int(copy.get("renewal_term", 0))
 	offers.assign(copy["offers"])

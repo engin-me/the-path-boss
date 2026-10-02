@@ -168,6 +168,9 @@ func _play(persona: Dictionary, seed_value: int, months: int, agg: Dictionary) -
 				offer_load += float(req["workload"])
 			if promised + offer_load > 0.85 * capacity_now * float(offer["months"]):
 				continue
+			# like a player who reads the delivery forecast on the quote screen: skip what cannot be delivered on time
+			if game.quote_projection(offer, int(offer["months"]))["late"]:
+				continue
 			var estimate: Dictionary = game.cost_estimate(offer)
 			var margin_used: float = pm if pm >= 0.0 else float(persona["margin"])
 			if adaptive > 0.0:
