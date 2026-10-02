@@ -69,6 +69,12 @@ func to_save() -> Dictionary:
 	data["plan_patron"] = plan_patron
 	data["staff_policy"] = staff_policy
 	data["moving_until"] = moving_until
+	data["day"] = day
+	data["days_run"] = days_run
+	data["month_events"] = month_events.duplicate()
+	data["month_material_used"] = month_material_used
+	data["month_revenue"] = month_revenue
+	data["month_late"] = month_late
 	data["rent_markup"] = rent_markup
 	data["renewal_term"] = renewal_term
 	data["offers"] = offers.duplicate(true)
@@ -97,6 +103,12 @@ func from_save(data: Dictionary) -> String:
 	plan_patron = bool(copy.get("plan_patron", true))
 	staff_policy = clampi(int(copy.get("staff_policy", 1)), 0, Data.STAFF_POLICIES.size() - 1)
 	moving_until = int(copy.get("moving_until", 0))
+	day = int(copy.get("day", 1))
+	days_run = int(copy.get("days_run", 0))
+	month_events = copy.get("month_events", []).duplicate()
+	month_material_used = float(copy.get("month_material_used", 0.0))
+	month_revenue = float(copy.get("month_revenue", 0.0))
+	month_late = int(copy.get("month_late", 0))
 	rent_markup = float(copy.get("rent_markup", 0.0))
 	renewal_term = int(copy.get("renewal_term", 0))
 	offers.assign(copy["offers"])
@@ -273,7 +285,7 @@ func running_cost_actual() -> float:
 	for machine in delivered():
 		var potential := float(machine.get("output_last", 0.0))
 		var worked := clampf(float(machine.get("used_last", 0.0)) / potential, 0.0, 1.0) if potential > 0.0 else 0.0
-		cost += (machine_energy(machine) * shift_equiv(machine) + machine_maintenance(machine)) * worked + machine_wages(machine)
+		cost += ((machine_energy(machine) * shift_equiv(machine) + machine_maintenance(machine)) * worked + machine_wages(machine)) * service_fraction(machine)
 	return cost + moving_wages()
 
 func delivered() -> Array:
@@ -772,6 +784,8 @@ func rent_factory(id: String, months: int, prepay: bool) -> String:
 	term = months
 	months_left = months
 	prepaid_months = 0
+	day = 1
+	days_run = 0
 	if prepay:
 		cash -= float(quote["amount"])
 		prepaid_months = int(quote["half"])
@@ -896,6 +910,7 @@ func move_factory(id: String, months: int, prepay: bool, sell_uids: Array = []) 
 	var slot := 0
 	for machine in machines:
 		machine["arrive"] = maxi(int(machine["arrive"]), arrive)
+		machine["arrive_day"] = day
 		machine["moving"] = true
 		machine["slot"] = slot
 		slot += 1
@@ -1046,6 +1061,7 @@ func buy_listing(uid: int) -> String:
 	cash -= float(listing["price"])
 	invested += float(listing["price"])
 	machine["slot"] = free_slot()
+	machine["arrive_day"] = day
 	machines.append(machine)
 	history.append("Ay %d: %s sipariş edildi (%.0f, teslim %d ay)." % [month, listing["model"], listing["price"], listing["delivery"]])
 	notice = "%s sipariş edildi; teslimde personel işe başlar." % listing["model"]
@@ -1129,6 +1145,8 @@ func _create_job(offer: Dictionary, price: float, advance_rate: float, due_month
 	job["elapsed"] = 0
 	job["accepted_month"] = month
 	job["start_month"] = month + int(offer["start_delay"])
+	job["start_day"] = day
+	job["accept_day"] = day
 	job["due_month"] = month + due_months - 1
 	job["produced"] = 0.0
 	job["yield"] = 1.0
@@ -1454,7 +1472,7 @@ func order_material(job_id: int, supplier_id: String) -> String:
 	var quote := material_quote(job, supplier_id)
 	var delayed := rng.randf() < float(quote["delay"])
 	var order := {"supplier": supplier_id, "order_month": month, "arrive_month": month + int(quote["lead"]) + (1 if delayed else 0),
-		"pay_month": month + int(quote["terms"]), "amount": float(quote["amount"]), "paid": false, "delayed": delayed}
+		"pay_month": month + int(quote["terms"]), "amount": float(quote["amount"]), "paid": false, "delayed": delayed, "arrive_day": day, "pay_day": day}
 	job["order"] = order
 	job["yield"] = float(quote["yield"])
 	if int(quote["terms"]) == 0:
@@ -1527,6 +1545,160 @@ func sell_machine_uid(uid: int) -> String:
 	history.append("Ay %d: %s satıldı (+%.0f)." % [month, machine["model"], income])
 	notice = "%s satıldı; %.0f nakit girdi, etkin kapasite azaldı." % [machine["model"], income]
 	return ""
+
+# ---------------------------------------------------------------- day by day (IDEA-019)
+
+var day := 1                    # day of the current month, 1..MONTH_DAYS
+var days_run := 0               # days of this month already produced (0 = the monthly shortcut is still allowed)
+var month_events: Array = []    # this month's day events, printed in the closing report
+var month_material_used := 0.0  # material of jobs delivered earlier this month
+var month_revenue := 0.0        # revenue delivered earlier this month
+var month_late := 0             # late deliveries earlier this month
+
+func _producing(machine: Dictionary, d: int) -> bool:
+	return package_bought and (int(machine["arrive"]) < month or (int(machine["arrive"]) == month and int(machine.get("arrive_day", 1)) <= d))
+
+func _material_ready_day(job: Dictionary, d: int) -> bool:
+	var order: Dictionary = job.get("order", {})
+	if order.is_empty():
+		return false
+	var arrive_month := int(order["arrive_month"])
+	return arrive_month < month or (arrive_month == month and int(order.get("arrive_day", 1)) <= d)
+
+func _job_started_day(job: Dictionary, d: int) -> bool:
+	var start_month := int(job["start_month"])
+	return start_month < month or (start_month == month and int(job.get("start_day", 1)) <= d)
+
+# Share of the month a machine that arrived this month is on the payroll (running costs follow production).
+func service_fraction(machine: Dictionary) -> float:
+	if days_run > 0 and int(machine["arrive"]) == month:
+		return clampf(float(Data.MONTH_DAYS - int(machine.get("arrive_day", 1)) + 1) / float(Data.MONTH_DAYS), 0.0, 1.0)
+	return 1.0
+
+# One day of production and cash events. Returns {day, produced {uid: amount}, events [{text, amount}], month_end}.
+func advance_day() -> Dictionary:
+	var result := {"day": day, "produced": {}, "events": [], "month_end": false}
+	if phase != "offers" or factory_id == "":
+		return result
+	if days_run >= Data.MONTH_DAYS:
+		result["month_end"] = true
+		return result
+	if days_run == 0:
+		month_events = []
+		month_material_used = 0.0
+		month_revenue = 0.0
+		month_late = 0
+		for machine in machines:
+			machine["used_last"] = 0.0
+			machine["output_last"] = 0.0
+		for job in jobs:
+			for req in job["reqs"]:
+				req["made_month"] = 0.0
+	var events: Array = result["events"]
+	for machine in machines:
+		if int(machine["arrive"]) == month and int(machine.get("arrive_day", 1)) == day:
+			var text := "%s %s · %d personel işe başladı" % [machine["model"], "yeni yerinde kuruldu" if bool(machine.get("moving", false)) else "teslim alındı", machine["personnel"]]
+			events.append({"text": text, "amount": 0.0})
+	# supplier payments fall on their day
+	for job in jobs:
+		var order: Dictionary = job.get("order", {})
+		if order.is_empty() or bool(order.get("paid", false)):
+			continue
+		if int(order["pay_month"]) < month or (int(order["pay_month"]) == month and int(order.get("pay_day", 1)) <= day):
+			cash -= float(order["amount"])
+			order["paid"] = true
+			events.append({"text": "Hammadde ödemesi: %s" % job["title"], "amount": -float(order["amount"])})
+	# production of the day
+	var mults := problem_mults(loss_fractions())
+	var cap_left := {}
+	for machine in machines:
+		if _producing(machine, day):
+			var share := float(machine_steps(machine, mults)["net"]) / float(Data.MONTH_DAYS)
+			cap_left[machine["uid"]] = share
+			machine["output_last"] = float(machine.get("output_last", 0.0)) + share
+	var before := cap_left.duplicate()
+	_allocate_day(cap_left)
+	for uid in cap_left:
+		var made := float(before[uid]) - float(cap_left[uid])
+		if made > 0.0001:
+			result["produced"][uid] = made
+	# finished jobs are delivered the same day
+	var running: Array = []
+	for job in jobs:
+		if job_done(job):
+			events.append_array(_deliver_job(job))
+		else:
+			running.append(job)
+	jobs = running
+	for event in events:
+		month_events.append("Gün %d: %s%s" % [day, event["text"], (" (%s)" % Data.usd(float(event["amount"]))) if absf(float(event["amount"])) > 0.0005 else ""])
+	days_run += 1
+	if day < Data.MONTH_DAYS:
+		day += 1
+	result["month_end"] = days_run >= Data.MONTH_DAYS
+	return result
+
+# Plays the remaining days of the month at once (skipping ahead); returns the events of those days.
+func finish_month_days() -> Array:
+	var events: Array = []
+	var guard := 0
+	while phase == "offers" and days_run < Data.MONTH_DAYS and guard < 40:
+		events.append_array(advance_day()["events"])
+		guard += 1
+	return events
+
+# Same allocation as the monthly one (oldest job first), limited to what exists on this day.
+func _allocate_day(cap_left: Dictionary) -> void:
+	for job in jobs:
+		if not _job_started_day(job, day) or not _material_ready_day(job, day):
+			continue
+		var job_yield := float(job.get("yield", 1.0))
+		for req in job["reqs"]:
+			var need := float(req["remaining"])
+			if need <= 0.0001:
+				continue
+			var eligible: Array = []
+			for machine in machines:
+				if machine["kind"] == req["kind"] and int(machine["level"]) >= int(req["level"]) and _producing(machine, day):
+					eligible.append(machine)
+			eligible.sort_custom(func(a, b): return int(a["level"]) < int(b["level"]))
+			for machine in eligible:
+				if need <= 0.0001:
+					break
+				var available := float(cap_left.get(machine["uid"], 0.0))
+				if available <= 0.0:
+					continue
+				var use := minf(available, need / job_yield)
+				cap_left[machine["uid"]] = available - use
+				var got := use * job_yield
+				need -= got
+				req["remaining"] = maxf(0.0, need)
+				job["produced"] = float(job.get("produced", 0.0)) + got
+				machine["used_last"] = float(machine.get("used_last", 0.0)) + use
+				req["made_month"] = float(req.get("made_month", 0.0)) + got
+
+# A job whose workload is done leaves on the day it finishes: the balance comes in, the score moves.
+func _deliver_job(job: Dictionary) -> Array:
+	var events: Array = []
+	var order: Dictionary = job.get("order", {})
+	if not order.is_empty() and not bool(order.get("paid", false)):
+		cash -= float(order["amount"])
+		order["paid"] = true
+		events.append({"text": "Hammadde ödemesi (iş bitti): %s" % job["title"], "amount": -float(order["amount"])})
+	var scrap_cost := scrap_cost_month(job)
+	if scrap_cost > 0.0:
+		cash -= scrap_cost
+		events.append({"text": "Hurda gideri: %s" % job["title"], "amount": -scrap_cost})
+	month_material_used += material_used_month(job)
+	var on_time := month <= int(job["due_month"])
+	var remainder := float(job["revenue"]) - float(job["advance"])
+	cash += remainder
+	month_revenue += float(job["revenue"])
+	_score_event(1.0 if on_time else 0.4)
+	if not on_time:
+		month_late += 1
+	events.append({"text": "Teslim: %s%s" % [job["title"], "" if on_time else " · GEÇ TESLİM (skor düştü)"], "amount": remainder})
+	return events
 
 # ---------------------------------------------------------------- production (FIFO load on machines)
 
@@ -1665,19 +1837,22 @@ func run_report() -> String:
 	var fr := loss_fractions()
 	var mults := problem_mults(fr)
 	var cap_left := {}
+	var played := days_run > 0   # the days were produced one by one: keep what they made
 	var sums := {"theoretical": 0.0, "shift": 0.0, "perf": 0.0, "scrap": 0.0, "phys": 0.0, "net": 0.0}
 	for machine in delivered():
 		var steps := machine_steps(machine, mults)
 		var output := float(steps["net"]) if package_bought else 0.0
-		machine["used_last"] = 0.0
-		machine["output_last"] = output
+		if not played:
+			machine["used_last"] = 0.0
+			machine["output_last"] = output
 		cap_left[machine["uid"]] = output
 		for key in sums:
 			sums[key] += float(steps[key]) if package_bought or key == "theoretical" else 0.0
-	for job in jobs:
-		for req in job["reqs"]:
-			req["made_month"] = 0.0
-	_allocate(jobs, cap_left, month, true)
+	if not played:
+		for job in jobs:
+			for req in job["reqs"]:
+				req["made_month"] = 0.0
+		_allocate(jobs, cap_left, month, true)
 	var used := 0.0
 	for machine in delivered():
 		used += float(machine["used_last"])
@@ -1720,7 +1895,7 @@ func close_month() -> String:
 	var running := running_cost_actual()
 	cash -= running
 	lines.append("Personel, enerji (yalnızca çalışan tezgahlar), bina işletme, dolaylı ve ofis kadrosu: %s" % Data.usd(running))
-	var material_used := 0.0
+	var material_used := month_material_used
 	for job in jobs:
 		material_used += material_used_month(job)
 	var consumables := Data.CONSUMABLE_SHARE * (running + material_used)
@@ -1741,7 +1916,9 @@ func close_month() -> String:
 			lines.append("Kredi kapandı; ipotek kalktı.")
 	# jobs: supplier payments, delivery when the workload is done, cancellation when very late
 	var running_jobs: Array = []
-	var delivered_revenue := 0.0
+	var delivered_revenue := month_revenue
+	report["undelivered"] = int(report.get("undelivered", 0)) + month_late
+	lines.append_array(month_events)
 	for job in jobs:
 		var due := material_due(job)
 		if due > 0.0:
@@ -1800,9 +1977,16 @@ func close_month() -> String:
 		last_lines.append(_contract_end())
 	elif months_left == Data.NOTICE_MONTHS:
 		_notice_mail()
-	for machine in machines:
-		if int(machine["arrive"]) == month:
-			last_lines.append("Teslim alındı: %s · %d personel işe başladı" % [machine["model"], machine["personnel"]])
+	if days_run == 0:
+		for machine in machines:
+			if int(machine["arrive"]) == month:
+				last_lines.append("Teslim alındı: %s · %d personel işe başladı" % [machine["model"], machine["personnel"]])
+	day = 1
+	days_run = 0
+	month_events = []
+	month_material_used = 0.0
+	month_revenue = 0.0
+	month_late = 0
 	_auto_patron()
 	if month > max_months:
 		phase = "end"

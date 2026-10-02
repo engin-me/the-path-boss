@@ -114,6 +114,7 @@ const TERMS := [
 	{"months": 12, "factor": 1.00, "prepay_discount": 0.08},
 	{"months": 24, "factor": 0.90, "prepay_discount": 0.12}
 ]
+const MONTH_DAYS := 30   # a month is 30 days in the day-by-day engine
 const EXIT_FEE_RENTS := 2
 const RENEWAL_MARKUP := 0.12   # market rent: an unanswered contract renews with this rise
 const NOTICE_MONTHS := 2   # the landlord writes this many months before the contract ends

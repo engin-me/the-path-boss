@@ -44,6 +44,7 @@ var flow_on := true           # the clock runs day by day (IDEA-019); Ayarlar ca
 var flow_speed := 0           # 0 paused, then 1 / 2 / 4
 var flow_resume := 0          # speed to resume after the month report
 var flow_day := 0.0
+var toast_count := 0
 var clock_bar: Control
 var clock_label: Label
 var clock_progress: ProgressBar
@@ -113,6 +114,7 @@ func _ready() -> void:
 		else:
 			flash = "Kayıt okunamadı; yeni oyun başladı."
 	_load_flow_setting()
+	flow_day = float(game.days_run)
 	_build()
 	_apply_safe_area()
 	_update_clock()
@@ -306,17 +308,55 @@ func _process(delta: float) -> void:
 		return
 	if overlay != null and overlay.get_child_count() > 0:
 		return
-	var before := int(flow_day)
 	flow_day = minf(float(MONTH_DAYS), flow_day + delta * float(flow_speed) * float(MONTH_DAYS) / FLOW_SECONDS_PER_MONTH)
+	var target := int(flow_day)
+	var changed := false
+	var events: Array = []
+	while game.days_run < target and game.phase == "offers" and game.days_run < MONTH_DAYS:
+		var result: Dictionary = game.advance_day()
+		changed = true
+		if floor_view != null:
+			floor_view.day_frac = flow_day / float(MONTH_DAYS)
+			floor_view.add_day(result["produced"])
+		events.append_array(result["events"])
 	if floor_view != null:
 		floor_view.day_frac = flow_day / float(MONTH_DAYS)
-		for day in range(before + 1, int(flow_day) + 1):
-			floor_view.add_day(day)
 		floor_view.queue_redraw()
-	if int(flow_day) != before or flow_day >= float(MONTH_DAYS):
+	if changed:
 		_update_clock()
-	if flow_day >= float(MONTH_DAYS):
+		_sync_cash()
+		for event in events:
+			_toast(String(event["text"]), float(event["amount"]))
+		if not events.is_empty():
+			if floor_view != null:
+				floor_view.refresh_state()
+			elif detail == "" and ["ozet", "fabrika"].has(page):
+				_render_keep_scroll()
+	if game.days_run >= MONTH_DAYS:
+		flow_day = float(MONTH_DAYS)
 		_flow_month_end()
+
+# Header money follows the days: the cash changes while the clock runs.
+func _sync_cash() -> void:
+	var cash_now := float(game.cash)
+	if not is_nan(last_cash) and absf(cash_now - last_cash) > 0.5:
+		audio.play("coin_up" if cash_now > last_cash else "coin_down")
+		_animate_money(last_cash, cash_now)
+	last_cash = cash_now
+
+# Short note for a day event; they stack at the top for a moment and fade away.
+func _toast(text: String, amount: float) -> void:
+	var label := _label(text + ((" · " + Data.usd(amount)) if absf(amount) > 0.0005 else ""), 13, GREEN if amount > 0.0 else (RED if amount < 0.0 else TEXT), false)
+	label.position = Vector2(14, 120 + 26 * toast_count)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(label)
+	toast_count += 1
+	var tween := create_tween()
+	tween.tween_interval(1.8)
+	tween.tween_property(label, "modulate:a", 0.0, 0.6)
+	tween.tween_callback(func() -> void:
+		toast_count = maxi(0, toast_count - 1)
+		label.queue_free())
 
 # The month is over: the clock stops and the report opens (it stays mandatory for now).
 func _flow_month_end() -> void:
@@ -328,7 +368,7 @@ func _flow_month_end() -> void:
 	_open_report()
 
 func _flow_after_month() -> void:
-	flow_day = 0.0
+	flow_day = float(game.days_run)
 	flow_speed = flow_resume if game.phase == "offers" else 0
 	_update_clock()
 	if flow_on:

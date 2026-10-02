@@ -446,7 +446,7 @@ func _run() -> void:
 	plan_view.day_frac = 0.5
 	plan_view.busy = {shell.game.machines[0]["uid"]: true}
 	plan_view.plan_output = {shell.game.machines[0]["uid"]: 3000.0}
-	plan_view.add_day(5)
+	plan_view.add_day({shell.game.machines[0]["uid"]: 120.0})
 	if plan_view.floaters.is_empty() or not str(plan_view.floaters[0]["text"]).begins_with("+"):
 		return _fail("A working machine must show its daily output while the clock runs")
 	# slots are a hard cap
@@ -727,5 +727,65 @@ func _run() -> void:
 		ce2.close_month()
 	if ce2.term != 24 or ce2.months_left != 24 or ce2.rent_markup != 0.0:
 		return _fail("A chosen renewal takes the chosen term at today's rent")
+	# ---- day by day engine: same production as the monthly shortcut, deliveries and payments on their day
+	var dd = Boss.new()
+	dd.default_setup(23)
+	dd.cash = 20000.0
+	dd.rent_factory("factory_3", 12, false)
+	dd.buy_package()
+	dd.buy_listing(13)
+	dd.run_report()
+	dd.close_month()
+	dd.run_report()
+	dd.close_month()
+	var dd_offer: Dictionary = {}
+	for candidate in dd.offers:
+		if dd.fit_block_reason(candidate["id"]) == "":
+			dd_offer = candidate
+			break
+	if dd_offer.is_empty():
+		return _fail("Expected a doable offer for the day engine test")
+	dd._create_job(dd_offer, 5.0, 0.3, int(dd_offer["months"]) + 2)
+	dd.close_month() if dd.phase == "report" else null
+	for step in 2:
+		dd.run_report()
+		dd.close_month()
+	var snapshot_day: Dictionary = dd.to_save()
+	var monthly = Boss.new()
+	monthly.from_save(snapshot_day)
+	var daily = Boss.new()
+	daily.from_save(snapshot_day)
+	if monthly.jobs.is_empty():
+		return _fail("The day engine test needs a running job")
+	monthly.run_report()
+	var guard_days := 0
+	while daily.days_run < 30 and guard_days < 40:
+		var step_result: Dictionary = daily.advance_day()
+		guard_days += 1
+		if step_result["month_end"]:
+			break
+	if daily.day != 30 or daily.days_run != 30:
+		return _fail("30 days must be run (day %d, run %d)" % [daily.day, daily.days_run])
+	daily.run_report()
+	var m_left: float = monthly.job_remaining(monthly.jobs[0])
+	var d_left: float = daily.job_remaining(daily.jobs[0]) if not daily.jobs.is_empty() else 0.0
+	if absf(m_left - d_left) > maxf(1.0, 0.02 * maxf(m_left, 1.0)):
+		return _fail("Daily and monthly production must agree (monthly left %.1f, daily left %.1f)" % [m_left, d_left])
+	# a small job is delivered on the day it is done
+	var quick = Boss.new()
+	quick.from_save(snapshot_day)
+	for req in quick.jobs[0]["reqs"]:
+		req["remaining"] = 0.4
+	var cash_quick: float = quick.cash
+	var first_day: Dictionary = quick.advance_day()
+	if not quick.jobs.is_empty() or quick.cash <= cash_quick:
+		return _fail("A finished job must be delivered on the same day, cash %.1f -> %.1f" % [cash_quick, quick.cash])
+	var texts: Array = []
+	for event in first_day["events"]:
+		texts.append(event["text"])
+	if not "\n".join(texts).contains("Teslim"):
+		return _fail("The delivery must appear among the day's events")
+	if not quick.month_events[0].begins_with("Gün 1:"):
+		return _fail("Day events are logged for the closing report")
 	print("Shell smoke passed")
 	quit(0)

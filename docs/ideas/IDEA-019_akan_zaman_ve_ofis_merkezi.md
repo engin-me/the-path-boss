@@ -20,7 +20,7 @@ Bu bölüm kullanıcının mesajlarından ve Claude'un düzenlemelerinden derlen
 - **Ay sonu.** Ay sonu raporu, süre ayın son gününe ulaşınca otomatik açılır ve zamanı duraklatır. Rapor kapanınca zaman yeniden akabilir.
 - **Ofis merkezi.** Özet, Fabrika (plan, vardiya, sözleşme), İşler, Tedarik ve Patron (yetkinlik, statlar, danışman, kredi) tek "Ofis" sekmesinde toplanır; alt bar Ofis, İlanlar, Mail olur. Fabrika ve patron masası fikri (teknik çizimli plan "Fabrikayı göster" ile açılır) bu sekmenin parçasıdır.
 
-**Teknik not.** Hesap çekirdeği aylık kalabilir: gün sayacı yalnız sunum ve olay zamanlaması için eklenir, ay sınırında motor mevcut ay adımını çalıştırır. Böylece kayıtlar, simülasyon ve testler korunur; aylık patron saati (IDEA-014) ayın günleriyle orantılı tüketilir.
+**Teknik not (prototipte uygulandı).** Aylık fiyat, kira, maaş ve rapor aylık kalır; üretim ve nakit olayları gün adımıyla çalışır (`advance_day`): tezgah kapasitesi günde 1/30 üretir, tezgah ve hammadde kendi teslim gününde devreye girer (makine alınma günü = teslim günü), tedarikçi ödemesi vade gününde düşer, biten iş aynı gün teslim edilir ve kalan bakiye o gün gelir. Ay ortasında gelen tezgahın işletme gideri varış gününden orantılanır. Gün oynanmadan çağrılan eski aylık `run_report` yolu (testler, simülasyon, akan zaman kapalıyken) aynı sonucu verir; kayıtlar `day` / `days_run` alanlarını isteğe bağlı taşır. Ay içinde vardiya değişikliği ücrete ay sonunda tam ay yansır (orantılı ücret açık konu).
 
 ## Notlar (Claude)
 
@@ -51,7 +51,7 @@ Tur 2 · 2026-10-02 · Kullanıcı yönü onayladı; ChatGPT yorumu işlendi.
 - Teklif/mail cevap penceresi ve süre dolumu kuralı.
 - Patron aylık saatinin akan zamanda tüketimi: harcanmış / ayrılmış / kullanılabilir saat ayrımı.
 - Hangi olayların oyunu otomatik durduracağı ve oyuncunun bunu seçebilmesi; ilk dönemde zorunlu aylık rapor duraklaması.
-- Üretim, hammadde varışı, tahsilat ve ödemenin gün/olay adımıyla hesabı; mevcut motor ve testlerin buna göre yeniden yazılması.
+- Ay ortasında vardiya değişiminde ücretin gün orantılı hesabı; teklif cevap süresinin gün sayısıyla ifadesi; patron saatinin gün düzeyinde tüketimi (üretim, hammadde varışı, ödeme ve teslim gün adımına alındı).
 - Ofis ilk ekranının içeriği (ne çalışıyor, yaklaşan teslim ve ödemeler, kararımı bekleyenler).
 - Arka planda zamanın durması ve açılışta durumun gösterilmesi.
 - Ofis içinde Özet'in rolü (rapor akışı) ve patron masası görselinin kapsamı.

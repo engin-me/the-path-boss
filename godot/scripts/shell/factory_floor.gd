@@ -307,19 +307,24 @@ func _build_controls() -> void:
 
 # ------------------------------------------------------------------ daily output (clock running)
 
-# One day passed: every working machine shows its share of the month's expected output.
-func add_day(day_index: int) -> void:
+# One day passed: every machine that produced shows what it made (real numbers from the engine).
+func add_day(produced: Dictionary) -> void:
 	if day_frac < 0.0:
 		return
 	for i in slots.size():
 		var machine := machine_in_slot(i)
-		if machine.is_empty() or not bool(busy.get(machine["uid"], false)) or not plan_output.has(machine["uid"]):
+		if machine.is_empty() or not produced.has(machine["uid"]):
 			continue
-		var wobble := 0.92 + 0.16 * absf(sin(float(int(machine["uid"]) * 13 + day_index) * 7.1))
-		var amount := int(roundf(float(plan_output[machine["uid"]]) / MONTH_DAYS * wobble))
+		var amount := int(roundf(float(produced[machine["uid"]])))
 		if amount > 0:
 			var slot: Rect2 = slots[i]
 			floaters.append({"pos": slot.get_center() + Vector2(0, -slot.size.y * 0.18), "text": "+%d" % amount, "age": 0.0})
+	queue_redraw()
+
+# Machines changed state (arrived, finished a job): recompute who works and what is expected.
+func refresh_state() -> void:
+	busy = game.busy_machines()
+	plan_output = game.month_plan_output()
 	queue_redraw()
 
 func _process(delta: float) -> void:
