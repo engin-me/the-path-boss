@@ -115,6 +115,8 @@ const TERMS := [
 	{"months": 24, "factor": 0.90, "prepay_discount": 0.12}
 ]
 const EXIT_FEE_RENTS := 2
+const MOVE_COST_PER_MACHINE := 1.0   # k$: dismantling, transport and set-up of one machine
+const MOVE_MACHINES_PER_MONTH := 10   # up to 10 machines the move takes 1 month, up to 20 two months, ...
 const ABANDON_PENALTY := 0.10  # of the job revenue; paid material is lost (mock)
 const SALE_RATE := 0.80  # quick sale: 20 percent under the market value (FRZ-003 v2)
 

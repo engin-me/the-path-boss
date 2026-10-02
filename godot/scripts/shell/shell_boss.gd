@@ -68,6 +68,7 @@ func to_save() -> Dictionary:
 	data["plan_ot"] = plan_ot.duplicate()
 	data["plan_patron"] = plan_patron
 	data["staff_policy"] = staff_policy
+	data["moving_until"] = moving_until
 	data["offers"] = offers.duplicate(true)
 	data["rng_seed"] = rng.seed
 	data["rng_state"] = rng.state
@@ -93,6 +94,7 @@ func from_save(data: Dictionary) -> String:
 	plan_ot = copy.get("plan_ot", [false, false, false]).duplicate()
 	plan_patron = bool(copy.get("plan_patron", true))
 	staff_policy = clampi(int(copy.get("staff_policy", 1)), 0, Data.STAFF_POLICIES.size() - 1)
+	moving_until = int(copy.get("moving_until", 0))
 	offers.assign(copy["offers"])
 	rng.seed = int(copy["rng_seed"])
 	rng.state = int(copy["rng_state"])
@@ -723,6 +725,83 @@ func rent_factory(id: String, months: int, prepay: bool) -> String:
 	_generate_problems(2)
 	history.append("Ay %d: %s kiralandı (%d ay, kira %.0f)." % [month, factory()["name"], term, base_rent()])
 	notice = "%s kiralandı. Önce gerekli ekipmanı al, sonra tezgah ve iş." % factory()["name"]
+	return ""
+
+# ---------------------------------------------------------------- moving to another plant (IDEA-020)
+
+var moving_until := 0   # month in which the machines run again after a move (0 = never moved)
+
+func is_moving() -> bool:
+	return moving_until > month
+
+# Months the plant stands still: 1 up to 10 machines, 2 up to 20, and so on.
+func move_months() -> int:
+	return maxi(1, int(ceil(float(machines.size()) / float(Data.MOVE_MACHINES_PER_MONTH))))
+
+func move_cost(new_id: String) -> Dictionary:
+	var target := Data.factory_by_id(new_id)
+	var transport := Data.MOVE_COST_PER_MACHINE * float(machines.size())
+	var extra_set := 0.0
+	if package_bought and not target.is_empty():
+		extra_set = maxf(0.0, float(Data.package_for(int(target["m2"]))["price"]) - float(package_info()["price"]))
+	var exit_fee := leave_fee()
+	return {"exit": exit_fee, "transport": transport, "extra_set": extra_set, "total": exit_fee + transport + extra_set}
+
+func move_block_reason(id: String, months: int, prepay: bool) -> String:
+	if phase != "offers":
+		return "Taşınma ay başında (rapordan önce) yapılır."
+	if factory_id == "":
+		return "Kiralık yer yok."
+	if id == factory_id:
+		return "Zaten bu yerdesin."
+	if is_moving():
+		return "Bir taşınma sürüyor."
+	var target := Data.factory_by_id(id)
+	if target.is_empty():
+		return "Bilinmeyen yer."
+	if machines.size() > Data.slot_count(id):
+		return "Yeni yerde yuva yetmiyor (%d tezgah için %d yuva)." % [machines.size(), Data.slot_count(id)]
+	for machine in machines:
+		if float(machine["height"]) > float(target["height"]):
+			return "Tavan çok alçak: %s sığmıyor." % machine["model"]
+	var quote := prepay_quote(id, months)
+	var due := float(quote["amount"]) if prepay else 0.0
+	var first_rent := 0.0 if prepay else float(quote["rent"])
+	var size_scale := SCALES[2] if Data.size_class(int(target["m2"])) == "large" else (SCALES[1] if Data.size_class(int(target["m2"])) == "medium" else SCALES[0])
+	var guarantee: float = float(SHELL_MONEY_BANDS[int(size_scale["max_tier"])][1]) * float(size_scale["factor"])
+	var costs := move_cost(id)
+	if cash - float(costs["total"]) - due < first_rent + guarantee:
+		return "Taşınmadan sonra kasa %.0f; çıkış, taşıma, kira ve gizli sorun güvencesi için en az %.0f gerekli." % [cash - float(costs["total"]) - due, first_rent + guarantee]
+	return ""
+
+# The machines are taken down, driven over and set up again: they behave like machines in transit for the
+# move's months (no production, jobs wait), the old contract ends with its exit fee, the new rent starts now.
+func move_factory(id: String, months: int, prepay: bool) -> String:
+	var reason := move_block_reason(id, months, prepay)
+	if reason != "":
+		notice = reason
+		return reason
+	var costs := move_cost(id)
+	var quote := prepay_quote(id, months)
+	var old_name: String = factory()["name"]
+	cash -= float(costs["total"])
+	invested += float(costs["extra_set"])
+	var arrive := month + move_months()
+	var slot := 0
+	for machine in machines:
+		machine["arrive"] = maxi(int(machine["arrive"]), arrive)
+		machine["slot"] = slot
+		slot += 1
+	moving_until = arrive
+	factory_id = id
+	term = months
+	months_left = months
+	prepaid_months = 0
+	if prepay:
+		cash -= float(quote["amount"])
+		prepaid_months = int(quote["half"])
+	history.append("Ay %d: %s → %s taşındı (%d ay üretim durur; çıkış %.0f, taşıma %.0f, ek ekipman %.0f)." % [month, old_name, factory()["name"], move_months(), costs["exit"], costs["transport"], costs["extra_set"]])
+	notice = "%s taşındın; tezgahlar %d ay sonra çalışır." % [factory()["name"], arrive - month]
 	return ""
 
 func leave_block_reason() -> String:

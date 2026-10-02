@@ -633,5 +633,42 @@ func _run() -> void:
 		return _fail("After the report the clock restarts at the same speed")
 	shell.flow_on = false
 	shell._update_clock()
+	# ---- moving to another plant (IDEA-020): production stops for ceil(machines / 10) months, costs are paid, slots follow
+	var mv = Boss.new()
+	mv.default_setup(14)
+	mv.cash = 4000.0
+	mv.rent_factory("factory_1", 12, false)
+	mv.buy_package()
+	mv.buy_listing(13)
+	mv.buy_listing(14)
+	mv.run_report()
+	mv.close_month()
+	var cash_before_move: float = mv.cash
+	if mv.move_block_reason("factory_1", 12, false) == "" or mv.move_block_reason("factory_3", 12, false) != "":
+		return _fail("Moving to the same plant must be refused and to another plant allowed")
+	var move_costs: Dictionary = mv.move_cost("factory_3")
+	if mv.move_factory("factory_3", 12, false) != "" or mv.factory_id != "factory_3" or not mv.is_moving():
+		return _fail("The move must switch the plant and start a stop")
+	if mv.cash > cash_before_move - float(move_costs["total"]) + 0.01 or mv.effective_capacity() != 0.0:
+		return _fail("A move costs exit and transport money and stops production")
+	if int(mv.moving_until) - int(mv.month) != 1 or mv.move_months() != 1:
+		return _fail("Two machines move in one month")
+	mv.machines = mv.machines + mv.machines + mv.machines + mv.machines + mv.machines
+	if mv.move_months() != 1:
+		return _fail("Ten machines still move in one month")
+	mv.machines.append(mv.machines[0].duplicate())
+	if mv.move_months() != 2:
+		return _fail("Eleven machines need two months")
+	shell._reset_state(15)
+	shell.game.cash = 2000.0
+	shell.game.rent_factory("factory_1", 12, false)
+	shell._open_detail("factory", "factory_3")
+	if shell.content.get_child_count() < 3:
+		return _fail("The move screen did not render")
+	shell._ask_move("factory_3")
+	shell._confirm_no()
+	shell.subtab["fabrika"] = "sozlesme"
+	shell._back()
+	shell._on_tab("fabrika")
 	print("Shell smoke passed")
 	quit(0)
