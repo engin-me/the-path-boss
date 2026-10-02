@@ -115,6 +115,7 @@ const TERMS := [
 	{"months": 24, "factor": 0.90, "prepay_discount": 0.12}
 ]
 const MONTH_DAYS := 30   # a month is 30 days in the day-by-day engine
+const IDLE_WAGE_FLOOR := 0.5   # share of a crew's wage still paid on a day the machine has no work (short-time work)
 const EXIT_FEE_RENTS := 2
 const RENEWAL_MARKUP := 0.12   # market rent: an unanswered contract renews with this rise
 const NOTICE_MONTHS := 2   # the landlord writes this many months before the contract ends
@@ -422,6 +423,8 @@ static func fill_offer(offer: Dictionary, specs: Array, rng: RandomNumberGenerat
 		var kind: String = spec["kind"]
 		var utilisation := rng.randf_range(0.55, 1.15)
 		var load_x: float = float(spec["n"]) * ref_output(kind) * utilisation * float(offer["duration"])
+		if spec.has("load"):
+			load_x = float(spec["load"])   # a local order sized to the plant's own capacity
 		var z := difficulty(level, rng)
 		var parts := maxi(10, int(roundf(load_x / z / 10.0)) * 10)
 		var workload := float(parts) * z

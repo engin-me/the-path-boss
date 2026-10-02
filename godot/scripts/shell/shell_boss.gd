@@ -289,7 +289,7 @@ func running_cost_actual() -> float:
 	for machine in delivered():
 		var potential := float(machine.get("output_last", 0.0))
 		var worked := clampf(float(machine.get("used_last", 0.0)) / potential, 0.0, 1.0) if potential > 0.0 else 0.0
-		cost += ((machine_energy(machine) * shift_equiv(machine) + machine_maintenance(machine)) * worked + machine_wages(machine)) * service_fraction(machine)
+		cost += ((machine_energy(machine) * shift_equiv(machine) + machine_maintenance(machine)) * worked + machine_wages(machine) * (Data.IDLE_WAGE_FLOOR + (1.0 - Data.IDLE_WAGE_FLOOR) * worked)) * service_fraction(machine)
 	return cost + moving_wages()
 
 func delivered() -> Array:
@@ -1067,6 +1067,8 @@ func buy_listing(uid: int) -> String:
 	machine["slot"] = free_slot()
 	machine["arrive_day"] = day
 	machines.append(machine)
+	if machines.size() == 1 and jobs.is_empty() and phase == "offers":
+		_generate_offers()   # the first machine is bought: this month already lists small orders it can make
 	history.append("Ay %d: %s sipariş edildi (%.0f, teslim %d ay)." % [month, listing["model"], listing["price"], listing["delivery"]])
 	notice = "%s sipariş edildi; teslimde personel işe başlar." % listing["model"]
 	return ""
@@ -1079,6 +1081,7 @@ func _generate_offers() -> void:
 		return
 	offers.assign(Data.generate_offers(month, offer_salt))
 	_apply_pool_floor()
+	_add_local_orders()
 
 func _feasible(reqs: Array) -> bool:
 	for req in reqs:
@@ -1108,6 +1111,32 @@ func _apply_pool_floor() -> void:
 				same += 1
 		Data.fill_offer(offer, [{"kind": machine["kind"], "level": level, "n": mini(maxi(1, int(offer["count"])), same)}], rng)
 		feasible += 1
+
+# Small local orders every month: sized to what the plant can really make (about 35-60 percent of one owned
+# machine's month), one or two months long, with room for the material to arrive. A small plant always has
+# something it can take and deliver on time; the larger customers stay in the mix.
+const LOCAL_ORDERS := 3
+
+func _add_local_orders() -> void:
+	if machines.is_empty() or offers.size() < LOCAL_ORDERS:
+		return
+	var mults := {"phys": 1.0, "non": 1.0}
+	var taken := 0
+	var index := offers.size() - 1
+	while taken < LOCAL_ORDERS and index >= 0:
+		var machine: Dictionary = machines[(month + taken) % machines.size()]
+		var offer: Dictionary = offers[index]
+		var duration := 1 + (taken % 2)
+		var month_output := float(machine_steps(machine, mults)["net"])
+		var level := rng.randi_range(1, int(machine["level"]))
+		offer["duration"] = duration
+		offer["start_delay"] = 0
+		offer["months"] = duration + 2
+		offer["urgency"] = rng.randi_range(1, 10)
+		Data.fill_offer(offer, [{"kind": machine["kind"], "level": level, "n": 1, "load": month_output * duration * rng.randf_range(0.35, 0.6)}], rng)
+		offer["local"] = true
+		taken += 1
+		index -= 1
 
 func accept_block_reason(id: int) -> String:
 	if phase != "offers":
@@ -1639,7 +1668,7 @@ func advance_day() -> Dictionary:
 		if _delivered_on(machine, day):
 			var capacity_today := float(before.get(machine["uid"], 0.0))
 			var worked := clampf(float(result["produced"].get(machine["uid"], 0.0)) / capacity_today, 0.0, 1.0) if capacity_today > 0.0 else 0.0
-			day_cost += ((machine_energy(machine) * shift_equiv(machine) + machine_maintenance(machine)) * worked + machine_wages(machine)) / float(Data.MONTH_DAYS)
+			day_cost += ((machine_energy(machine) * shift_equiv(machine) + machine_maintenance(machine)) * worked + machine_wages(machine) * (Data.IDLE_WAGE_FLOOR + (1.0 - Data.IDLE_WAGE_FLOOR) * worked)) / float(Data.MONTH_DAYS)
 		elif bool(machine.get("moving", false)) and int(machine["arrive"]) > month:
 			day_cost += machine_wages(machine) / float(Data.MONTH_DAYS)
 	month_running += day_cost
