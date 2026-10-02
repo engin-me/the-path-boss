@@ -44,18 +44,31 @@ func _run() -> void:
 		return _fail("Offer mix must be 20 = 9x1, 5x2, 4x3, 2x4: " + str(by_count))
 	if Data.usd(1285.0) != "$1.285.000" or Data.list_price("Dövme", 2) != 150.0 or Data.list_price("Torna", 2) != 75.0:
 		return _fail("Currency or price averages")
-	# ---- OEE formula: Standart Torna, one shift, no problems -> 2000 x 1/3 x 0.70 x 0.97
+	# ---- OEE formula: a new Manuel Torna, one shift, no problems -> power x 1500 x 1/3 x (1 - scrap)
 	var probe: Dictionary = Data.machine_listings()[0].duplicate()
 	probe["shifts"] = 1
 	probe["patron"] = false
 	probe["arrive"] = 0
 	var clean: Dictionary = game.problem_mults({"A": 0.0, "P": 0.0, "Q": 0.0, "N": 0.0})
 	var steps: Dictionary = game.machine_steps(probe, clean)
-	if not _near(steps["net"], 2000.0 / 3.0 * 0.70 * 0.97, 0.01) or not _near(steps["net"] / 2000.0, 0.2263, 0.0005):
-		return _fail("One-shift Standart Torna must be ~22.6%% OEE: %s" % str(steps))
+	var full: float = float(probe["power"]) * Data.KW_CAPACITY
+	if not _near(float(probe["nameplate"]), full, 0.01) or not _near(steps["net"], full / 3.0 * (1.0 - float(probe["scrap"])), 0.01):
+		return _fail("One-shift new Manuel Torna must give power x 1500 / 3 x (1 - scrap): %s" % str(steps))
 	probe["shifts"] = 3
-	if not _near(game.machine_steps(probe, clean)["net"], 2000.0 * 0.70 * 0.97, 0.01):
-		return _fail("Three shifts must be ~68%%")
+	if not _near(game.machine_steps(probe, clean)["net"], full * (1.0 - float(probe["scrap"])), 0.01):
+		return _fail("Three shifts must triple the one-shift output")
+	# ---- condition: every missing 10 points costs 5 percent capacity, more energy, maintenance and scrap
+	var worn: Dictionary = Data.machine_listings()[12].duplicate()
+	worn["shifts"] = 1
+	worn["patron"] = false
+	worn["arrive"] = 0
+	var worn_steps: float = Data.condition_steps(float(worn["condition"]))
+	if not _near(float(worn["nameplate"]), float(worn["base_nameplate"]) * (1.0 - 0.05 * worn_steps), 0.01):
+		return _fail("Capacity must fall 5 percent per missing 10 points")
+	if game.machine_energy(worn) <= float(worn["energy"]) or game.machine_maintenance(worn) <= 0.0 or game.machine_scrap(worn) <= float(worn["scrap"]):
+		return _fail("A worn machine must cost more energy, maintenance and scrap")
+	if float(Data.machine_listings()[0]["precision"]) != 0.1 or float(Data.machine_listings()[2]["precision"]) != 0.001:
+		return _fail("Precision per level is 0.1 / 0.01 / 0.001 mm")
 	# ---- nothing before renting
 	if game.buy_listing(0) == "" or game.buy_package() == "":
 		return _fail("Purchases must be refused before renting")

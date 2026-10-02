@@ -14,3 +14,23 @@ static func slug(text: String) -> String:
 	for pair in [["ş", "s"], ["ö", "o"], ["ü", "u"], ["ğ", "g"], ["ı", "i"], ["ç", "c"], ["â", "a"]]:
 		out = out.replace(pair[0], pair[1])
 	return out.replace(" ", "_").replace("&", "").replace("__", "_")
+
+static var _image_cache := {}
+
+# A deterministic image from a folder of unnamed pictures (job photos): the same key always gets the same one.
+static func pick_image(folder: String, key: int) -> Texture2D:
+	if not _image_cache.has(folder):
+		var names: Array = []
+		var dir := DirAccess.open(folder)
+		if dir != null:
+			for file in dir.get_files():
+				var clean: String = file.trim_suffix(".import")
+				if clean.get_extension().to_lower() in ["jpg", "jpeg", "png", "webp"] and not names.has(clean):
+					names.append(clean)
+			names.sort()
+		_image_cache[folder] = names
+	var list: Array = _image_cache[folder]
+	if list.is_empty():
+		return null
+	var path := "%s/%s" % [folder, list[absi(key) % list.size()]]
+	return load(path) if ResourceLoader.exists(path) else null

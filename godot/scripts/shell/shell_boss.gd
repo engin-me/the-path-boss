@@ -156,7 +156,7 @@ func max_gross_profit(park: Array[Dictionary]) -> float:
 	for machine in park:
 		if int(machine.get("arrive", 0)) >= month or not package_bought:
 			continue
-		var good := float(machine["nameplate"]) * availability(machine) * float(machine["perf"]) * (1.0 - float(machine["scrap"]))
+		var good := float(machine["nameplate"]) * availability(machine) * float(machine["perf"]) * (1.0 - machine_scrap(machine))
 		total += good * Data.price_x(machine["kind"]) * 0.5
 	return total
 
@@ -213,7 +213,7 @@ func running_cost_actual() -> float:
 	for machine in delivered():
 		var potential := float(machine.get("output_last", 0.0))
 		var worked := clampf(float(machine.get("used_last", 0.0)) / potential, 0.0, 1.0) if potential > 0.0 else 0.0
-		cost += (float(machine["energy"]) + float(machine["consumables"])) * shift_equiv(machine) * worked + machine_wages(machine)
+		cost += (machine_energy(machine) * shift_equiv(machine) + machine_maintenance(machine)) * worked + machine_wages(machine)
 	return cost
 
 func delivered() -> Array:
@@ -245,8 +245,35 @@ func machine_wages(machine: Dictionary) -> float:
 		wages += staff_cost_per_head() * int(machine["personnel"])
 	return wages
 
+# Condition: 40-100, loses 10 points a year. Missing steps (10 points each) cost capacity, energy, maintenance and scrap.
+func condition_steps_of(machine: Dictionary) -> float:
+	return Data.condition_steps(float(machine.get("condition", 100.0)))
+
+func machine_energy(machine: Dictionary) -> float:
+	var rate := float(Data.ENERGY_STEP_RANGE[0]) + (float(Data.ENERGY_STEP_RANGE[1]) - float(Data.ENERGY_STEP_RANGE[0])) * float(machine.get("roll_e", 0.5))
+	return float(machine["energy"]) * (1.0 + condition_steps_of(machine) * rate)
+
+# Maintenance is an operating cost: a share of the price paid for every missing 10 points, a little different every month.
+func machine_maintenance(machine: Dictionary) -> float:
+	var pct := float(Data.MAINT_STEP_PCT[int(machine["level"])])
+	return condition_steps_of(machine) * pct * float(machine["price"]) * (0.8 + 0.4 * float(machine.get("roll_m", 0.5)))
+
+func machine_scrap(machine: Dictionary) -> float:
+	var rate := float(Data.SCRAP_STEP_RANGE[0]) + (float(Data.SCRAP_STEP_RANGE[1]) - float(Data.SCRAP_STEP_RANGE[0])) * float(machine.get("roll_s", 0.5))
+	return float(machine["scrap"]) * (1.0 + condition_steps_of(machine) * rate)
+
+# Value-weighted condition of the delivered park (100 when empty).
+func average_condition() -> float:
+	var weight := 0.0
+	var total := 0.0
+	for machine in delivered():
+		var w := float(machine["list_price"])
+		weight += w
+		total += w * float(machine.get("condition", 100.0))
+	return total / weight if weight > 0.0 else 100.0
+
 func machine_running_cost(machine: Dictionary) -> float:
-	return (float(machine["energy"]) + float(machine["consumables"])) * shift_equiv(machine) + machine_wages(machine)
+	return (machine_energy(machine) * shift_equiv(machine) + machine_maintenance(machine)) + machine_wages(machine)
 
 func staff_cost_per_head() -> float:
 	return float(Data.STAFF_POLICIES[staff_policy]["cost"])
@@ -399,6 +426,8 @@ func loss_fractions() -> Dictionary:
 	for root in problems.values():
 		if root["active"]:
 			by_dept[root["department"]] = float(by_dept.get(root["department"], 0.0)) + float(root["loss"]) / denom
+	if by_dept.has("Bakım"):
+		by_dept["Bakım"] = float(by_dept["Bakım"]) * (1.0 + (100.0 - average_condition()) / 100.0)
 	var capped := false
 	for department in by_dept:
 		if by_dept[department] > DEPARTMENT_CAP:
@@ -429,7 +458,7 @@ func machine_steps(machine: Dictionary, mults: Dictionary) -> Dictionary:
 	var theoretical := float(machine["nameplate"])
 	var after_shift := theoretical * availability(machine)
 	var after_perf := after_shift * float(machine["perf"])
-	var after_scrap := after_perf * (1.0 - float(machine["scrap"]))
+	var after_scrap := after_perf * (1.0 - machine_scrap(machine))
 	var after_phys := after_scrap * float(mults["phys"])
 	return {"theoretical": theoretical, "shift": after_shift, "perf": after_perf, "scrap": after_scrap, "phys": after_phys, "net": after_phys * float(mults["non"])}
 
@@ -480,6 +509,20 @@ func owns(req: Dictionary) -> bool:
 		if machine["kind"] == req["kind"] and int(machine["level"]) >= int(req["level"]):
 			return true
 	return false
+
+# Months until machines that can do the whole job are delivered (0 = all there, -1 = a needed machine is missing).
+func transit_wait(offer: Dictionary) -> int:
+	var wait := 0
+	for req in offer["reqs"]:
+		var best := -1
+		for machine in machines:
+			if machine["kind"] == req["kind"] and int(machine["level"]) >= int(req["level"]):
+				var w := maxi(0, int(machine["arrive"]) - month)
+				best = w if best < 0 else mini(best, w)
+		if best < 0:
+			return -1
+		wait = maxi(wait, best)
+	return wait
 
 func owned_count(req: Dictionary) -> int:
 	var count := 0
@@ -893,10 +936,11 @@ func serving_basis(kind: String, level: int) -> Dictionary:
 		equiv += 1.0 + (Data.OT_HOURS_SHARE if plan_ot[i] else 0.0)
 	equiv = minf(equiv, 3.0)
 	if not best.is_empty():
-		return {"level": int(best["level"]), "owned": true, "energy": float(best["energy"]) * equiv,
+		return {"level": int(best["level"]), "owned": true, "energy": machine_energy(best) * equiv + machine_maintenance(best),
 			"price": float(best["price"]), "personnel": int(best["personnel"])}
+	var typical := Data.typical_machine_month(kind, level)
 	var list: float = Data.list_price(kind, level)
-	return {"level": level, "owned": false, "energy": Data.energy_month(int(list / 4.0)) * equiv,
+	return {"level": level, "owned": false, "energy": (float(typical["energy"]) - 0.0) * equiv / maxf(1.0, equiv),
 		"price": list, "personnel": Data.personnel_for(kind, level)}
 
 # Straight-line write-off per month of everything delivered (accounting only; the cash left when it was bought).
@@ -1415,7 +1459,7 @@ func close_month() -> String:
 	if finance > 0.0:
 		lines.append("Finansman gideri: %s" % Data.usd(finance))
 	for machine in machines:
-		machine["reference"] = roundf(float(machine["reference"]) * (1.0 - DEPRECIATION) * 100.0) / 100.0
+		_age_machine(machine)
 	var still_active: Array[Dictionary] = []
 	for consultant in consultants:
 		consultant["months_left"] -= 1
@@ -1467,7 +1511,7 @@ func _generate_problems(events: int) -> void:
 			continue
 		var department: String = SKILLS[rng.randi_range(0, SKILLS.size() - 1)]
 		if age_maintenance and department == "Bakım":
-			var accept_chance := clampf(0.4 + 0.1 * average_age(), 0.4, 1.0)
+			var accept_chance := clampf(0.4 + (100.0 - average_condition()) / 100.0, 0.4, 1.0)
 			if rng.randf() > accept_chance:
 				continue
 		var free: Array[int] = []
@@ -1500,6 +1544,17 @@ func _generate_problems(events: int) -> void:
 		next_id += 1
 
 # ---------------------------------------------------------------- mortgage loan
+
+# One month older: condition falls 10 points a year (floor 40); capacity, value and the monthly random rolls follow.
+func _age_machine(machine: Dictionary) -> void:
+	var condition := maxf(Data.CONDITION_MIN, float(machine.get("condition", 100.0)) - Data.AGING_PER_MONTH)
+	machine["condition"] = condition
+	machine["age"] = int(roundf(Data.condition_steps(condition)))
+	machine["nameplate"] = float(machine["base_nameplate"]) * (1.0 - Data.CAPACITY_STEP_LOSS * Data.condition_steps(condition))
+	machine["reference"] = snappedf(float(machine["list_price"]) * Data.condition_price_factor(condition), 0.001)
+	machine["roll_e"] = rng.randf()
+	machine["roll_m"] = rng.randf()
+	machine["roll_s"] = rng.randf()
 
 func current_value(machine: Dictionary) -> float:
 	return float(machine["reference"])
