@@ -842,5 +842,39 @@ func _run() -> void:
 	var legacy_game = Boss.new()
 	if legacy_game.from_save(legacy) != "" or legacy_game.month_running < 0.45 * legacy_game.running_cost() or legacy_game.month_running > 0.55 * legacy_game.running_cost():
 		return _fail("A mid-month save without month_running must estimate half a month of expenses (%.3f of %.3f)" % [legacy_game.month_running, legacy_game.running_cost()])
+	# ---- the quote forecast and the real delivery agree on the day (job taken late in the month)
+	var fc = Boss.new()
+	fc.from_save(snapshot_day)
+	fc.jobs.clear()
+	for _i in 24:
+		fc.advance_day()
+	var fc_offer: Dictionary = {}
+	for candidate in fc.offers:
+		if fc.fit_block_reason(candidate["id"]) == "":
+			fc_offer = candidate.duplicate(true)
+			break
+	for req in fc_offer["reqs"]:
+		req["remaining"] = float(req["remaining"]) * 0.25   # a small job, so the test stays inside the game's 12 months
+		req["workload"] = float(req["workload"]) * 0.25
+	var fc_months: int = int(fc_offer["months"]) + 3
+	fc._create_job(fc_offer.duplicate(true), 5.0, 0.3, fc_months)
+	var fc_job_id: int = int(fc_offer["id"])
+	fc.problems.clear()
+	var fc_delayed: bool = bool(fc.job_by_id(fc_job_id)["order"].get("delayed", false))
+	var forecast: Dictionary = fc.quote_projection(fc_offer, fc_months, fc_delayed)
+	var delivered_at := [0, 0]
+	for _guard in 400:
+		var fc_day: Dictionary = fc.advance_day()
+		if fc.job_by_id(fc_job_id).is_empty():
+			delivered_at = [fc.month, int(fc_day["day"])]
+			break
+		if fc_day["month_end"]:
+			fc.run_report()
+			fc.close_month()
+			fc.problems.clear()   # the forecast cannot know about problems born later
+	var forecast_index: int = int(forecast["finish"]) * 30 + int(forecast["finish_day"])
+	var actual_index: int = int(delivered_at[0]) * 30 + int(delivered_at[1])
+	if delivered_at[0] == 0 or absi(forecast_index - actual_index) > 2:   # machine ageing moves it by a day or so
+		return _fail("Forecast %s/%s but delivered %s/%s" % [forecast["finish"], forecast["finish_day"], delivered_at[0], delivered_at[1]])
 	print("Shell smoke passed")
 	quit(0)

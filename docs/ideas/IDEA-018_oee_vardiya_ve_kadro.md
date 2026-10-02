@@ -46,6 +46,8 @@ Tur 1 · 2026-09-30 · Prototipte uygulandı (`shell_boss.gd`); sonuçlar `godot
 - Performans, hurda, teorik kapasite ve iş yükü ölçek sayıları (hepsi yer tutucu).
 - Sorun satırlarının faktörlere eşlenmesi ve %20 departman tavanı/%33 taban kurallarının yeni modelde karşılığı.
 
+- **Boşta ekip ücreti (prototip):** işi olmayan günlerde tezgahın ekibi maaşın yarısını alır (`IDLE_WAGE_FLOOR` 0,5); iş olan gün tam ücret. Küçük işletmelerin boşta bekleyerek erimesini azaltmak için eklendi; oranın kendisi ve kısa çalışmanın hukuki karşılığı açık.
+
 ## Karar Özeti
 
 - Kullanıcı OEE'yi 24 saat bazlı vardiya × performans × (1 − hurda) olarak hesaplamayı, patronun tek vardiya ve %50'ye kadar mesai yapmasını, ek vardiyalar için personel almayı ve hammadde kalitesinin fiyat ve hurdayı etkilemesini istedi; çünkü büyüme, vardiya ve kadro kararıyla kapasiteyi artırmaktan geçmeli. Onaylı FREEZE yoktur.

@@ -1591,22 +1591,25 @@ var month_revenue := 0.0        # revenue delivered earlier this month
 var month_late := 0             # late deliveries earlier this month
 var month_running := 0.0        # running costs accrued day by day (crews, energy, upkeep, plant) with the plan of each day
 
-func _delivered_on(machine: Dictionary, d: int) -> bool:
-	return int(machine["arrive"]) < month or (int(machine["arrive"]) == month and int(machine.get("arrive_day", 1)) <= d)
+func _delivered_on(machine: Dictionary, d: int, m := -1) -> bool:
+	var at := month if m < 0 else m
+	return int(machine["arrive"]) < at or (int(machine["arrive"]) == at and int(machine.get("arrive_day", 1)) <= d)
 
-func _producing(machine: Dictionary, d: int) -> bool:
-	return package_bought and _delivered_on(machine, d)
+func _producing(machine: Dictionary, d: int, m := -1) -> bool:
+	return package_bought and _delivered_on(machine, d, m)
 
-func _material_ready_day(job: Dictionary, d: int) -> bool:
+func _material_ready_day(job: Dictionary, d: int, m := -1) -> bool:
+	var at := month if m < 0 else m
 	var order: Dictionary = job.get("order", {})
 	if order.is_empty():
 		return false
 	var arrive_month := int(order["arrive_month"])
-	return arrive_month < month or (arrive_month == month and int(order.get("arrive_day", 1)) <= d)
+	return arrive_month < at or (arrive_month == at and int(order.get("arrive_day", 1)) <= d)
 
-func _job_started_day(job: Dictionary, d: int) -> bool:
+func _job_started_day(job: Dictionary, d: int, m := -1) -> bool:
+	var at := month if m < 0 else m
 	var start_month := int(job["start_month"])
-	return start_month < month or (start_month == month and int(job.get("start_day", 1)) <= d)
+	return start_month < at or (start_month == at and int(job.get("start_day", 1)) <= d)
 
 # Share of the month a machine that arrived this month is on the payroll (running costs follow production).
 func service_fraction(machine: Dictionary) -> float:
@@ -1699,8 +1702,11 @@ func finish_month_days() -> Array:
 
 # Same allocation as the monthly one (oldest job first), limited to what exists on this day.
 func _allocate_day(cap_left: Dictionary) -> void:
-	for job in jobs:
-		if not _job_started_day(job, day) or not _material_ready_day(job, day):
+	_allocate_at(jobs, cap_left, month, day, true)
+
+func _allocate_at(job_list: Array, cap_left: Dictionary, m: int, d: int, record: bool) -> void:
+	for job in job_list:
+		if not _job_started_day(job, d, m) or not _material_ready_day(job, d, m):
 			continue
 		var job_yield := float(job.get("yield", 1.0))
 		for req in job["reqs"]:
@@ -1709,7 +1715,7 @@ func _allocate_day(cap_left: Dictionary) -> void:
 				continue
 			var eligible: Array = []
 			for machine in machines:
-				if machine["kind"] == req["kind"] and int(machine["level"]) >= int(req["level"]) and _producing(machine, day):
+				if machine["kind"] == req["kind"] and int(machine["level"]) >= int(req["level"]) and _producing(machine, d, m):
 					eligible.append(machine)
 			eligible.sort_custom(func(a, b): return int(a["level"]) < int(b["level"]))
 			for machine in eligible:
@@ -1724,8 +1730,37 @@ func _allocate_day(cap_left: Dictionary) -> void:
 				need -= got
 				req["remaining"] = maxf(0.0, need)
 				job["produced"] = float(job.get("produced", 0.0)) + got
-				machine["used_last"] = float(machine.get("used_last", 0.0)) + use
-				req["made_month"] = float(req.get("made_month", 0.0)) + got
+				if record:
+					machine["used_last"] = float(machine.get("used_last", 0.0)) + use
+					req["made_month"] = float(req.get("made_month", 0.0)) + got
+
+# Day-by-day forecast from today: the date (month, day) every job (and the extra one) would be done, 0 when
+# it does not finish within a year. Nothing is changed.
+func projection_days(extra := {}) -> Dictionary:
+	var copy: Array = jobs.duplicate(true)
+	if not extra.is_empty():
+		copy.append(extra)
+	var mults := problem_mults(loss_fractions())
+	var nets := {}
+	for machine in machines:
+		nets[machine["uid"]] = float(machine_steps(machine, mults)["net"]) / float(Data.MONTH_DAYS)
+	var finish := {}
+	var m := month
+	var d := day
+	for _step in range(Data.MONTH_DAYS * 12):
+		var cap_left := {}
+		for machine in machines:
+			if _producing(machine, d, m):
+				cap_left[machine["uid"]] = nets[machine["uid"]]
+		_allocate_at(copy, cap_left, m, d, false)
+		for job in copy:
+			if not finish.has(job["id"]) and job_done(job):
+				finish[job["id"]] = [m, d]
+		d += 1
+		if d > Data.MONTH_DAYS:
+			d = 1
+			m += 1
+	return finish
 
 # A job whose workload is done leaves on the day it finishes: the balance comes in, the score moves.
 func _deliver_job(job: Dictionary) -> Array:
@@ -1867,13 +1902,16 @@ func quote_projection(offer: Dictionary, months_offered: int, delayed := false) 
 	var quote := material_quote(offer, default_supplier)
 	job["months"] = months_offered
 	job["start_month"] = month + int(offer["start_delay"])
+	job["start_day"] = day
 	job["due_month"] = month + months_offered - 1
 	job["produced"] = 0.0
 	job["yield"] = float(quote["yield"])
-	job["order"] = {"supplier": default_supplier, "order_month": month, "arrive_month": month + int(quote["lead"]) + (1 if delayed else 0),
-		"pay_month": month + int(quote["terms"]), "amount": float(quote["amount"]), "paid": false, "delayed": delayed}
-	var finish: int = int(projection(job).get(job["id"], 0))
-	return {"finish": finish, "due": int(job["due_month"]), "late": finish == 0 or finish > int(job["due_month"]), "delay_chance": float(quote["delay"])}
+	job["order"] = {"supplier": default_supplier, "order_month": month, "arrive_month": month + int(quote["lead"]) + (1 if delayed else 0), "arrive_day": day,
+		"pay_month": month + int(quote["terms"]), "pay_day": day, "amount": float(quote["amount"]), "paid": false, "delayed": delayed}
+	var done: Array = projection_days(job).get(job["id"], [])
+	var finish_month: int = int(done[0]) if not done.is_empty() else 0
+	var finish_day: int = int(done[1]) if not done.is_empty() else 0
+	return {"finish": finish_month, "finish_day": finish_day, "due": int(job["due_month"]), "late": finish_month == 0 or finish_month > int(job["due_month"]), "delay_chance": float(quote["delay"])}
 
 # ---------------------------------------------------------------- report
 
@@ -1924,7 +1962,7 @@ func run_report() -> String:
 	_generate_candidates()
 	phase = "report"
 	notice = "Ay raporu hazır. Düzelt ve danışman kararlarının etkisi gelecek ay görünür."
-	if jobs.is_empty():
+	if jobs.is_empty() and used <= 0.0 and month_revenue <= 0.0:
 		_find("Ay %d: kabul edilmiş iş yok; bütün kapasite boş kaldı." % month)
 	return ""
 

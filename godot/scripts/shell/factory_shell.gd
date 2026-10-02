@@ -45,6 +45,7 @@ var flow_speed := 0           # 0 paused, then 1 / 2 / 4
 var flow_resume := 0          # speed to resume after the month report
 var flow_day := 0.0
 var toast_count := 0
+var flow_hint: Label
 var clock_bar: Control
 var clock_label: Label
 var clock_progress: ProgressBar
@@ -290,11 +291,18 @@ func _set_flow_speed(speed: int) -> void:
 	flow_speed = speed
 	_update_clock()
 
+func _date_text() -> String:
+	return Data.month_label(int(game.month)) + ((" · Gün %d" % mini(MONTH_DAYS, game.day)) if flow_on and game.phase == "offers" else "")
+
 func _update_clock() -> void:
 	if clock_bar == null:
 		return
 	clock_bar.visible = flow_on and game.phase != "setup" and game.phase != "end"
-	clock_label.text = "Gün %d/%d" % [mini(MONTH_DAYS, int(flow_day) + 1), MONTH_DAYS]
+	clock_label.text = "Gün %d/%d" % [mini(MONTH_DAYS, game.day), MONTH_DAYS]
+	if header_date != null:
+		header_date.text = _date_text()
+	if flow_hint != null and is_instance_valid(flow_hint):
+		flow_hint.visible = flow_speed == 0 and game.phase == "offers"
 	clock_progress.value = flow_day
 	for speed in clock_buttons:
 		var active: bool = speed == flow_speed
@@ -741,7 +749,7 @@ func _fade_in() -> void:
 
 func _render_inner() -> void:
 	_autosave()
-	header_date.text = Data.month_label(int(game.month)) + ((" · Gün %d" % mini(MONTH_DAYS, int(flow_day) + 1)) if flow_on and game.phase == "offers" else "")
+	header_date.text = _date_text()
 	_update_clock()
 	header_money.text = Data.usd(float(game.cash))
 	header_hours.text = "⏱ %d/%d sa" % [game.hours_left, game.monthly_hours] if game.phase == "report" else ""
@@ -853,8 +861,9 @@ func _page_ozet() -> void:
 func _phase_button() -> void:
 	if flow_on:
 		if game.phase == "offers":
-			if flow_speed == 0:
-				content.add_child(_label("Zaman duruyor: üstteki ▶ ile başlat. Dururken ilanlara bakabilir, teklif verebilir, tezgah alabilirsin.", 13, GOLD))
+			flow_hint = _label("Zaman duruyor: üstteki ▶ ile başlat. Dururken ilanlara bakabilir, teklif verebilir, tezgah alabilirsin.", 13, GOLD)
+			flow_hint.visible = flow_speed == 0
+			content.add_child(flow_hint)
 		elif game.phase == "report":
 			content.add_child(_button("Raporu kapat ve devam et ▶", _close_month, true, false, true))
 		return
@@ -1022,8 +1031,10 @@ func _waterfall_card(parent: Control, title: String, report: Dictionary) -> void
 			waiting.append("%s: %s" % [job["title"], why])
 	for line in waiting:
 		box.add_child(_label("Üretilmeyen iş · " + line, 12, GOLD))
-	if game.jobs.is_empty():
+	if game.jobs.is_empty() and float(report["used"]) <= 0.0:
 		box.add_child(_label("Kabul edilmiş iş yok; kapasite var ama üretilecek bir şey yok.", 12, GOLD))
+	elif game.jobs.is_empty():
+		box.add_child(_label("Bu ay işler tamamlanıp teslim edildi; yeni iş kabul edilmedi.", 12, GREEN))
 	_row(box, "OEE (24 saat bazlı)", "%%%d" % int(roundf(float(report["oee"]) * 100.0)), TEXT, 16)
 
 func _ozet_departments() -> void:
@@ -1557,11 +1568,11 @@ func _delivery_check(offer: Dictionary, months_offered: int) -> Array:
 	if finish == 0:
 		return ["Mevcut tezgahlarla 12 ay içinde bitmiyor (makine, ekipman ya da hammadde eksik olabilir).", RED]
 	if finish > due:
-		return ["Tahmini bitiş %s; teslim %s. %d ay geç kalırsın, teslim skoru düşer." % [Data.month_label(finish), Data.month_label(due), finish - due], RED]
+		return ["Tahmini bitiş %s, %d. gün; teslim %s. %d ay geç kalırsın, teslim skoru düşer." % [Data.month_label(finish), int(plan["finish_day"]), Data.month_label(due), finish - due], RED]
 	var risk: Dictionary = game.quote_projection(offer, months_offered, true)
 	if float(plan["delay_chance"]) > 0.0 and int(risk["finish"]) > due:
-		return ["Tahmini bitiş %s (teslim %s). Tedarikçi geciktirirse (%%%d ihtimal) %s olur ve geç kalırsın." % [Data.month_label(finish), Data.month_label(due), int(roundf(float(plan["delay_chance"]) * 100.0)), Data.month_label(int(risk["finish"]))], GOLD]
-	return ["Tahmini bitiş %s · teslim %s: zamanında." % [Data.month_label(finish), Data.month_label(due)], GREEN]
+		return ["Tahmini bitiş %s, %d. gün (teslim %s). Tedarikçi geciktirirse (%%%d ihtimal) %s olur ve geç kalırsın." % [Data.month_label(finish), int(plan["finish_day"]), Data.month_label(due), int(roundf(float(plan["delay_chance"]) * 100.0)), Data.month_label(int(risk["finish"]))], GOLD]
+	return ["Tahmini bitiş %s, %d. gün · teslim %s: zamanında." % [Data.month_label(finish), int(plan["finish_day"]), Data.month_label(due)], GREEN]
 
 func _detail_quote() -> void:
 	var offer: Dictionary = game.offer_by_id(int(detail_arg))
@@ -2171,9 +2182,8 @@ func _machine_card(listing: Dictionary) -> void:
 	box.add_child(tiles)
 	# forecast for one shift
 	box.add_child(_label("Öngörülen Veriler (1 Vardiya)", 15, GOLD, false))
-	var steps: float = Data.condition_steps(float(listing["condition"]))
-	var energy: float = float(listing["energy"]) * (1.0 + steps * float(Data.ENERGY_STEP_RANGE[0]))   # the listing shows the low end; operation rolls 5-10 percent a step
-	var maintenance: float = steps * float(Data.MAINT_STEP_PCT[int(listing["level"])]) * float(listing["price"])
+	var energy: float = _listing_energy(listing)   # the listing shows the low end; operation rolls 5-10 percent a step
+	var maintenance: float = _listing_maintenance(listing)
 	for entry in [["Kapasite", "%s/ay" % _xfmt(float(listing["nameplate"]) / 3.0)], ["Enerji Gideri", "%s /ay" % Data.usd(energy)], ["Bakım Masrafı", "%s /ay" % Data.usd(maintenance)]]:
 		var line := HBoxContainer.new()
 		var name_label := _label("○  " + String(entry[0]), 15, GOLD, false)
@@ -2214,9 +2224,16 @@ func _ask_buy(uid: int) -> void:
 		"Ödeme şimdi: %s" % Data.usd(float(listing["price"])),
 		"Teslim: %d ay sonra (%s). Teslime kadar kapasite artmaz." % [listing["delivery"], Data.month_label(arrive)],
 		"Teslimde %d personel otomatik işe başlar (kişi başı %s/ay)." % [listing["personnel"], Data.usd(Data.wage_for(listing["kind"]))],
-		"Aylık işletme: %s enerji + %s sarf" % [Data.usd(float(listing["energy"])), Data.usd(float(listing["consumables"]))],
+		"Aylık işletme (1 vardiya): %s enerji + %s bakım + %s sarf" % [Data.usd(_listing_energy(listing)), Data.usd(_listing_maintenance(listing)), Data.usd(float(listing["consumables"]))],
 		"Alan: %d m²" % listing["area"]
 	], "Satın al", _buy.bind(uid))
+
+# Same figures as the listing card: energy and upkeep of the machine's condition (a missing 10 points costs more).
+func _listing_energy(listing: Dictionary) -> float:
+	return float(listing["energy"]) * (1.0 + Data.condition_steps(float(listing["condition"])) * float(Data.ENERGY_STEP_RANGE[0]))
+
+func _listing_maintenance(listing: Dictionary) -> float:
+	return Data.condition_steps(float(listing["condition"])) * float(Data.MAINT_STEP_PCT[int(listing["level"])]) * float(listing["price"])
 
 func _buy(uid: int) -> void:
 	var result: String = game.buy_listing(uid)
@@ -2379,6 +2396,7 @@ func _page_jobs() -> void:
 func _page_shifts() -> void:
 	var editable: bool = game.phase == "offers"
 	var box := _card(content, "Vardiya planı", GREEN, true)
+	box.add_child(_label("İşi olmayan günlerde tezgahın ekibi maaşın yarısını alır (kısa çalışma); iş olan gün tam öder.", 12, GOLD))
 	box.add_child(_label("Plan tüm tezgahlar için geçerlidir. 1. vardiya her zaman açıktır. Mesai bir vardiyaya +4 saat ekler, saatlik ücret 1,5 katıdır; üç vardiyada mesai olmaz.", 12, MUTED))
 	if not editable:
 		box.add_child(_label("Vardiya ve mesai ay başında (rapordan önce) değiştirilir.", 12, GOLD))
