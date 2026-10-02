@@ -2262,6 +2262,8 @@ func _page_fabrika() -> void:
 		if int(game.prepaid_months) > 0:
 			_row(box, "Peşin ödenmiş kira", "%d ay" % game.prepaid_months, GREEN, 16)
 		box.add_child(_button("Sözleşmeyi bırak", _open_detail.bind("leave"), false, false, true))
+		if game.in_notice_window():
+			_renewal_card(factory)
 		if game.is_moving():
 			content.add_child(_label("Taşınma sürüyor: tezgahlar %d ay sonra çalışır." % (game.moving_until - game.month), 14, GOLD))
 		content.add_child(_label("Taşın ya da büyü", 20, TEXT))
@@ -2280,6 +2282,33 @@ func _page_fabrika() -> void:
 		box.add_child(_row_head(Art.find("res://art/factories/" + String(factory["id"])), factory["name"], factory["region"], "[right]12 Ay x [color=#3ddc84]%s[/color][/right]" % Data.usd(float(factory["rent"]))))
 		box.add_child(_label("%d m² · %d tezgah · tavan %.1f m" % [factory["m2"], Data.slot_count(factory["id"]), factory["height"]], 12, TEXT))
 		_tap_panel(box, _open_detail.bind("factory", factory["id"]))
+
+# Contract end: the player picks the next period, or does nothing and the rent follows the market.
+func _renewal_card(factory: Dictionary) -> void:
+	var card := _card(content, "Sözleşme bitiyor · %d ay kaldı" % game.months_left, GOLD, true)
+	card.add_child(_label("Süreyi seç: seçtiğin süre için kira bugünkü seviyede kalır. Karar vermezsen sözleşme aynı süre için piyasa kirasıyla (+%%%d) yenilenir. Son ayda çıkış ya da taşınma için çıkış bedeli yoktur." % int(Data.RENEWAL_MARKUP * 100.0), 13, MUTED))
+	for entry in Data.TERMS:
+		var months: int = entry["months"]
+		var chosen: bool = game.renewal_term == months
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		var info := _label("%s%d ay · aylık %s" % ["✔ " if chosen else "", months, Data.usd(game.rent_for_term(months))], 15, GREEN if chosen else TEXT)
+		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(info)
+		var pick := _button("Seçili" if chosen else "Bu süreyi seç", _set_renewal.bind(months), not chosen, chosen)
+		pick.custom_minimum_size = Vector2(150, 44)
+		row.add_child(pick)
+		card.add_child(row)
+	if game.renewal_term == 0:
+		card.add_child(_label("Karar yok: bitişte aylık %s ile yenilenir." % Data.usd(game.rent_if_unanswered()), 12, GOLD))
+
+func _set_renewal(months: int) -> void:
+	var result: String = game.set_renewal(months)
+	if result != "":
+		_say(result)
+	else:
+		_say(game.notice)
+	_render()
 
 func _page_jobs() -> void:
 	var box := _card(content, "Üretilebilir kapasite (şu anki vardiyalarla)")
@@ -2644,7 +2673,10 @@ func _detail_leave() -> void:
 	var fee: float = game.leave_fee()
 	var reason: String = game.leave_block_reason()
 	var box := _card(content, "Emin misin?", GOLD)
-	box.add_child(_label("Sözleşmeyi erken bırakırsan %d kira (%s) ceza ödersin; peşin ödenen kira iade edilmez. Makineler ve ekipman kaybolur." % [Data.EXIT_FEE_RENTS, Data.usd(fee)], 14, TEXT))
+	if fee <= 0.0:
+		box.add_child(_label("Sözleşmenin son ayındasın: çıkış bedeli yok. Makineler ve ekipman kaybolur.", 14, GREEN))
+	else:
+		box.add_child(_label("Sözleşmeyi erken bırakırsan %d kira (%s) ceza ödersin; peşin ödenen kira iade edilmez. Makineler ve ekipman kaybolur." % [Data.EXIT_FEE_RENTS, Data.usd(fee)], 14, TEXT))
 	var jobs_cost: Dictionary = game.leave_job_costs()
 	if int(jobs_cost["jobs"]) > 0:
 		box.add_child(_label("%d aktif iş bırakılır: ceza %s, alınan peşinatların iadesi %s, ödenmemiş hammadde siparişleri %s. Toplam %s." % [jobs_cost["jobs"], Data.usd(float(jobs_cost["penalty"])), Data.usd(float(jobs_cost["refund"])), Data.usd(float(jobs_cost["orders"])), Data.usd(float(jobs_cost["total"]))], 13, RED))

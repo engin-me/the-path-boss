@@ -69,6 +69,8 @@ func to_save() -> Dictionary:
 	data["plan_patron"] = plan_patron
 	data["staff_policy"] = staff_policy
 	data["moving_until"] = moving_until
+	data["rent_markup"] = rent_markup
+	data["renewal_term"] = renewal_term
 	data["offers"] = offers.duplicate(true)
 	data["rng_seed"] = rng.seed
 	data["rng_state"] = rng.state
@@ -95,6 +97,8 @@ func from_save(data: Dictionary) -> String:
 	plan_patron = bool(copy.get("plan_patron", true))
 	staff_policy = clampi(int(copy.get("staff_policy", 1)), 0, Data.STAFF_POLICIES.size() - 1)
 	moving_until = int(copy.get("moving_until", 0))
+	rent_markup = float(copy.get("rent_markup", 0.0))
+	renewal_term = int(copy.get("renewal_term", 0))
 	offers.assign(copy["offers"])
 	rng.seed = int(copy["rng_seed"])
 	rng.state = int(copy["rng_state"])
@@ -170,7 +174,50 @@ func max_gross_profit(park: Array[Dictionary]) -> float:
 func base_rent() -> float:
 	if factory_id == "":
 		return 0.0
-	return snappedf(float(factory()["rent"]) * Data.rent_scale * float(Data.term_by_months(term)["factor"]), 0.001)
+	return rent_for_term(term)
+
+# Monthly rent for a contract length at today's market (renewal rises included).
+func rent_for_term(months: int) -> float:
+	return snappedf(float(factory()["rent"]) * Data.rent_scale * float(Data.term_by_months(months)["factor"]) * (1.0 + rent_markup), 0.001)
+
+# ---------------------------------------------------------------- contract end
+
+var rent_markup := 0.0   # market rises accumulated by renewals nobody answered
+var renewal_term := 0    # the length the player chose for the next period (0 = not decided)
+
+# What the rent becomes when the player does not answer the landlord.
+func rent_if_unanswered() -> float:
+	return snappedf(float(factory()["rent"]) * Data.rent_scale * float(Data.term_by_months(term)["factor"]) * (1.0 + rent_markup + Data.RENEWAL_MARKUP), 0.001)
+
+func in_notice_window() -> bool:
+	return factory_id != "" and months_left <= Data.NOTICE_MONTHS
+
+func set_renewal(months: int) -> String:
+	if not in_notice_window():
+		return "Yenileme, sözleşme bitmeden %d ay önce yapılır." % Data.NOTICE_MONTHS
+	if Data.term_by_months(months).is_empty():
+		return "Bilinmeyen süre."
+	renewal_term = months
+	notice = "Sözleşme %d ay yenilenecek (aylık %.0f)." % [months, rent_for_term(months)]
+	return ""
+
+# Called when the last month of the contract is over: a chosen renewal keeps the rent, silence means market rent.
+func _contract_end() -> String:
+	if renewal_term > 0:
+		term = renewal_term
+		months_left = term
+		var line := "Sözleşme %d ay için yenilendi (aylık %.0f)." % [term, base_rent()]
+		renewal_term = 0
+		return line
+	rent_markup += Data.RENEWAL_MARKUP
+	months_left = term
+	return "Karar vermediğiniz için sözleşme piyasa kirasıyla (+%%%d) %d ay yenilendi; aylık %.0f." % [int(Data.RENEWAL_MARKUP * 100.0), term, base_rent()]
+
+func _notice_mail() -> void:
+	post_mail("Sözleşmeniz bitiyor", [
+		"Kira sözleşmeniz %d ay sonra sona eriyor." % months_left,
+		"Yenilemek için Ofis → Fabrika → Sözleşme bölümünden süre seçin; karar vermezseniz sözleşme piyasa kirasıyla (+%%%d) aynı süre için yenilenir." % int(Data.RENEWAL_MARKUP * 100.0),
+		"Son ayda çıkış ya da taşınma için çıkış bedeli alınmaz."], "Mal sahibi")
 
 func running_cost() -> float:
 	var cost := plant_fixed_cost()
@@ -856,6 +903,8 @@ func move_factory(id: String, months: int, prepay: bool, sell_uids: Array = []) 
 	factory_id = id
 	term = months
 	months_left = months
+	rent_markup = 0.0
+	renewal_term = 0
 	prepaid_months = 0
 	if prepay:
 		cash -= float(quote["amount"])
@@ -886,6 +935,8 @@ func leave_job_costs() -> Dictionary:
 	return {"jobs": jobs.size(), "penalty": penalty, "refund": refund, "orders": orders, "total": penalty + refund + orders}
 
 func leave_fee() -> float:
+	if months_left <= 1:
+		return 0.0   # the contract's last month: leaving costs nothing
 	return base_rent() * Data.EXIT_FEE_RENTS
 
 # FRZ-003 v2 direction (IDEA-015): early exit costs two rents; remaining rent debt is 0.
@@ -899,6 +950,8 @@ func leave_factory() -> String:
 		_score_event(0.0)
 	history.append("Ay %d: %s bırakıldı (çıkış bedeli %.0f; %d iş bırakıldı: ceza %.0f, peşinat iadesi %.0f, iptal edilemeyen hammadde %.0f)." % [month, factory()["name"], leave_fee(), jobs_cost["jobs"], jobs_cost["penalty"], jobs_cost["refund"], jobs_cost["orders"]])
 	factory_id = ""
+	rent_markup = 0.0
+	renewal_term = 0
 	machines.clear()
 	jobs.clear()
 	offers.clear()
@@ -1744,8 +1797,9 @@ func close_month() -> String:
 	month += 1
 	months_left -= 1
 	if months_left <= 0:
-		months_left = term
-		last_lines.append("Sözleşme aynı koşulla yenilendi.")
+		last_lines.append(_contract_end())
+	elif months_left == Data.NOTICE_MONTHS:
+		_notice_mail()
 	for machine in machines:
 		if int(machine["arrive"]) == month:
 			last_lines.append("Teslim alındı: %s · %d personel işe başladı" % [machine["model"], machine["personnel"]])

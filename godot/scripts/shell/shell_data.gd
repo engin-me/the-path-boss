@@ -115,6 +115,8 @@ const TERMS := [
 	{"months": 24, "factor": 0.90, "prepay_discount": 0.12}
 ]
 const EXIT_FEE_RENTS := 2
+const RENEWAL_MARKUP := 0.12   # market rent: an unanswered contract renews with this rise
+const NOTICE_MONTHS := 2   # the landlord writes this many months before the contract ends
 const MOVE_COST_PER_MACHINE := 1.0   # k$: dismantling, transport and set-up of one machine
 const MOVE_MONTHS := 1   # production stands still at most one month, however many machines move
 const ABANDON_PENALTY := 0.10  # of the job revenue; paid material is lost (mock)

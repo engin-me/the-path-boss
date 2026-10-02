@@ -690,5 +690,42 @@ func _run() -> void:
 	shell.subtab["fabrika"] = "sozlesme"
 	shell._back()
 	shell._on_tab("fabrika")
+	# ---- contract end: notice mail two months before, silence renews at market rent, a chosen term keeps the rent, last month exits free
+	var ce = Boss.new()
+	ce.default_setup(17)
+	ce.cash = 100000.0
+	ce.rent_factory("factory_1", 6, false)
+	ce.buy_package()
+	var rent_before: float = ce.base_rent()
+	if ce.set_renewal(12) == "" or ce.leave_fee() <= 0.0:
+		return _fail("Renewal is refused before the notice window and early exit costs money")
+	for _i in 4:
+		ce.run_report()
+		ce.close_month()
+	if ce.months_left != 2 or not ce.in_notice_window() or ce.unread_mails() < 1:
+		return _fail("Two months before the end the landlord writes (months_left %d)" % ce.months_left)
+	ce.run_report()
+	ce.close_month()
+	if ce.leave_fee() != 0.0 or ce.months_left != 1:
+		return _fail("The last month has no exit fee")
+	ce.run_report()
+	ce.close_month()
+	if ce.months_left != 6 or ce.base_rent() <= rent_before * 1.11 or ce.rent_markup <= 0.0:
+		return _fail("Silence renews at market rent (%.3f vs %.3f)" % [ce.base_rent(), rent_before])
+	var ce2 = Boss.new()
+	ce2.default_setup(18)
+	ce2.cash = 100000.0
+	ce2.rent_factory("factory_1", 6, false)
+	ce2.buy_package()
+	for _i in 4:
+		ce2.run_report()
+		ce2.close_month()
+	if ce2.set_renewal(24) != "":
+		return _fail("Renewal must be possible in the notice window")
+	for _i in 2:
+		ce2.run_report()
+		ce2.close_month()
+	if ce2.term != 24 or ce2.months_left != 24 or ce2.rent_markup != 0.0:
+		return _fail("A chosen renewal takes the chosen term at today's rent")
 	print("Shell smoke passed")
 	quit(0)

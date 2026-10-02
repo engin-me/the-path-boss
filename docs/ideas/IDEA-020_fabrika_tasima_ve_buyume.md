@@ -17,6 +17,7 @@ Bağımlılıklar: IDEA-015, IDEA-016, IDEA-018, IDEA-019.
 - **Maliyet:** Eski sözleşmenin çıkış bedeli (2 kira), tezgah başına taşıma bedeli ($1.000) ve ekipman ayrıştırması. Yeni kira hemen başlar; taşınma süresince işler bekler, teslimler kayabilir ve **personel ücretleri sürer**.
 - **Ekipman ayrıştırması:** Eldeki set ve ek ekipmanlar tek tek sayılır; yeni fabrikanın listesi için eksik olan adetler alınır, fazlası ek ekipman olarak kalır.
 - **Küçülerek taşınma:** Yeni yerin yuvasına sığmayan tezgahları oyuncu seçip satar; kalanlar taşınır, satılanların personeli düşer.
+- **Sözleşme bitişi:** Mal sahibi tezgahları atmaz. Bitimden 2 ay önce Mail'e "Sözleşmeniz bitiyor" bildirimi düşer. Oyuncu Ofis → Fabrika → Sözleşme'den yeni süreyi seçerse (6/12/24 ay) kira bugünkü seviyede kalır (uzun süre indirimli). Karar vermezse sözleşme aynı süre için **piyasa kirasıyla (+%12)** yenilenir ve zam birikir. Sözleşmenin son ayında çıkış ya da taşınma için çıkış bedeli yoktur.
 - **Kısıt:** Taşınan tezgah sayısı yeni yerin yuvasını aşmamalı (aşan satılır); tavan makineleri sığdırmalı; kasa, çıkış + taşıma + ilk kira + gizli sorun güvencesini karşılamalı.
 - **Fabrika büyütme** (aynı yerde ek alan) ve **ikinci fabrika** (iki yer birlikte, normal tezgah teslimat süreleri) bu IDEA'nın kapsamı dışındadır; ikinci fabrika ayrı bir IDEA olarak ele alınır (devredilmiş yönetim gerekir, aksi halde patron saati yetmez).
 
@@ -27,11 +28,11 @@ Henüz incelenmedi. Prototip uygulaması (`shell_boss.gd` `move_factory`) şu k�
 ### Bulduğum Sakıncalar
 - İpotekli makine satılamadığı için küçülerek taşınmayı engelleyebilir.
 - Fazla ekipman iade/satış edilmiyor, yalnız ek ekipman olarak kalıyor.
-- Sözleşme bitişinde (12 ay) bugün aynı koşullarla otomatik yenileniyor; bu kural ayrıca ele alınmalı.
+- Karar verilmeyen yenilemede zam sabit %12; piyasa kirasının dalgalanması (rastgele zam, sektör koşulu) yok.
 
 ### Açık Sorular
 - Taşınma sırasında hammadde siparişi ve teslim tarihleri nasıl işlesin?
-- Sözleşme bitiminde ne olur (yenile, piyasa kirası, çık)?
+- Yenileme zammı sabit mi olsun, piyasaya göre değişsin mi? Mal sahibi kira artışı pazarlığı?
 - Taşınma ay ortasında yapılabilirse (IDEA-019) süre gün düzeyinde nasıl hesaplanır?
 
 ## Açık Kararlar
