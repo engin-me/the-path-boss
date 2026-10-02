@@ -51,6 +51,31 @@ const FACTORY_REGIONS := ["Riverside District", "Maple Heights", "Old Harbor", "
 const FACTORY_AGES := [34, 28, 22, 18, 25, 12, 15, 9, 6, 20, 14, 8, 4]
 static var FACTORIES: Array = _build_factories()
 
+# Floor plans (art/floor/plans/<stem>.jpg): one yellow slot per machine, slot rectangles in slots.json as fractions of the picture.
+const PLAN_STEMS := ["fabrika_15x10", "fabrika_15x15", "fabrika_15x20", "fabrika_20x20", "fabrika_15x35", "fabrika_30x20", "fabrika_40x20",
+	"fabrika_50x20", "fabrika_50x30", "fabrika_50x40", "fabrika_50x50", "fabrika_50x60", "fabrika_50x70"]
+const PLAN_SLOTS := [2, 3, 4, 6, 6, 8, 12, 16, 24, 30, 36, 42, 54]
+static var _plan_json: Dictionary = {}
+
+static func plan_index(factory_id: String) -> int:
+	return clampi(int(factory_id.trim_prefix("factory_")) - 1, 0, PLAN_STEMS.size() - 1)
+
+static func plan_stem(factory_id: String) -> String:
+	return PLAN_STEMS[plan_index(factory_id)]
+
+static func slot_count(factory_id: String) -> int:
+	return PLAN_SLOTS[plan_index(factory_id)]
+
+# Slot rectangles of the factory's plan as [x, y, w, h] fractions (empty when the file is missing).
+static func plan_slots(factory_id: String) -> Array:
+	if _plan_json.is_empty():
+		var file := FileAccess.open("res://art/floor/plans/slots.json", FileAccess.READ)
+		if file != null:
+			var parsed = JSON.parse_string(file.get_as_text())
+			if parsed is Dictionary:
+				_plan_json = parsed
+	return _plan_json.get(plan_stem(factory_id), [])
+
 static func _build_factories() -> Array:
 	var list: Array = []
 	for i in FACTORY_SIZES.size():

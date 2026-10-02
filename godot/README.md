@@ -64,3 +64,9 @@ Godot motoruyla kısa otomatik kontrol:
 - **Ses ve geçişler:** dokunma/onay/para/ay sonu efektleri kodla üretilir (`scripts/shell/audio_director.gd`); müzik `godot/audio/music/main.ogg` varsa çalar. Düğmeler basınca küçülür, ekranlar yumuşakça belirir, kasa değişince başlıktaki tutar sayarak renk verir. Profil > Ses'ten müzik, efekt ve titreşim kapatılabilir (`user://settings.cfg`). Android titreşim izni export ayarında açık.
 - **Tezgâh modeli (güç / kondisyon / hassasiyet):** seviyeler Manuel (0,1 mm), CNC (0,01 mm), Hassas (0,001 mm). Kapasite = güç × 1.500 μ × tür çarpanı (geçici) × kondisyon; her %10 kondisyon eksiği kapasiteyi %5 düşürür, enerjiyi %5–10, hurdayı göreli %5–15 artırır; bakım masrafı = her %10 eksik için ödenen fiyatın %0,7 / 1,0 / 1,2'si (Manuel / CNC / Hassas). Kondisyon yılda 10 puan düşer (taban %40); fiyat sıfır fiyatın %30–100'üdür. İş ilanlarında hassasiyet (tolerans) görünür; iş, tezgâh seviyesinden hassasiyetle belirlenir.
 - **Menü ve ayarlar:** alt menü ikonları `art/ui/but_<sekme>.png`, ayarlar simgesi `art/ui/settings.png`; ayarlar ekranında müzik, müzik sesi ve click kutusu. Özet'te "Ayı çalıştır" / "Ayı bitir"; ay kapanırken geçici bir animasyon çalışır. İki kez geri tuşu oyunu arka plana alır (Android `moveTaskToBack`).
+
+## Fabrika zemin planı (yuva sistemi)
+
+`art/floor/plans/fabrika_<GxU>.jpg` her fabrikanın kuşbakışı planıdır; sarı kutular tezgah yuvasıdır (`slots.json`, resme göre oran olarak). Yuva sayıları `Data.PLAN_SLOTS`: 2, 3, 4, 6, 6, 8, 12, 16, 24, 30, 36, 42, 54. Satın alınan tezgah ilk boş yuvanın ortasına oturur (`machine["slot"]`); yuvalar dolunca satın alma engellenir. Plan açılışta ekrana sığar, oyuncu yakınlaştırır.
+
+Ekipman alanları (`EQUIPMENT[...]["area"]`) yalnız veri olarak durur; sahada gösterilmez, yuva veya alan hesabına girmez. Fabrika içi taşıma animasyonları kaldırıldı.

@@ -1724,7 +1724,7 @@ func _update_area_preview(hover_area := -1.0) -> void:
 	var used: float = game.area_used()
 	area_used_bar.value = used
 	area_preview_bar.value = used + extra
-	var text := "Alan: %d / %d m² kullanılıyor · tavan %.1f m" % [int(used), factory["m2"], factory["height"]]
+	var text := "Yuva: %d / %d tezgah · Alan: %d / %d m² · tavan %.1f m" % [game.machines.size(), game.slots_total(), int(used), factory["m2"], factory["height"]]
 	if extra > 0.0:
 		text += "  (+%d m² → %d m²)" % [int(extra), int(used + extra)]
 	area_label.text = text
@@ -1858,7 +1858,6 @@ func _page_equipment() -> void:
 	for id in package["items"]:
 		var item: Dictionary = Data.EQUIPMENT[id]
 		_row(box, "%s × %d" % [item["name"], package["items"][id]], Data.usd(float(item["price"]) * int(package["items"][id])), TEXT, 15)
-	_row(box, "Alan", "%d m²" % int(package["area"]), TEXT, 15)
 	_row(box, "Set fiyatı", Data.usd(float(package["price"])), GREEN, 17)
 	var reason: String = game.package_block_reason()
 	box.add_child(_button("Seti satın al" if reason == "" else reason, _ask_package, reason == "", reason != "", true))
@@ -1873,7 +1872,6 @@ func _equipment_card(id: String) -> void:
 	var box := _card(content, "%s  (Mevcut: %d ad)" % [item["name"], game.equipment_owned(id)], BORDER, true)
 	box.add_child(_label(item["note"], 13, MUTED))
 	_row(box, "Birim fiyat", Data.usd(float(item["price"])), TEXT, 16)
-	_row(box, "Alan / adet", "%.1f m²" % float(item["area"]) if float(item["area"]) > 0.0 else "Alan tüketmez", TEXT, 16)
 	var stepper := HBoxContainer.new()
 	stepper.add_theme_constant_override("separation", 10)
 	stepper.add_child(_button("−", _change_qty.bind(id, -1)))
@@ -1892,7 +1890,7 @@ func _change_qty(id: String, delta: int) -> void:
 
 func _ask_package() -> void:
 	var package: Dictionary = game.package_info()
-	_confirm("Gerekli seti al", ["Ödeme: %s" % Data.usd(float(package["price"])), "Kaplanan alan: %d m²" % int(package["area"])], "Satın al", _buy_package)
+	_confirm("Gerekli seti al", ["Ödeme: %s" % Data.usd(float(package["price"]))], "Satın al", _buy_package)
 
 func _buy_package() -> void:
 	var result: String = game.buy_package()

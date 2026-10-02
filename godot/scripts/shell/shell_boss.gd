@@ -85,6 +85,9 @@ func from_save(data: Dictionary) -> String:
 	for field in BASE_FIELDS + SHELL_FIELDS:
 		set(field, copy[field])
 	machines.assign(copy["machines"])
+	for machine in machines:
+		if not machine.has("slot"):
+			machine["slot"] = free_slot()
 	layout = copy.get("layout", {})
 	plan_shifts = int(copy.get("plan_shifts", 1))
 	plan_ot = copy.get("plan_ot", [false, false, false]).duplicate()
@@ -542,6 +545,20 @@ func machine_area_used() -> float:
 		used += float(machine["area"])
 	return used
 
+func slots_total() -> int:
+	return Data.slot_count(factory_id) if factory_id != "" else 0
+
+# Lowest plan slot no machine stands on.
+func free_slot() -> int:
+	var taken := {}
+	for machine in machines:
+		if machine.has("slot"):
+			taken[int(machine["slot"])] = true
+	var slot := 0
+	while taken.has(slot):
+		slot += 1
+	return slot
+
 func machine_area_limit() -> float:
 	return float(factory()["m2"]) * Data.MACHINE_AREA_SHARE if factory_id != "" else 0.0
 
@@ -580,14 +597,7 @@ func busy_machines() -> Dictionary:
 	return busy
 
 func area_used() -> float:
-	var used := 0.0
-	for machine in machines:
-		used += float(machine["area"])
-	if package_bought:
-		used += float(package_info()["area"])
-	for id in equip:
-		used += float(Data.EQUIPMENT[id]["area"]) * int(equip[id])
-	return used
+	return machine_area_used()
 
 func hidden_guarantee() -> float:
 	var current := scale()
@@ -746,8 +756,6 @@ func package_block_reason() -> String:
 	var reason := spend_block_reason(float(info["price"]))
 	if reason != "":
 		return reason
-	if area_used() + float(info["area"]) > float(factory()["m2"]):
-		return "Alan yetmiyor"
 	return ""
 
 func buy_package() -> String:
@@ -769,8 +777,6 @@ func equipment_block_reason(id: String, qty: int) -> String:
 	var reason := spend_block_reason(float(item["price"]) * qty)
 	if reason != "":
 		return reason
-	if area_used() + float(item["area"]) * qty > float(factory()["m2"]):
-		return "Alan yetmiyor"
 	return ""
 
 func buy_equipment(id: String, qty: int) -> String:
@@ -789,10 +795,8 @@ func listing_block_reason(uid: int) -> String:
 	var reason := spend_block_reason(float(listing["price"]))
 	if reason != "":
 		return reason
-	if area_used() + float(listing["area"]) > float(factory()["m2"]):
-		return "Alan yetmiyor"
-	if machine_area_used() + float(listing["area"]) > machine_area_limit():
-		return "Makine alanı sınırı (%%%d)" % int(Data.MACHINE_AREA_SHARE * 100.0)
+	if machines.size() >= slots_total():
+		return "Tezgah yuvası dolu (%d/%d)" % [machines.size(), slots_total()]
 	if float(listing["height"]) > float(factory()["height"]):
 		return "Tavan çok alçak"
 	return ""
@@ -815,6 +819,7 @@ func buy_listing(uid: int) -> String:
 	next_uid += 1
 	cash -= float(listing["price"])
 	invested += float(listing["price"])
+	machine["slot"] = free_slot()
 	machines.append(machine)
 	history.append("Ay %d: %s sipariş edildi (%.0f, teslim %d ay)." % [month, listing["model"], listing["price"], listing["delivery"]])
 	notice = "%s sipariş edildi; teslimde personel işe başlar." % listing["model"]

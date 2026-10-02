@@ -416,7 +416,7 @@ func _run() -> void:
 	shell._on_tab("fabrika")
 	shell.subtab["fabrika"] = "tedarik"
 	shell._on_tab("fabrika")
-	# ---- top-down factory view: layout stays inside the building and machines do not overlap
+	# ---- top-down factory view: the plan picture with one slot per machine
 	shell._reset_state(8)
 	shell.game.cash = 1500.0
 	shell.game.rent_factory("factory_5", 12, false)
@@ -424,72 +424,38 @@ func _run() -> void:
 	for uid in [13, 14, 17, 16]:
 		shell.game.buy_listing(uid)
 	shell.game.buy_equipment("forklift", 1)
-	shell.game.buy_equipment("vinc", 1)
 	shell.subtab["fabrika"] = "yerlesim"
 	shell._on_tab("fabrika")
-	if shell.floor_view == null or shell.floor_view.items.is_empty():
-		return _fail("The top-down factory view must build with items")
-	var machine_rects: Array = []
-	var plant: Rect2 = shell.floor_view.interior
-	for item in shell.floor_view.items:
-		if item["kind"] == "machine":
-			if not plant.encloses(item["rect"]):
-				return _fail("A machine was placed outside the building: " + str(item["rect"]))
-			machine_rects.append(item["rect"])
-	for i in machine_rects.size():
-		for j in range(i + 1, machine_rects.size()):
-			if machine_rects[i].intersects(machine_rects[j]):
-				return _fail("Machines must not overlap in the layout")
-	if machine_rects.size() != shell.game.machines.size():
-		return _fail("Every machine must appear in the layout")
-	# ---- editable layout: rotate/move are stored per factory, survive re-layout and the save round trip
-	var layout_view = shell.floor_view
-	var all_items: Array = layout_view.items
-	for a in all_items.size():
-		for b in range(a + 1, all_items.size()):
-			if layout_view._editable(all_items[a]) and layout_view._editable(all_items[b]) and not (str(all_items[a]["id"]) == "raf" and str(all_items[b]["id"]) == "raf") and (all_items[a]["rect"] as Rect2).intersects(all_items[b]["rect"]):
-				return _fail("Layout items overlap: %s vs %s" % [all_items[a]["key"], all_items[b]["key"]])
-	for door in layout_view.items:
-		if door["kind"] != "door":
-			continue
-		for other in layout_view.items:
-			if layout_view._editable(other) and (other["rect"] as Rect2).intersects(door["zone"]):
-				return _fail("Nothing may stand on the striped dock entrance: " + str(other["key"]))
-	var nearest_to_middle := INF
-	for entry in layout_view.items:
-		if entry["kind"] == "machine":
-			nearest_to_middle = minf(nearest_to_middle, ((entry["rect"] as Rect2).get_center()).distance_to(layout_view.interior.size / 2.0))
-	if nearest_to_middle > 4.0:
-		return _fail("Machines must sit around the middle of the plant (nearest is %.1f m away)" % nearest_to_middle)
-	var bench_index := -1
-	for i in layout_view.items.size():
-		if layout_view.items[i]["kind"] == "equip" and layout_view.items[i]["id"] == "el_aleti":
-			bench_index = i
-			break
-	if bench_index < 0:
-		return _fail("The bench must appear in the layout")
-	var bench_before: Rect2 = layout_view.items[bench_index]["rect"]
-	layout_view.selected = bench_index
-	layout_view.edit_mode = true
-	layout_view._rotate_selected()
-	var bench_turned: Rect2 = layout_view.items[bench_index]["rect"]
-	if absf(bench_turned.size.x - bench_before.size.y) > 0.01 or int(layout_view.items[bench_index]["rot"]) != 1:
-		return _fail("Rotating must swap the footprint and store the turn")
-	layout_view.items[bench_index]["rect"] = layout_view._clamped(Rect2(Vector2(3.0, 9.0), bench_turned.size))
-	layout_view._store_override(bench_index)
-	layout_view._layout()
-	var bench_kept: Rect2 = layout_view.items[bench_index]["rect"]
-	if bench_kept.position.distance_to(Vector2(3.0, 9.0)) > 0.01 or int(layout_view.items[bench_index]["rot"]) != 1:
-		return _fail("A moved item must keep its place after re-layout: %s rot %s, saved %s" % [str(bench_kept), str(layout_view.items[bench_index]["rot"]), str(shell.game.layout)])
-	var layout_game = Boss.new()
-	if layout_game.from_save(shell.game.to_save()) != "" or not layout_game.layout.has(shell.game.factory_id):
-		return _fail("The layout must survive the save round trip")
-	layout_view._reset_layout()
-	var all_auto := true
-	for entry in shell.game.layout.get(shell.game.factory_id, {}).values():
-		all_auto = all_auto and bool(entry.get("auto", false))
-	if not all_auto or (layout_view.items[bench_index]["rect"] as Rect2).position.distance_to(bench_before.position) > 0.01:
-		return _fail("Reset must restore the automatic layout")
+	var plan_view = shell.floor_view
+	if plan_view == null or plan_view.slots.size() != Data.slot_count("factory_5"):
+		return _fail("The floor view must build one slot per plan slot (%d)" % Data.slot_count("factory_5"))
+	var seen_slots := {}
+	for machine in shell.game.machines:
+		var slot := int(machine["slot"])
+		if slot < 0 or slot >= plan_view.slots.size() or seen_slots.has(slot):
+			return _fail("Every machine needs its own plan slot")
+		seen_slots[slot] = true
+	for i in Data.PLAN_STEMS.size():
+		if Data.plan_slots("factory_%d" % (i + 1)).size() != Data.PLAN_SLOTS[i]:
+			return _fail("slots.json must hold %d slots for factory_%d" % [Data.PLAN_SLOTS[i], i + 1])
+	plan_view.fit()
+	if plan_view.zoom <= 0.0 or plan_view._to_screen(Vector2.ZERO).x < -1.0:
+		return _fail("The plan must open fitted to the screen")
+	# slots are a hard cap
+	var cap_game = Boss.new()
+	cap_game.default_setup(9)
+	cap_game.cash = 5000.0
+	cap_game.rent_factory("factory_1", 12, false)
+	cap_game.buy_package()
+	var bought := 0
+	for uid in [13, 14, 15, 16]:
+		if cap_game.buy_listing(uid) == "":
+			bought += 1
+	if bought != 2 or cap_game.machines.size() != 2:
+		return _fail("The smallest plant has two slots (bought %d)" % bought)
+	var slot_copy = Boss.new()
+	if slot_copy.from_save(cap_game.to_save()) != "" or int(slot_copy.machines[1]["slot"]) != int(cap_game.machines[1]["slot"]):
+		return _fail("Machine slots must survive the save round trip")
 	shell.subtab["fabrika"] = "sozlesme"
 	shell._on_tab("fabrika")
 	if shell.floor_view != null or not shell.scroll_view.visible:
