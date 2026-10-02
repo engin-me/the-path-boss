@@ -405,8 +405,11 @@ func _run() -> void:
 	shell._open_mail(shell.game.mails[0]["id"])
 	if shell.content.get_child_count() < 2 or not shell.game.mails[0]["read"]:
 		return _fail("Opening a mail must render it and mark it read")
-	shell.subtab["ilanlar"] = "bekleyen"
+	shell.job_filters = ["Torna", "Freze"]
+	shell.job_sort = "hassas"
+	shell.subtab["ilanlar"] = "isler"
 	shell._on_tab("ilanlar")
+	shell.job_filters = []
 	shell.subtab["ilanlar"] = "tezgah"
 	shell._on_tab("ilanlar")
 	shell.subtab["fabrika"] = "isler"

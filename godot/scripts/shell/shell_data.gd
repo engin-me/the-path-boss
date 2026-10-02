@@ -148,7 +148,7 @@ static func maintenance_risk(age: int) -> String:
 	return "Yüksek"
 
 static func personnel_for(type: String, level: int) -> int:
-	return 2 if type == "Dövme" else 1
+	return 1   # every machine runs with one operator
 
 # Monthly electricity of a machine for one shift (160 h, average load).
 static func energy_month(power: float) -> float:

@@ -39,7 +39,8 @@ var game = ShellBoss.new()
 var flash := ""
 var page := "ozet"
 var subtab := {"ozet": "genel", "ilanlar": "isler", "fabrika": "yerlesim"}
-var job_filter := "Tümü"
+var job_filters: Array = []
+var job_sort := "yeni"
 var mail_open := -1
 var mail_show_offer := false
 var quote_details := false
@@ -244,11 +245,11 @@ func _build_tab_bar() -> Control:
 			button.expand_icon = true
 			button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
-			button.add_theme_constant_override("icon_max_width", 34)
+			button.add_theme_constant_override("icon_max_width", 40)
 			button.add_theme_constant_override("h_separation", 0)
 		else:
 			button.text = "%s\n%s" % [tab["icon"], tab["title"]]
-		button.custom_minimum_size = Vector2(0, 66)
+		button.custom_minimum_size = Vector2(0, 72)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.add_theme_font_size_override("font_size", _fs(13))
 		button.pressed.connect(_on_tab.bind(tab["id"]))
@@ -363,8 +364,9 @@ func _bar(value: float, maximum: float, color := GREEN) -> ProgressBar:
 	bar.add_theme_stylebox_override("fill", _box(color, color, 5, 0))
 	return bar
 
-func _chips(parent: Control, options: Array, current: String, callback: Callable, accents := {}) -> void:
+func _chips(parent: Control, options: Array, current, callback: Callable, accents := {}) -> void:
 	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.custom_minimum_size = Vector2(0, 46)
 	scroll.scroll_deadzone = 12
@@ -376,7 +378,7 @@ func _chips(parent: Control, options: Array, current: String, callback: Callable
 		var button := Button.new()
 		button.text = option["title"]
 		button.custom_minimum_size = Vector2(0, 40)
-		var active: bool = option["id"] == current
+		var active: bool = (current.has(option["id"]) if current is Array else option["id"] == current)
 		if active:
 			active_button = button
 		var accent: Color = accents.get(option["id"], GREEN)
@@ -536,7 +538,9 @@ func _render_inner() -> void:
 	for id in tab_buttons:
 		var active: bool = id == page
 		var button: Button = tab_buttons[id]
-		button.add_theme_stylebox_override("normal", _box(GREEN_DIM if active else PANEL_ALT, GREEN if active else BORDER, 10, 2 if active else 1))
+		button.add_theme_stylebox_override("normal", _box(Color("#0a2418") if active else Color("#080d13"), GREEN if active else BORDER, 10, 2 if active else 1))
+		button.add_theme_stylebox_override("hover", _box(Color("#0a2418") if active else Color("#0d141c"), GREEN if active else BORDER, 10, 2 if active else 1))
+		button.add_theme_stylebox_override("pressed", _box(Color("#0a2418"), GREEN, 10, 2))
 		button.add_theme_color_override("font_color", GREEN if active else MUTED)
 	for child in content.get_children():
 		content.remove_child(child)
@@ -1022,10 +1026,6 @@ func _page_ilanlar() -> void:
 	if game.factory_id == "":
 		_locked("İlanlar fabrikan olunca açılır: iş, tezgah ve ekipman ilanları.")
 		return
-	var waiting := 0
-	for mail in game.mails:
-		if mail["status"] == "counter":
-			waiting += 1
 	var sub: String = subtab["ilanlar"]
 	if sub == "tezgah" or sub == "ekipman":
 		_build_area_bar()
@@ -1034,14 +1034,12 @@ func _page_ilanlar() -> void:
 		selected_listing = -1
 		_render()
 	_chips(content, [
-		{"id": "isler", "title": "İş İlanları (%d)" % game.offers.size()},
 		{"id": "tezgah", "title": "Tezgah"},
 		{"id": "ekipman", "title": "Ekipman"},
-		{"id": "bekleyen", "title": "Teklif Bekleyen İşler (%d)" % waiting}], sub, pick_sub, {"bekleyen": GOLD})
+		{"id": "isler", "title": "Teklif Bekleyen İşler (%d)" % game.offers.size()}], sub, pick_sub, {"isler": GOLD})
 	match sub:
 		"tezgah": _machines_board()
 		"ekipman": _page_equipment()
-		"bekleyen": _waiting_board()
 		_: _jobs_board()
 
 func _jobs_board() -> void:
@@ -1052,39 +1050,49 @@ func _jobs_board() -> void:
 		kind_options.append({"id": kind, "title": kind})
 	kind_options.append({"id": "elimde", "title": "Elimdeki tezgaha göre"})
 	var pick_filter := func(id: String) -> void:
-		job_filter = id
+		if id == "Tümü":
+			job_filters.clear()
+		elif job_filters.has(id):
+			job_filters.erase(id)
+		else:
+			job_filters.append(id)
 		_render()
-	_chips(content, kind_options, job_filter, pick_filter, {"elimde": GREEN})
-	var shown := 0
+	_chips(content, kind_options, job_filters if not job_filters.is_empty() else "Tümü", pick_filter, {"elimde": GREEN})
+	var pick_sort := func(id: String) -> void:
+		job_sort = id
+		_render()
+	_chips(content, [{"id": "yeni", "title": "Sıra: ilan"}, {"id": "hassas", "title": "En hassas"}, {"id": "genis", "title": "En geniş tolerans"}], job_sort, pick_sort)
+	var shown: Array = []
 	for offer in game.offers:
-		if job_filter == "elimde":
-			if game.fit_block_reason(offer["id"]) != "":
-				continue
-		elif job_filter != "Tümü":
-			var uses := false
-			for req in offer["reqs"]:
-				if req["kind"] == job_filter:
-					uses = true
-			if not uses:
-				continue
-		shown += 1
+		var ok := true
+		for f in job_filters:
+			if f == "elimde":
+				if game.fit_block_reason(offer["id"]) != "":
+					ok = false
+			else:
+				var uses := false
+				for req in offer["reqs"]:
+					if req["kind"] == f:
+						uses = true
+				if not uses:
+					ok = false
+		if ok:
+			shown.append(offer)
+	if job_sort != "yeni":
+		shown.sort_custom(func(x: Dictionary, y: Dictionary) -> bool:
+			var tx := _offer_tolerance(x)
+			var ty := _offer_tolerance(y)
+			return tx < ty if job_sort == "hassas" else tx > ty)
+	for offer in shown:
 		_offer_card(offer, game.accept_block_reason(offer["id"]))
-	if shown == 0:
+	if shown.is_empty():
 		content.add_child(_label("Bu filtreye uyan ilan yok.", 14, MUTED))
 
-func _waiting_board() -> void:
-	var any := false
-	for mail in game.mails:
-		if mail["status"] != "counter":
-			continue
-		any = true
-		var box := _card(content, "%s · %s" % [mail["title"], mail["customer"]], GOLD)
-		box.add_child(_label("Müşteri yanıt verdi; teklifi güncelleyip güncellemeyeceğine karar vermen gerekiyor.", 12, MUTED))
-		_row(box, "Teklifin", Data.usd(float(mail["my_price"])), TEXT, 14)
-		_row(box, "Müşterinin istediği", Data.usd(float(mail["price"])) if mail["kind_counter"] == "price" else "%d ay teslim" % int(mail["months"]), GOLD, 14)
-		box.add_child(_button("Maile git", _open_mail.bind(mail["id"]), true))
-	if not any:
-		content.add_child(_label("Yanıtını bekleyen teklif yok.", 14, MUTED))
+func _offer_tolerance(offer: Dictionary) -> float:
+	var tol := 99.0
+	for req in offer["reqs"]:
+		tol = minf(tol, float(req.get("tolerance", 0.1)))
+	return tol
 
 func _offer_card(offer: Dictionary, reason: String) -> void:
 	var box := _card(content, "", GREEN if reason == "" else BORDER)
@@ -1794,7 +1802,6 @@ func _machine_card(listing: Dictionary) -> void:
 		line.add_child(name_label)
 		line.add_child(_label(entry[1], 15, GOLD, false))
 		box.add_child(line)
-	box.add_child(_label("Operatör: %d kişi (teslimde işe başlar) · Hurda ≈ %%%.1f" % [int(listing["personnel"]), float(listing["scrap"]) * 100.0], 12, MUTED))
 	var owned: int = game.machines_owned(listing["kind"], int(listing["level"]))
 	var reason: String = game.listing_block_reason(listing["uid"])
 	box.add_child(_button("Satın al" if reason == "" else reason, _ask_buy.bind(listing["uid"]), reason == "", reason != "", true))
