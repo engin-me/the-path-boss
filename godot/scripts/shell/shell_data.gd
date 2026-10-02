@@ -66,6 +66,24 @@ static func plan_stem(factory_id: String) -> String:
 static func slot_count(factory_id: String) -> int:
 	return PLAN_SLOTS[plan_index(factory_id)]
 
+static func _plan_data() -> Dictionary:
+	if _plan_json.is_empty():
+		var file := FileAccess.open("res://art/floor/plans/slots.json", FileAccess.READ)
+		if file != null:
+			var parsed = JSON.parse_string(file.get_as_text())
+			if parsed is Dictionary:
+				_plan_json = parsed
+	return _plan_json
+
+# Doors of the plan as [edge, from, to] (fractions along that wall).
+static func plan_doors(factory_id: String) -> Array:
+	return _plan_data().get("doors", {}).get(plan_stem(factory_id), [])
+
+# Picture size in pixels the slot fractions were measured on (the drawing keeps the same aspect).
+static func plan_size(factory_id: String) -> Vector2:
+	var size: Array = _plan_data().get(plan_stem(factory_id) + "_size", [1000, 1000])
+	return Vector2(float(size[0]), float(size[1]))
+
 # Slot rectangles of the factory's plan as [x, y, w, h] fractions (empty when the file is missing).
 static func plan_slots(factory_id: String) -> Array:
 	if _plan_json.is_empty():

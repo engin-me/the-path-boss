@@ -309,6 +309,8 @@ func _process(delta: float) -> void:
 	flow_day = minf(float(MONTH_DAYS), flow_day + delta * float(flow_speed) * float(MONTH_DAYS) / FLOW_SECONDS_PER_MONTH)
 	if floor_view != null:
 		floor_view.day_frac = flow_day / float(MONTH_DAYS)
+		for day in range(before + 1, int(flow_day) + 1):
+			floor_view.add_day(day)
 		floor_view.queue_redraw()
 	if int(flow_day) != before or flow_day >= float(MONTH_DAYS):
 		_update_clock()

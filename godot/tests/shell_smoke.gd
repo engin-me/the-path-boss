@@ -439,8 +439,16 @@ func _run() -> void:
 		if Data.plan_slots("factory_%d" % (i + 1)).size() != Data.PLAN_SLOTS[i]:
 			return _fail("slots.json must hold %d slots for factory_%d" % [Data.PLAN_SLOTS[i], i + 1])
 	plan_view.fit()
-	if plan_view.zoom <= 0.0 or plan_view._to_screen(Vector2.ZERO).x < -1.0:
+	if plan_view.zoom <= 0.0 or plan_view._s(Vector2.ZERO).x < -1.0:
 		return _fail("The plan must open fitted to the screen")
+	if plan_view.doors.is_empty() or plan_view.equipment.is_empty():
+		return _fail("The technical drawing needs ramps and equipment symbols")
+	plan_view.day_frac = 0.5
+	plan_view.busy = {shell.game.machines[0]["uid"]: true}
+	plan_view.plan_output = {shell.game.machines[0]["uid"]: 3000.0}
+	plan_view.add_day(5)
+	if plan_view.floaters.is_empty() or not str(plan_view.floaters[0]["text"]).begins_with("+"):
+		return _fail("A working machine must show its daily output while the clock runs")
 	# slots are a hard cap
 	var cap_game = Boss.new()
 	cap_game.default_setup(9)
