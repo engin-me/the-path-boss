@@ -324,6 +324,8 @@ func _button(text: String, callback: Callable, primary := false, disabled := fal
 	button.text = text
 	button.disabled = disabled
 	button.custom_minimum_size = Vector2(0, 58 if big else 44)
+	if text.length() > 14:
+		button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # a long reason must wrap, never widen the page
 	button.add_theme_font_size_override("font_size", _fs(18 if big else 15))
 	if primary:
 		button.add_theme_stylebox_override("normal", _box(Color("#1f7a4d"), GREEN, 10, 1))
