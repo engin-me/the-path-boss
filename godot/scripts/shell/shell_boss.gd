@@ -599,6 +599,23 @@ func busy_machines() -> Dictionary:
 func area_used() -> float:
 	return machine_area_used()
 
+# Fix quotes on the shell's money scale (the base class quotes on its own, larger bands, which would
+# demand cash far above the real cost).
+func quote_for(root: Dictionary) -> Dictionary:
+	var factor: float = root["factor"]
+	var department: String = root["department"]
+	var low_tier: int = root["tier"]
+	var high_tier: int = root["tier"]
+	if not is_visible(root):
+		low_tier = reach(department) + 1
+		high_tier = int(root["scale_tier"])
+	return {
+		"estimate": snappedf(float(SHELL_MONEY_BANDS[low_tier][0]) * factor, 0.01), "actual": root["actual_money"],
+		"upper": snappedf(float(SHELL_MONEY_BANDS[high_tier][1]) * factor, 0.01),
+		"estimate_hours": _hours(department, HOUR_BANDS[low_tier][0]), "actual_hours": _hours(department, root["actual_hours"]),
+		"upper_hours": _hours(department, HOUR_BANDS[high_tier][1])
+	}
+
 func hidden_guarantee() -> float:
 	var current := scale()
 	return float(SHELL_MONEY_BANDS[int(current["max_tier"])][1]) * float(current["factor"])
@@ -966,7 +983,7 @@ func cost_estimate(offer: Dictionary, edits := {}) -> Dictionary:
 	var material := float(offer["material"]) * supplier_price
 	# fixed plant costs (rent, building overhead, indirect staff, office, loan) are shared by the machines the
 	# plant is sized for (area / a typical 30 m2 work zone), or by the machines owned when there are more of them
-	var slots := maxf(float(machines.size()), floorf(float(factory()["m2"]) / 30.0) if factory_id != "" else 1.0)
+	var slots := maxf(float(machines.size()), float(slots_total()) if factory_id != "" else 1.0)
 	var fixed_pool := base_rent() + plant_fixed_cost() + (float(loan["installment"]) if not loan.is_empty() else 0.0)
 	var fixed_share := fixed_pool / maxf(1.0, slots)
 	var lines: Array = []
@@ -1133,6 +1150,10 @@ func submit_quote(offer_id: int, price: float, advance_pct: int, months_offered:
 	var base := {"my_price": price, "my_advance": advance_pct, "my_months": months_offered, "cost_total": cost_total, "round": round,
 		"mail_no": Data.mail_count(offer, round), "my_margin": price / maxf(0.001, cost_total) - 1.0}
 	if price <= limit:
+		if months_offered > wanted and int(offer["urgency"]) >= 8 and round >= MAX_QUOTE_ROUNDS:
+			var firm := _mail(offer, "rejected", ["Teslim süresi bizim için şart: %d ayda teslim edemeyeceğiniz için bu işte çalışamayacağız." % wanted], base)
+			offers.erase(offer)
+			return {"ok": true, "status": "rejected", "mail": firm}
 		if months_offered > wanted and int(offer["urgency"]) >= 8 and round < MAX_QUOTE_ROUNDS:
 			var extra := base.duplicate()
 			extra.merge({"price": price, "advance_pct": advance_pct, "months": wanted, "kind_counter": "time"}, true)

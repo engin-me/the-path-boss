@@ -572,5 +572,30 @@ func _run() -> void:
 		return _fail("A save with missing fields must be refused")
 	if shell.SaveStore.active():
 		return _fail("Saving must be off in headless runs")
+	# ---- regression: fix quotes use the shell money scale, fixed costs split over the plan slots, firm_q delivery terms
+	var rg = Boss.new()
+	rg.default_setup(21)
+	rg.cash = 600.0
+	rg.rent_factory("factory_1", 12, false)
+	rg.buy_package()
+	rg.buy_listing(13)
+	for _i in 3:
+		rg.run_report()
+		rg.close_month()
+	for root in rg.problems.values():
+		var fix_q: Dictionary = rg.quote_for(root)
+		if float(fix_q["upper"]) > float(rg.SHELL_MONEY_BANDS[5][1]) * float(root["factor"]) + 0.01 or float(fix_q["upper"]) < float(fix_q["actual"]) - 0.01 and rg.is_visible(root):
+			return _fail("Fix quotes must use the shell money bands: %s" % str(fix_q))
+	var line_a: Dictionary = rg.cost_estimate(rg.offers[0])["lines"][0]
+	var pool_share: float = float(line_a["overhead"]) / maxf(1.0, float(rg.offers[0]["duration"]))
+	if pool_share < rg.plant_fixed_cost() / float(rg.slots_total()) - 0.001:
+		return _fail("Fixed costs must be split over the 2 plan slots, not more (share %.3f, pool %.3f)" % [pool_share, rg.plant_fixed_cost()])
+	for offer in rg.offers:
+		if int(offer["urgency"]) >= 8 and rg.accept_block_reason(offer["id"]) == "":
+			offer["urgency"] = 9
+			var firm_q: Dictionary = rg.submit_quote(offer["id"], rg.customer_limit(offer, 30, int(offer["months"]) + 1) * 0.5, 30, int(offer["months"]) + 1, rg.MAX_QUOTE_ROUNDS)
+			if firm_q["status"] != "rejected":
+				return _fail("An urgent customer must refuse a late delivery in the last round")
+			break
 	print("Shell smoke passed")
 	quit(0)
