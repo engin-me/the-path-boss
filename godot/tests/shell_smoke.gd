@@ -807,5 +807,32 @@ func _run() -> void:
 		return _fail("The delivery must appear among the day's events")
 	if not quick.month_events[0].begins_with("Gün 1:"):
 		return _fail("Day events are logged for the closing report")
+	# ---- regression: wages accrue day by day, a half-played month cannot skip its missing days, sim counts day-event deliveries
+	var wg = Boss.new()
+	wg.from_save(snapshot_day)
+	wg.set_plan(3, [false, false, false], false)
+	var wages3: float = wg.machine_wages(wg.machines[0])
+	for _i in 29:
+		wg.advance_day()
+	wg.set_plan(1, [false, false, false], false)
+	wg.advance_day()
+	var wages1: float = wg.machine_wages(wg.machines[0])
+	var accrued_wages: float = wg.month_running
+	if wages3 <= wages1 or accrued_wages < 29.0 / 30.0 * wages3 * 0.99:
+		return _fail("Wages must accrue by day (3 shifts x29 days): accrued %.2f, three-shift wage %.2f, one-shift wage %.2f" % [accrued_wages, wages3, wages1])
+	var halfway = Boss.new()
+	halfway.from_save(snapshot_day)
+	var fullmonth = Boss.new()
+	fullmonth.from_save(snapshot_day)
+	for _i in 15:
+		halfway.advance_day()
+	halfway.run_report()
+	for _i in 30:
+		fullmonth.advance_day()
+	fullmonth.run_report()
+	var half_left: float = halfway.job_remaining(halfway.jobs[0]) if not halfway.jobs.is_empty() else 0.0
+	var full_left: float = fullmonth.job_remaining(fullmonth.jobs[0]) if not fullmonth.jobs.is_empty() else 0.0
+	if halfway.days_run != 30 or absf(half_left - full_left) > 1.0:
+		return _fail("Opening the report mid-month must play the missing days (%.1f vs %.1f)" % [half_left, full_left])
 	print("Shell smoke passed")
 	quit(0)

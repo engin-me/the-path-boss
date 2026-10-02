@@ -232,11 +232,14 @@ func _play(persona: Dictionary, seed_value: int, months: int, agg: Dictionary) -
 		var jobs_before: int = game.jobs.size()
 		game.close_month()
 		for line in game.last_lines:
-			if str(line).begins_with("Teslim:"):
+			var text := str(line)
+			if text.begins_with("Gün "):
+				text = text.substr(text.find(": ") + 2)   # day events carry a "Gün N: " prefix
+			if text.begins_with("Teslim:"):
 				agg["delivered"] += 1
-				if str(line).contains("GEÇ TESLİM"):
+				if text.contains("GEÇ TESLİM"):
 					agg["late"] += 1
-			elif str(line).begins_with("İptal:"):
+			elif text.begins_with("İptal:"):
 				agg["dropped"] += 1
 		if trace and seed_value == 1:
 			print("M%d cash %.2f | %s" % [game.month, game.cash, " | ".join(game.last_lines)])
