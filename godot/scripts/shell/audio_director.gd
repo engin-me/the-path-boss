@@ -138,6 +138,7 @@ func _save_settings() -> void:
 	if not active():
 		return
 	var config := ConfigFile.new()
+	config.load(CONFIG_PATH)   # keep other sections (time flow) that other scripts wrote
 	config.set_value("audio", "sfx", sfx_on)
 	config.set_value("audio", "music", music_on)
 	config.set_value("audio", "haptics", haptics_on)

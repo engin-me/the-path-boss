@@ -38,6 +38,16 @@ var game = ShellBoss.new()
 var flash := ""
 var page := "ozet"
 var subtab := {"ozet": "genel", "ilanlar": "isler", "fabrika": "yerlesim"}
+const MONTH_DAYS := 30
+const FLOW_SECONDS_PER_MONTH := 24.0   # one month at 1x
+var flow_on := false          # experimental: the clock runs day by day (IDEA-019); off keeps the monthly buttons
+var flow_speed := 0           # 0 paused, then 1 / 2 / 4
+var flow_resume := 0          # speed to resume after the month report
+var flow_day := 0.0
+var clock_bar: Control
+var clock_label: Label
+var clock_progress: ProgressBar
+var clock_buttons := {}
 var office_last := "ozet"
 var open_offer := -1
 var job_filters: Array = []
@@ -101,14 +111,19 @@ func _ready() -> void:
 			flash = "Kayıt yüklendi · %s" % Data.month_label(int(game.month))
 		else:
 			flash = "Kayıt okunamadı; yeni oyun başladı."
+	_load_flow_setting()
 	_build()
 	_apply_safe_area()
+	_update_clock()
 	_render()
 
 # Android back key: close a dialog, then a detail screen, then go to Özet.
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST:
 		_autosave()
+		if flow_speed > 0:
+			flow_speed = 0
+			_update_clock()
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
 		if overlay != null and overlay.get_child_count() > 0:
 			_confirm_no()
@@ -146,6 +161,9 @@ func _apply_safe_area() -> void:
 
 func _reset_state(rng_seed := -1) -> void:
 	game = ShellBoss.new()
+	flow_day = 0.0
+	flow_speed = 0
+	flow_resume = 0
 	game.default_setup(rng_seed)
 	flash = ""
 
@@ -163,6 +181,8 @@ func _build() -> void:
 	safe_top = Control.new()
 	column.add_child(safe_top)
 	column.add_child(_build_header())
+	clock_bar = _build_clock()
+	column.add_child(clock_bar)
 	sticky = VBoxContainer.new()
 	column.add_child(sticky)
 	stage = Control.new()
@@ -230,6 +250,118 @@ func _build_header() -> Control:
 	_juice(gear)
 	row.add_child(gear)
 	return bar
+
+func _build_clock() -> Control:
+	var bar := PanelContainer.new()
+	bar.add_theme_stylebox_override("panel", _box(Color("#0e151d"), BORDER, 0, 0))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	bar.add_child(_margin(row, 14, 6))
+	clock_label = _label("", 13, TEXT, false)
+	clock_label.custom_minimum_size = Vector2(70, 0)
+	row.add_child(clock_label)
+	clock_progress = ProgressBar.new()
+	clock_progress.show_percentage = false
+	clock_progress.max_value = float(MONTH_DAYS)
+	clock_progress.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	clock_progress.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	clock_progress.custom_minimum_size = Vector2(0, 10)
+	clock_progress.add_theme_stylebox_override("background", _box(Color("#0b1118"), BORDER, 5, 1))
+	clock_progress.add_theme_stylebox_override("fill", _box(GREEN, GREEN, 5, 0))
+	row.add_child(clock_progress)
+	for spec in [[0, "⏸"], [1, "▶"], [2, "⏩"], [4, "⏭"]]:
+		var button := Button.new()
+		button.text = spec[1]
+		button.custom_minimum_size = Vector2(46, 38)
+		button.add_theme_font_size_override("font_size", _fs(16))
+		button.pressed.connect(_set_flow_speed.bind(int(spec[0])))
+		_juice(button)
+		row.add_child(button)
+		clock_buttons[int(spec[0])] = button
+	bar.visible = false
+	return bar
+
+func _set_flow_speed(speed: int) -> void:
+	if game.phase != "offers" and speed > 0:
+		return
+	flow_speed = speed
+	_update_clock()
+
+func _update_clock() -> void:
+	if clock_bar == null:
+		return
+	clock_bar.visible = flow_on and game.phase != "setup" and game.phase != "end"
+	clock_label.text = "Gün %d/%d" % [mini(MONTH_DAYS, int(flow_day) + 1), MONTH_DAYS]
+	clock_progress.value = flow_day
+	for speed in clock_buttons:
+		var active: bool = speed == flow_speed
+		var button: Button = clock_buttons[speed]
+		button.add_theme_color_override("font_color", GREEN if active else MUTED)
+		for style_name in ["normal", "hover", "pressed"]:
+			button.add_theme_stylebox_override(style_name, _box(GREEN_DIM if active else PANEL_ALT, GREEN if active else BORDER, 8, 1))
+
+func _process(delta: float) -> void:
+	if not flow_on or flow_speed <= 0 or game == null or game.phase != "offers":
+		return
+	if overlay != null and overlay.get_child_count() > 0:
+		return
+	var before := int(flow_day)
+	flow_day = minf(float(MONTH_DAYS), flow_day + delta * float(flow_speed) * float(MONTH_DAYS) / FLOW_SECONDS_PER_MONTH)
+	if floor_view != null:
+		floor_view.day_frac = flow_day / float(MONTH_DAYS)
+		floor_view.queue_redraw()
+	if int(flow_day) != before or flow_day >= float(MONTH_DAYS):
+		_update_clock()
+	if flow_day >= float(MONTH_DAYS):
+		_flow_month_end()
+
+# The month is over: the clock stops and the report opens (it stays mandatory for now).
+func _flow_month_end() -> void:
+	flow_resume = flow_speed
+	flow_speed = 0
+	audio.play("month")
+	page = "ozet"
+	detail = ""
+	_open_report()
+
+func _flow_after_month() -> void:
+	flow_day = 0.0
+	flow_speed = flow_resume if game.phase == "offers" else 0
+	_update_clock()
+	if flow_on:
+		_month_banner()
+
+# Big month number that fades away (the small date stays in the header).
+func _month_banner() -> void:
+	var banner := _label(Data.month_label(int(game.month)).get_slice(" · ", 0), 72, TEXT, false)
+	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	banner.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	banner.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	banner.grow_vertical = Control.GROW_DIRECTION_BOTH
+	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(banner)
+	banner.modulate.a = 0.0
+	var tween := create_tween()
+	tween.tween_property(banner, "modulate:a", 1.0, 0.35)
+	tween.tween_interval(0.7)
+	tween.tween_property(banner, "modulate:a", 0.0, 0.9)
+	tween.tween_callback(banner.queue_free)
+
+func _load_flow_setting() -> void:
+	var config := ConfigFile.new()
+	if config.load("user://settings.cfg") == OK:
+		flow_on = bool(config.get_value("time", "flow", false))
+
+func _set_flow_on(on: bool) -> void:
+	flow_on = on
+	flow_speed = 0
+	var config := ConfigFile.new()
+	config.load("user://settings.cfg")
+	config.set_value("time", "flow", on)
+	if audio != null and audio.active():
+		config.save("user://settings.cfg")
+	_update_clock()
+	_render()
 
 func _build_tab_bar() -> Control:
 	var bar := PanelContainer.new()
@@ -454,6 +586,9 @@ func _image_slot(kind: String, id: String, tint: Color, height := 250) -> Contro
 
 func _confirm(title: String, lines: Array, ok_text: String, on_ok: Callable, warn := "") -> void:
 	_close_overlay()
+	if flow_speed > 0:
+		flow_speed = 0   # a decision dialog stops the clock
+		_update_clock()
 	pending = on_ok
 	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	var dim := ColorRect.new()
@@ -561,7 +696,8 @@ func _fade_in() -> void:
 
 func _render_inner() -> void:
 	_autosave()
-	header_date.text = Data.month_label(int(game.month))
+	header_date.text = Data.month_label(int(game.month)) + ((" · Gün %d" % mini(MONTH_DAYS, int(flow_day) + 1)) if flow_on and game.phase == "offers" else "")
+	_update_clock()
 	header_money.text = Data.usd(float(game.cash))
 	header_hours.text = "⏱ %d/%d sa" % [game.hours_left, game.monthly_hours] if game.phase == "report" else ""
 	if tab_buttons.has("mail"):
@@ -604,6 +740,7 @@ func _render_inner() -> void:
 		stage.add_child(floor_view)
 		var keep: bool = floor_state.get("factory", "") == game.factory_id
 		floor_view.setup(game, float(floor_state.get("zoom", 0.0)) if keep else 0.0, floor_state.get("pan", Vector2.ZERO) if keep else Vector2.ZERO)
+		floor_view.day_frac = flow_day / float(MONTH_DAYS) if flow_on else -1.0
 		floor_view.detail_requested.connect(func(kind: String) -> void: _open_detail(kind))
 		floor_view.layout_changed.connect(func() -> void:
 			audio.play("drop")
@@ -670,7 +807,7 @@ func _page_ozet() -> void:
 
 func _phase_button() -> void:
 	if game.phase == "offers":
-		content.add_child(_button("Ayı çalıştır ▶", _open_report, true, false, true))
+		content.add_child(_button("Ayı hemen bitir (zamanı atla) ▶" if flow_on else "Ayı çalıştır ▶", _open_report, true, false, true))
 	elif game.phase == "report":
 		content.add_child(_button("Ayı bitir ▶", _close_month, true, false, true))
 
@@ -695,6 +832,7 @@ func _finish_close_month() -> void:
 		_say(result)
 	subtab["ozet"] = "genel"
 	_render()
+	_flow_after_month()
 
 # Placeholder month-end animation (a loading spinner); the calendar animation replaces it later.
 func _month_animation(done: Callable) -> void:
@@ -2314,6 +2452,15 @@ func _detail_settings() -> void:
 	click.button_pressed = audio.sfx_on
 	click.toggled.connect(audio.set_sfx)
 	box.add_child(click)
+	var time_card := _card(content, "Zaman (deneme)", GOLD, true)
+	var flow := CheckBox.new()
+	flow.text = "Akan zaman"
+	flow.add_theme_font_size_override("font_size", _fs(16))
+	flow.custom_minimum_size = Vector2(0, 52)
+	flow.button_pressed = flow_on
+	flow.toggled.connect(_set_flow_on)
+	time_card.add_child(flow)
+	time_card.add_child(_label("Açıkken zaman gün gün akar; ⏸ ▶ ⏩ ⏭ ile durdurur, hızlandırırsın. Karar penceresi (onay, teklif) saati durdurur; ay bitince rapor açılır. Üretim sonuçları hâlâ ay sonunda işlenir; çalışan tezgahın ilerleyişi tahminidir. IDEA-019 deneme sürümü.", 12, MUTED))
 
 func _detail_factory(factory: Dictionary) -> void:
 	var hero := _card(content, "", BORDER, true)

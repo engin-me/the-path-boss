@@ -597,5 +597,33 @@ func _run() -> void:
 			if firm_q["status"] != "rejected":
 				return _fail("An urgent customer must refuse a late delivery in the last round")
 			break
+	# ---- experimental flowing time: runs only while playing, stops for dialogs and at month end, resumes after the report
+	shell._reset_state(12)
+	shell.game.cash = 2000.0
+	shell.game.rent_factory("factory_1", 12, false)
+	shell.game.buy_package()
+	shell.game.buy_listing(13)
+	shell.flow_on = true
+	shell._update_clock()
+	shell._process(5.0)
+	if shell.flow_day != 0.0:
+		return _fail("The clock must not run while paused")
+	shell._set_flow_speed(2)
+	shell._process(6.0)
+	if shell.flow_day < 14.9 or shell.flow_day > 15.1 or shell.game.phase != "offers":
+		return _fail("2x speed advances 15 days in 6 s (day %.2f)" % shell.flow_day)
+	shell._ask_buy(13)
+	if shell.flow_speed != 0:
+		return _fail("A decision dialog must stop the clock")
+	shell._close_overlay()
+	shell._set_flow_speed(4)
+	shell._process(30.0)
+	if shell.game.phase != "report" or shell.flow_speed != 0 or shell.flow_resume != 4:
+		return _fail("At day 30 the report opens and the clock stops (phase %s)" % shell.game.phase)
+	shell._finish_close_month()
+	if shell.flow_day != 0.0 or shell.flow_speed != 4 or shell.game.phase != "offers":
+		return _fail("After the report the clock restarts at the same speed")
+	shell.flow_on = false
+	shell._update_clock()
 	print("Shell smoke passed")
 	quit(0)

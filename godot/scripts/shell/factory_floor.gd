@@ -30,6 +30,8 @@ var moved := false
 var user_adjusted := false
 var anim_time := 0.0
 var busy := {}
+var day_frac := -1.0   # share of the month elapsed while the clock runs (-1 = clock off)
+var plan_output := {}   # expected output per machine this month
 var any_busy := false
 var info_panel: PanelContainer
 var info_label: Label
@@ -46,6 +48,7 @@ func setup(game_ref, saved_zoom := 0.0, saved_pan := Vector2.ZERO) -> void:
 	for entry in Data.plan_slots(game.factory_id):
 		slots.append(Rect2(Vector2(float(entry[0]), float(entry[1])) * plan_size, Vector2(float(entry[2]), float(entry[3])) * plan_size))
 	busy = game.busy_machines()
+	plan_output = game.month_plan_output()
 	for uid in busy:
 		any_busy = any_busy or bool(busy[uid])
 	_build_controls()
@@ -277,6 +280,14 @@ func _draw() -> void:
 		if working:
 			var pulse := 0.5 + 0.5 * sin(anim_time * 3.0)
 			draw_arc(frame.position + Vector2(frame.size.x - radius * 2.2, radius * 2.2), radius * (1.6 + pulse), 0.0, TAU, 20, Color(dot, 0.5 * (1.0 - pulse)), 1.5)
+		if working and day_frac >= 0.0 and plan_output.has(machine["uid"]) and frame.size.x >= 40.0:
+			var bar := Rect2(frame.position + Vector2(frame.size.x * 0.12, frame.size.y * 0.035), Vector2(frame.size.x * 0.76, maxf(4.0, frame.size.y * 0.035)))
+			draw_rect(bar, Color(0, 0, 0, 0.55))
+			draw_rect(Rect2(bar.position, Vector2(bar.size.x * day_frac, bar.size.y)), SELECT)
+			var made := "~%d µ" % int(roundf(float(plan_output[machine["uid"]]) * day_frac))
+			var made_size := clampi(int(frame.size.x * 0.1), 8, 16)
+			draw_string_outline(font, bar.position + Vector2(0, -3), made, HORIZONTAL_ALIGNMENT_LEFT, -1, made_size, 4, Color(0.05, 0.07, 0.09, 0.95))
+			draw_string(font, bar.position + Vector2(0, -3), made, HORIZONTAL_ALIGNMENT_LEFT, -1, made_size, TEXT)
 		if frame.size.x >= 60.0:
 			var label := String(machine["model"])
 			var label_size := clampi(int(frame.size.x * 0.92 / (0.56 * float(label.length()))), 8, 18)

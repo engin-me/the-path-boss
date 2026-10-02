@@ -596,6 +596,23 @@ func busy_machines() -> Dictionary:
 		busy[uid] = float(cap_left[uid]) < float(before[uid]) - 0.0001
 	return busy
 
+# What each delivered machine is expected to produce this month (the same allocation the report will run,
+# without recording it): the basis of the live preview while the clock runs.
+func month_plan_output() -> Dictionary:
+	var out := {}
+	if not package_bought or phase != "offers":
+		return out
+	var mults := problem_mults(loss_fractions())
+	var cap_left := {}
+	for machine in delivered():
+		cap_left[machine["uid"]] = machine_output(machine, mults)
+	var copy: Array = jobs.duplicate(true)
+	var before := cap_left.duplicate()
+	_allocate(copy, cap_left, month, false)
+	for uid in cap_left:
+		out[uid] = maxf(0.0, float(before[uid]) - float(cap_left[uid]))
+	return out
+
 func area_used() -> float:
 	return machine_area_used()
 
