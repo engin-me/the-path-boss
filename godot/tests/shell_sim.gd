@@ -10,6 +10,8 @@ const Data = preload("res://scripts/shell/shell_data.gd")
 static var pm := -1.0   # arg pm=: overrides every persona's quote margin
 static var trace := false
 static var only := ""
+static var adaptive := 0.0   # arg adaptive=0.6: the player prices by the acceptance gauge (highest margin with at least this chance)
+static var day_mode := false   # arg days=1: play the month day by day (advance_day) instead of the monthly shortcut
 static var staff_policy := 1   # 0 Yok, 1 Standart, 2 İyi (arg policy=)
 
 # uid reference: new machines 0-11 (Torna, Freze, Taşlama, Dövme x Standart/Hassas/Nitelikli);
@@ -50,6 +52,10 @@ func _run() -> void:
 			only = arg.trim_prefix("only=")
 		elif arg.begins_with("pm="):
 			pm = float(arg.trim_prefix("pm="))
+		elif arg.begins_with("adaptive="):
+			adaptive = float(arg.trim_prefix("adaptive="))
+		elif arg.begins_with("days="):
+			day_mode = int(arg.trim_prefix("days=")) == 1
 		elif arg.begins_with("mid="):
 			Data.mid_base = float(arg.trim_prefix("mid="))
 		elif arg.begins_with("slope="):
@@ -163,7 +169,17 @@ func _play(persona: Dictionary, seed_value: int, months: int, agg: Dictionary) -
 			if promised + offer_load > 0.85 * capacity_now * float(offer["months"]):
 				continue
 			var estimate: Dictionary = game.cost_estimate(offer)
-			var price := snappedf(float(estimate["total"]) * (1.0 + (pm if pm >= 0.0 else float(persona["margin"]))), 0.001)
+			var margin_used: float = pm if pm >= 0.0 else float(persona["margin"])
+			if adaptive > 0.0:
+				margin_used = 0.0
+				var try_margin := 1.5
+				while try_margin >= 0.0:
+					var chance: float = game.accept_probability(offer, float(estimate["total"]) * (1.0 + try_margin), 30, int(offer["months"]))["accept"]
+					if chance >= adaptive:
+						margin_used = try_margin
+						break
+					try_margin -= 0.05
+			var price := snappedf(float(estimate["total"]) * (1.0 + margin_used), 0.001)
 			var result: Dictionary = game.submit_quote(offer["id"], price, 30, int(offer["months"]))
 			if not result["ok"]:
 				continue
@@ -176,6 +192,8 @@ func _play(persona: Dictionary, seed_value: int, months: int, agg: Dictionary) -
 		for machine in game.delivered():
 			agg["shifts"] += float(machine["shifts"])
 			agg["shift_n"] += 1
+		if day_mode:
+			game.finish_month_days()
 		game.run_report()
 		if game.month <= 3:
 			var any_hidden := false

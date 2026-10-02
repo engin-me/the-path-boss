@@ -332,8 +332,8 @@ const STEEL_GRADE := {1: "HR42", 2: "42CrMo4", 3: "42CrMo4"}
 const QUALITY_NAMES := ["", "Ekonomik", "Standart", "Premium"]
 const QUALITY_YIELD := {1: 0.96, 2: 1.0, 3: 1.015}
 static var typical_overhead := 0.45   # customers' belief of plant overhead per machine-month (rent, building, office), k$
-static var mid_base := 0.60   # customer reference margin over the typical cost of a plain job (covers capital return and overhead)
-static var mid_slope := 0.40  # extra margin of the most complex job
+static var mid_base := 0.40   # customer reference margin over the typical cost of a plain job (covers capital return and overhead)
+static var mid_slope := 0.30  # extra margin of the most complex job
 static var margin_scale := 1.0   # calibration input: scales the customer margin band
 const ADVANCE_RATE := 0.30  # customer advance on acceptance (proposal; fixed in the first slice)
 

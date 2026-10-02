@@ -64,7 +64,7 @@ var picked_term := 12
 var quote_price := 0.0
 var quote_margin := 0.30
 var quote_edit := {}   # requirement index -> {scrap_pt, overhead_pct, personnel_pct}: the player's own cost assumptions
-var quote_adv := 20
+var quote_adv := 30
 var quote_months := 0
 var picked_prepay := false
 var selected_listing := -1
@@ -1514,7 +1514,7 @@ func _open_quote(offer_id: int) -> void:
 		return
 	quote_margin = 0.30
 	quote_edit = {}
-	quote_adv = 20
+	quote_adv = 30
 	quote_months = int(offer["months"])
 	quote_details = false
 

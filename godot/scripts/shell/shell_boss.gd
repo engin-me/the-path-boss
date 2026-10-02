@@ -1283,13 +1283,15 @@ func customer_cost(offer: Dictionary) -> float:
 # Highest price the customer accepts: cost x (1 + margin) where the margin runs from
 # (mid - 20 points) for a relaxed customer to (mid + 25 points) for an urgent one, then lowered
 # by a weak delivery score, a bigger advance and a later delivery.
+const ADVANCE_EFFECT := 0.004   # the customer's limit falls 0.4 percent per point of advance asked (30 is neutral)
+
 func customer_limit(offer: Dictionary, advance_pct: int, months_offered: int, urgency := -1.0) -> float:
 	var mid := float(offer["mid"])
 	var urgent := float(offer["urgency"]) if urgency < 0.0 else urgency
 	var margin := lerpf(maxf(0.05, mid - 0.20), mid + 0.25, (urgent - 1.0) / 9.0)
 	var limit := customer_cost(offer) * (1.0 + margin)
 	limit *= 0.90 + 0.15 * delivery_score
-	limit *= 1.0 - 0.002 * float(advance_pct - 30)
+	limit *= 1.0 - ADVANCE_EFFECT * float(advance_pct - 30)
 	var wanted: int = int(offer["months"])
 	if months_offered > wanted:
 		limit *= 1.0 - 0.07 * float(months_offered - wanted)

@@ -580,6 +580,26 @@ func _run() -> void:
 		return _fail("A save with missing fields must be refused")
 	if shell.SaveStore.active():
 		return _fail("Saving must be off in headless runs")
+	# ---- acceptance gauge: all sliders at the minimum give 100 percent, a high advance and margin lower it, a higher advance never raises it
+	var gauge_game = Boss.new()
+	gauge_game.default_setup(24)
+	gauge_game.cash = 20000.0
+	gauge_game.rent_factory("factory_1", 12, false)
+	gauge_game.buy_package()
+	gauge_game.buy_listing(13)
+	gauge_game.run_report()
+	gauge_game.close_month()
+	gauge_game.run_report()
+	gauge_game.close_month()
+	for offer in gauge_game.offers:
+		var gauge_cost: float = float(gauge_game.cost_estimate(offer)["total"])
+		var months_wanted: int = int(offer["months"])
+		var gauge_lowest: float = gauge_game.accept_probability(offer, gauge_cost, 0, 1)["accept"]
+		var gauge_heavy: float = gauge_game.accept_probability(offer, gauge_cost * 2.0, 100, months_wanted)["accept"]
+		var gauge_p30: float = gauge_game.accept_probability(offer, gauge_cost * 1.3, 30, months_wanted)["accept"]
+		var gauge_p60: float = gauge_game.accept_probability(offer, gauge_cost * 1.3, 60, months_wanted)["accept"]
+		if gauge_lowest < 0.85 or gauge_heavy > 0.001 or gauge_p60 > gauge_p30 + 0.001:
+			return _fail("Gauge: min %.2f, gauge_heavy %.2f, advance 30 %.2f vs 60 %.2f" % [gauge_lowest, gauge_heavy, gauge_p30, gauge_p60])
 	# ---- regression: fix quotes use the shell money scale, fixed costs split over the plan slots, firm_q delivery terms
 	var rg = Boss.new()
 	rg.default_setup(21)
