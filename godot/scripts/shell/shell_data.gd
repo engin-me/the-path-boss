@@ -6,7 +6,7 @@ extends RefCounted
 
 const MONEY_UNIT_USD := 1000.0
 
-const LEVELS := ["", "Standart", "Hassas", "Nitelikli"]
+const LEVELS := ["", "Manuel", "CNC", "Hassas"]   # 1 Manuel (0,1 mm), 2 CNC (0,01 mm), 3 Hassas (0,001 mm)
 const TYPES := ["Torna", "Freze", "Taşlama", "Dövme"]
 const STATS_LIST := ["Zeka", "Dikkat", "Hız", "Güç", "Yaratıcılık", "Sosyallik", "Görünüm"]
 # Real-world inputs from the economy sheet (USD; 1 unit = $1.000). Direct operators by machine kind (experienced class),
@@ -83,7 +83,39 @@ const LEVEL_MULT := {1: 0.60, 2: 1.00, 3: 2.40}
 const BRANDS := {1: ["Brandt", "Halden"], 2: ["Novak Precision", "Meridian"], 3: ["Aurex", "Kessler"]}
 const MODEL_PREFIX := {"Torna": "T", "Freze": "F", "Taşlama": "G", "Dövme": "P"}
 const NAMEPLATE := {"Torna": 2000, "Freze": 1600, "Taşlama": 1200, "Dövme": 800}  # x per month at 3 shifts (IDEA-018)
-const LEVEL_PERF := {1: 0.70, 2: 0.80, 3: 0.90}
+const LEVEL_PERF := {1: 1.0, 2: 1.0, 3: 1.0}   # capacity now comes from power and condition only
+# Machine model: power (index, kW) sets capacity and electricity; condition (40-100 %, ages 10 points a year)
+# changes capacity, energy, maintenance and scrap; precision decides which jobs the machine may take.
+const PRECISION_MM := {1: 0.1, 2: 0.01, 3: 0.001}
+const TOLERANCE_CHOICES := {1: [0.5, 0.3, 0.2, 0.1], 2: [0.08, 0.05, 0.03, 0.02], 3: [0.008, 0.005, 0.003, 0.002]}
+const POWER_RANGE := {1: [1.3, 1.9], 2: [1.8, 2.2], 3: [1.6, 2.0]}
+const KW_CAPACITY := 1500.0   # μ per month at three shifts, per kW
+const ENERGY_PER_KW := 0.075   # k$ per month and kW (one shift)
+const KIND_CAPACITY_FACTOR := {"Torna": 1.0, "Freze": 0.8, "Taşlama": 0.6, "Dövme": 0.4}   # placeholder until the capacity tables arrive
+const CONDITION_MIN := 40.0
+const AGING_PER_MONTH := 10.0 / 12.0
+const CAPACITY_STEP_LOSS := 0.05      # per missing 10 points
+const ENERGY_STEP_RANGE := [0.05, 0.10]
+const SCRAP_STEP_RANGE := [0.05, 0.15]   # relative increase per missing 10 points
+const MAINT_STEP_PCT := {1: 0.007, 2: 0.010, 3: 0.012}   # of the price paid, per missing 10 points and month
+const TYPICAL_CONDITION_STEPS := 2.0   # what customers assume about an ordinary shop
+
+static func condition_steps(condition: float) -> float:
+	return (100.0 - condition) / 10.0
+
+# Price of a machine relative to a new one: 30 % at condition 40, 100 % at 100.
+static func condition_price_factor(condition: float) -> float:
+	return 0.30 + 0.70 * (clampf(condition, CONDITION_MIN, 100.0) - CONDITION_MIN) / (100.0 - CONDITION_MIN)
+
+static func capacity_for(kind: String, power: float, condition: float) -> float:
+	return power * KW_CAPACITY * float(KIND_CAPACITY_FACTOR[kind]) * (1.0 - CAPACITY_STEP_LOSS * condition_steps(condition))
+
+static func level_needed_text(level: int) -> String:
+	return ["", "herhangi bir tezgâh", "CNC veya Hassas", "Hassas"][level]
+
+static func tolerance_text(mm: float) -> String:
+	return ("%s mm" % str(mm)).replace(".", ",")
+
 const SCRAP_BASE := {"Torna": 0.03, "Freze": 0.04, "Taşlama": 0.06, "Dövme": 0.09}  # Standart level
 const SCRAP_LEVEL_DELTA := {1: 0.0, 2: -0.005, 3: -0.01}
 const SCRAP_FLOOR := 0.02
@@ -111,7 +143,7 @@ static func age_factor(age: float) -> float:
 static func maintenance_risk(age: int) -> String:
 	if age <= 2:
 		return "Düşük"
-	if age <= 6:
+	if age <= 4:
 		return "Orta"
 	return "Yüksek"
 
@@ -119,8 +151,8 @@ static func personnel_for(type: String, level: int) -> int:
 	return 2 if type == "Dövme" else 1
 
 # Monthly electricity of a machine for one shift (160 h, average load).
-static func energy_month(kw: int) -> float:
-	return snappedf(float(kw) * SHIFT_HOURS_MONTH * TARIFF * LOAD_FACTOR / 1000.0, 0.001)
+static func energy_month(power: float) -> float:
+	return snappedf(power * ENERGY_PER_KW, 0.001)
 
 static func list_price(type: String, level: int) -> float:
 	return roundf(TYPE_PRICE[type] * LEVEL_MULT[level])
@@ -131,34 +163,41 @@ static func machine_listings() -> Array:
 	var uid := 0
 	for type in TYPES:
 		for level in [1, 2, 3]:
-			listings.append(_listing(uid, type, level, 0, 0.15 if uid % 5 == 2 else 0.0))
+			listings.append(_listing(uid, type, level, 100.0, 0.15 if uid % 5 == 2 else 0.0))
 			uid += 1
 	var used := [
-		["Torna", 1, 12, 0.15], ["Torna", 2, 8, 0.0], ["Freze", 1, 14, 0.10], ["Freze", 3, 5, 0.0],
-		["Taşlama", 2, 9, 0.10], ["Taşlama", 1, 15, 0.10], ["Dövme", 1, 16, 0.0], ["Dövme", 2, 10, 0.10]
+		["Torna", 1, 40.0, 0.10], ["Torna", 2, 70.0, 0.0], ["Freze", 1, 40.0, 0.10], ["Freze", 3, 80.0, 0.0],
+		["Taşlama", 2, 60.0, 0.10], ["Taşlama", 1, 40.0, 0.10], ["Dövme", 1, 40.0, 0.0], ["Dövme", 2, 60.0, 0.10]
 	]
 	for entry in used:
 		listings.append(_listing(uid, entry[0], entry[1], entry[2], entry[3]))
 		uid += 1
 	return listings
 
-static func _listing(uid: int, type: String, level: int, age: int, discount: float) -> Dictionary:
+static func _listing(uid: int, type: String, level: int, condition: float, discount: float) -> Dictionary:
 	var list: float = list_price(type, level)
-	var base: float = roundf(list * age_factor(age))
+	var base: float = roundf(list * condition_price_factor(condition))
 	var brand: String = BRANDS[level][uid % 2]
 	var area := roundf(float(LEVEL_AREA[level]) * float(TYPE_AREA[type]))
+	var roll := RandomNumberGenerator.new()
+	roll.seed = 4421 + uid * 97
+	var span: Array = POWER_RANGE[level]
+	var power := snappedf(roll.randf_range(float(span[0]), float(span[1])), 0.1)
+	var nameplate := capacity_for(type, power, condition)
+	var steps := condition_steps(condition)
 	return {
 		"uid": uid, "kind": type, "type": LEVEL_LETTER[level], "level": level, "brand": brand,
 		"model": "%s %s-%d" % [brand, MODEL_PREFIX[type], 100 + level * 100 + uid],
-		"age": age, "list_price": list, "base_price": base, "discount": discount,
+		"condition": condition, "age": int(roundf(steps)), "list_price": list, "base_price": base, "discount": discount,
 		"price": roundf(base * (1.0 - discount)),
-		"capacity": int(NAMEPLATE[type]), "nameplate": int(NAMEPLATE[type]), "perf": float(LEVEL_PERF[level]),
+		"power": power, "precision": PRECISION_MM[level],
+		"capacity": int(nameplate), "nameplate": nameplate, "base_nameplate": power * KW_CAPACITY * float(KIND_CAPACITY_FACTOR[type]), "perf": float(LEVEL_PERF[level]),
 		"scrap": maxf(SCRAP_FLOOR, float(SCRAP_BASE[type]) + float(SCRAP_LEVEL_DELTA[level])),
 		"area": area, "height": snappedf(float(LEVEL_HEIGHT[level]) + float(TYPE_HEIGHT[type]), 0.1),
 		"personnel": personnel_for(type, level),
-		"kw": int(list / 4.0), "energy": energy_month(int(list / 4.0)),
-		"consumables": 0.0,
-		"delivery": 1 if age > 0 else int(NEW_DELIVERY[level])
+		"kw": power, "energy": snappedf(power * ENERGY_PER_KW, 0.001), "consumables": 0.0,
+		"roll_e": 0.5, "roll_m": 0.5, "roll_s": 0.5,
+		"delivery": 1 if condition < 100.0 else int(NEW_DELIVERY[level])
 	}
 
 # ---------------------------------------------------------------- equipment
@@ -173,8 +212,8 @@ const EQUIPMENT := {
 	"transpalet": {"name": "Transpalet", "price": 0.45, "area": 0.0, "required": true, "note": "Kasa ve palet taşıma"},
 	"kasa": {"name": "Malzeme kasası", "price": 0.025, "area": 0.3, "required": true, "note": "Hammadde ve yarı mamul"},
 	"raf": {"name": "Depo rafı", "price": 0.35, "area": 3.0, "required": true, "note": "Depolama alanı tüketir"},
-	"el_aleti": {"name": "El aletleri seti", "price": 0.8, "area": 1.0, "required": true, "note": "Bakım ve ayar"},
-	"takim": {"name": "Takım ve fikstür seti", "price": 0.6, "area": 1.0, "required": true, "note": "Tezgah bağlama takımları"},
+	"el_aleti": {"name": "El aletleri seti", "price": 0.5, "area": 1.0, "required": true, "note": "Bakım ve ayar"},
+	"takim": {"name": "Takım ve fikstür seti", "price": 0.3, "area": 1.0, "required": true, "note": "Tezgah bağlama takımları"},
 	"forklift": {"name": "Forklift", "price": 15.0, "area": 0.0, "required": false, "note": "Depo & Sevkiyat sorun ihtimalini azaltır; OEE'ye yansır (test)"},
 	"olcum": {"name": "Kalite ölçüm seti", "price": 8.0, "area": 1.5, "required": false, "note": "Kalite sorun ihtimalini azaltır (test)"},
 	"vinc": {"name": "Köprü vinç", "price": 40.0, "area": 0.0, "required": false, "min_height": 5.0, "note": "Ağır parçalar; en az 5,0 m tavan gerekir (test)"}
@@ -216,7 +255,7 @@ const TITLES := {
 static var price_per_x := 0.0135  # units (k$) per μ for a Torna; other kinds scale with machine price and nameplate (used for the capacity-value estimate)
 static var revenue_scale := 1.0  # calibration input for simulations (not a rule)
 static var rent_scale := 1.0  # kept at 1.0; rents in FACTORIES are already the calibrated values
-static var start_cash := 24.0   # five years of saving $400 a month as an operator
+static var start_cash := 30.0   # five years of saving $400 a month as an operator, plus a little family help
 # Suppliers (foreign names). price = factor on the job's material estimate; lead = months until
 # the material arrives; terms = months after ordering until payment is due; delay = chance of +1 month;
 # quality 1..3 changes the job's yield (scrap): 1 Ekonomik, 2 Standart, 3 Premium.
@@ -264,7 +303,7 @@ static func cost_share(count: int, best_level: int, jitter: float) -> float:
 
 # Good x per month of one Standart machine on one shift (reference size for jobs).
 static func ref_output(kind: String) -> float:
-	return float(NAMEPLATE[kind]) / 3.0 * float(LEVEL_PERF[1]) * (1.0 - float(SCRAP_BASE[kind]))
+	return capacity_for(kind, 1.6, 100.0) / 3.0 * (1.0 - float(SCRAP_BASE[kind]))
 
 static func price_x(kind: String) -> float:
 	return price_per_x * revenue_scale * float(TYPE_PRICE[kind]) / 80.0 * 2000.0 / float(NAMEPLATE[kind])
@@ -312,10 +351,13 @@ static func difficulty(level: int, rng: RandomNumberGenerator) -> float:
 # direct crew with its share of indirect staff, electricity, write-off and plant overhead, k$.
 static func typical_machine_month(kind: String, level: int) -> Dictionary:
 	var list: float = list_price(kind, level)
+	var span: Array = POWER_RANGE[level]
+	var power := (float(span[0]) + float(span[1])) / 2.0
 	var crew := float(personnel_for(kind, level))
 	var labor := (wage_for(kind) + INDIRECT_WAGE / float(INDIRECT_RATIO)) * crew
-	var energy := energy_month(int(list / 4.0))
-	return {"labor": labor, "energy": energy, "amort": list / float(AMORT_MONTHS), "overhead": typical_overhead}
+	var energy := energy_month(power) * (1.0 + TYPICAL_CONDITION_STEPS * 0.075)
+	var maintenance := TYPICAL_CONDITION_STEPS * float(MAINT_STEP_PCT[level]) * list * 0.7
+	return {"labor": labor, "energy": energy + maintenance, "amort": list / float(AMORT_MONTHS), "overhead": typical_overhead}
 
 # Builds (or rebuilds) an offer's requirements and money from a spec:
 # specs = [{"kind", "level", "n"}], n = machine-equivalents of one-shift demand.
@@ -335,6 +377,8 @@ static func fill_offer(offer: Dictionary, specs: Array, rng: RandomNumberGenerat
 		var z := difficulty(level, rng)
 		var parts := maxi(10, int(roundf(load_x / z / 10.0)) * 10)
 		var workload := float(parts) * z
+		var tol_choices: Array = TOLERANCE_CHOICES[level]
+		var tolerance: float = float(tol_choices[rng.randi_range(0, tol_choices.size() - 1)])
 		var span: Array = PART_WEIGHT[kind]
 		var weight := snappedf(rng.randf_range(float(span[0]), float(span[1])), 0.5)
 		var tons := float(parts) * weight * float(RAW_FACTOR[kind]) / 1000.0
@@ -346,7 +390,7 @@ static func fill_offer(offer: Dictionary, specs: Array, rng: RandomNumberGenerat
 		cost += material_part * (1.0 + scrap_rate(kind, level)) + running + consumables
 		material += material_part
 		reqs.append({"kind": kind, "level": level, "count": int(spec["n"]), "parts": parts, "difficulty": z, "workload": workload, "remaining": workload,
-			"weight": weight, "tons": tons, "steel": level, "material_part": material_part})
+			"weight": weight, "tons": tons, "steel": level, "material_part": material_part, "tolerance": tolerance})
 		total_n += int(spec["n"])
 		best = maxi(best, level)
 	# Margin grows with complexity (machines needed and level): a plain one-machine Standart job pays the
@@ -387,7 +431,7 @@ static func generate_offers(month: int, salt := 0) -> Array:
 		else:
 			specs.append({"kind": primary, "level": _level(rng), "n": count})
 		var duration := mini(rng.randi_range(count, 3 * count) if count > 1 else rng.randi_range(1, 3), 10)
-		var delay := rng.randi_range(0, 2)
+		var delay := 0   # the customer does not wait for machines in transit; the earliest start is shown instead
 		var offer := {"id": month * 100 + i, "customer": CUSTOMERS[rng.randi_range(0, CUSTOMERS.size() - 1)], "duration": duration,
 			"start_delay": delay, "months": delay + duration + rng.randi_range(1, 2), "urgency": rng.randi_range(1, 10)}
 		fill_offer(offer, specs, rng)

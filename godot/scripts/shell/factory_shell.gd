@@ -24,6 +24,8 @@ const GOLD := Color("#eac47a")
 const YELLOW := Color("#f2d24b")
 const RED := Color("#f08080")
 
+const FONT_SCALE := 1.12   # the whole UI text is 12 percent larger than the base sizes
+
 const TABS := [
 	{"id": "ozet", "icon": "🏠", "title": "Özet"},
 	{"id": "isler", "icon": "📋", "title": "İşler"},
@@ -47,12 +49,15 @@ var quote_adv := 30
 var quote_months := 0
 var picked_prepay := false
 var selected_listing := -1
+var level_filter := 0
+var sort_mode := "price_up"
 var collateral_picks: Array = []
 var equip_qty := {}
 var pending := Callable()
 var press_pos := Vector2.ZERO
 
 var audio: Node
+var last_back_ms := -10000
 var last_cash := NAN
 var last_month := -1
 var last_view_key := ""
@@ -104,6 +109,23 @@ func _notification(what: int) -> void:
 			_back()
 		elif page != "ozet":
 			_on_tab("ozet")
+		elif Time.get_ticks_msec() - last_back_ms < 2000:
+			_to_background()
+		else:
+			last_back_ms = Time.get_ticks_msec()
+			_say("Arka plana almak için tekrar geri bas.")
+			_render()
+
+# Sends the game to the background (Android) without closing it; elsewhere the window is minimised.
+func _to_background() -> void:
+	_autosave()
+	if OS.has_feature("android") and Engine.has_singleton("AndroidRuntime"):
+		var runtime = Engine.get_singleton("AndroidRuntime")
+		var activity = runtime.getActivity()
+		if activity != null:
+			activity.moveTaskToBack(true)
+			return
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_MINIMIZED)
 
 # Keeps the header and tab bar clear of notches and gesture bars on phones.
 func _apply_safe_area() -> void:
@@ -186,6 +208,20 @@ func _build_header() -> Control:
 	header_money = _label("", 17, GREEN, false)
 	pill.add_child(_margin(header_money, 12, 5))
 	row.add_child(pill)
+	var gear := Button.new()
+	gear.flat = true
+	gear.custom_minimum_size = Vector2(44, 40)
+	var gear_texture := Art.find("res://art/ui/settings")
+	if gear_texture != null:
+		gear.icon = gear_texture
+		gear.expand_icon = true
+		gear.add_theme_constant_override("icon_max_width", 30)
+	else:
+		gear.text = "⚙"
+		gear.add_theme_font_size_override("font_size", _fs(20))
+	gear.pressed.connect(_open_detail.bind("settings"))
+	_juice(gear)
+	row.add_child(gear)
 	return bar
 
 func _build_tab_bar() -> Control:
@@ -196,10 +232,20 @@ func _build_tab_bar() -> Control:
 	bar.add_child(_margin(row, 8, 8))
 	for tab in TABS:
 		var button := Button.new()
-		button.text = "%s\n%s" % [tab["icon"], tab["title"]]
-		button.custom_minimum_size = Vector2(0, 62)
+		var tab_icon := Art.find("res://art/ui/but_" + String(tab["id"]))
+		if tab_icon != null:
+			button.text = tab["title"]
+			button.icon = tab_icon
+			button.expand_icon = true
+			button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+			button.add_theme_constant_override("icon_max_width", 34)
+			button.add_theme_constant_override("h_separation", 0)
+		else:
+			button.text = "%s\n%s" % [tab["icon"], tab["title"]]
+		button.custom_minimum_size = Vector2(0, 66)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.add_theme_font_size_override("font_size", 13)
+		button.add_theme_font_size_override("font_size", _fs(13))
 		button.pressed.connect(_on_tab.bind(tab["id"]))
 		_juice(button)
 		row.add_child(button)
@@ -208,10 +254,13 @@ func _build_tab_bar() -> Control:
 
 # ------------------------------------------------------------------ helpers
 
+static func _fs(size: int) -> int:
+	return int(roundf(float(size) * FONT_SCALE))
+
 func _label(text: String, size := 14, color := TEXT, wrap := true) -> Label:
 	var label := Label.new()
 	label.text = text
-	label.add_theme_font_size_override("font_size", size)
+	label.add_theme_font_size_override("font_size", _fs(size))
 	label.add_theme_color_override("font_color", color)
 	if wrap:
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -269,7 +318,7 @@ func _button(text: String, callback: Callable, primary := false, disabled := fal
 	button.text = text
 	button.disabled = disabled
 	button.custom_minimum_size = Vector2(0, 58 if big else 44)
-	button.add_theme_font_size_override("font_size", 18 if big else 15)
+	button.add_theme_font_size_override("font_size", _fs(18 if big else 15))
 	if primary:
 		button.add_theme_stylebox_override("normal", _box(Color("#1f7a4d"), GREEN, 10, 1))
 		button.add_theme_stylebox_override("hover", _box(Color("#26955e"), GREEN, 10, 1))
@@ -572,20 +621,9 @@ func _page_ozet() -> void:
 		"rapor": _ozet_report()
 		_: _ozet_general()
 
-func _skip_month() -> void:
-	var result: String = game.run_report()
-	if result == "":
-		result = game.close_month()
-	if result != "":
-		_say(result)
-	subtab["ozet"] = "genel"
-	_render()
-
 func _phase_button() -> void:
 	if game.phase == "offers":
 		content.add_child(_button("Ayı çalıştır ▶", _open_report, true, false, true))
-		if game.delivered().is_empty() and game.jobs.is_empty():
-			content.add_child(_button("Ayı atla ⏭ (üretim yok)", _skip_month))
 	elif game.phase == "report":
 		content.add_child(_button("Ayı bitir ▶", _close_month, true, false, true))
 
@@ -598,11 +636,53 @@ func _open_report() -> void:
 	_render()
 
 func _close_month() -> void:
+	if game.phase != "report":
+		_say(game.close_block_reason())
+		_render()
+		return
+	_month_animation(_finish_close_month)
+
+func _finish_close_month() -> void:
 	var result: String = game.close_month()
 	if result != "":
 		_say(result)
 	subtab["ozet"] = "genel"
 	_render()
+
+# Placeholder month-end animation (a loading spinner); the calendar animation replaces it later.
+func _month_animation(done: Callable) -> void:
+	var layer := ColorRect.new()
+	layer.color = Color(0, 0, 0, 0.82)
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(layer)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(center)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 14)
+	box.custom_minimum_size = Vector2(320, 0)
+	center.add_child(box)
+	var spinner := _label("◐", 64, GREEN, false)
+	spinner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(spinner)
+	var title := _label("Ay kapanıyor…", 22, TEXT, false)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(title)
+	var bar := ProgressBar.new()
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(0, 14)
+	bar.max_value = 1.0
+	box.add_child(bar)
+	var frames := ["◐", "◓", "◑", "◒"]
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_method(func(t: float) -> void:
+		spinner.text = frames[int(t * 12.0) % 4]
+		bar.value = t, 0.0, 1.0, 1.4)
+	tween.chain().tween_callback(func() -> void:
+		layer.queue_free()
+		done.call())
 
 func _ozet_general() -> void:
 	var factory: Dictionary = game.factory()
@@ -672,7 +752,7 @@ func _ozet_report() -> void:
 			by_dep.add_child(_label("Bir alanın kaybı %20 tavanına kırpıldı.", 12, GOLD))
 	var why := _card(content, "Bu sayılar nereden?")
 	for line in ["Teorik: makinelerin 3 vardiya (24 saat) çalışırsa üretebileceği x. Tek başına sen bir makinede yalnız bir vardiya çalıştırırsın; bu yüzden \"vardiya kaybı\" büyük görünür.",
-			"Performans: tezgah seviyesine bağlı hız (Standart %70, Hassas %80, Nitelikli %90). Hurda: tezgah türü ve seviyesine bağlı.",
+			"Kapasite: tezgahın gücüne (kW × 1.500 μ) ve kondisyonuna bağlı; her %10 kondisyon eksiği kapasiteyi %5 düşürür. Hurda: tezgah türü, seviyesi ve kondisyonuna bağlı.",
 			"Sorun kaybı: aktif sorunlar (Bakım/Planlama/Depo → kullanılabilirlik, Üretim → performans, Kalite → hurda; diğer alanlar OEE dışı).",
 			"Üretilebilir kapasite, kabul ettiğin işlere FIFO ile dağıtılır; dağıtılan kısım \"gerçek üretim\", artan kısım \"boş kapasite\"dir. İş yoksa üretilebilir kapasite yine de görünür ama gerçek üretim sıfırdır.",
 			"OEE (24 saat bazlı) = fiziksel kayıplardan sonra iyi parça / teorik."]:
@@ -897,16 +977,33 @@ func _abandon_job(id: int) -> void:
 	_say(game.notice if result == "" else result)
 	_render()
 
-func _offer_card(offer: Dictionary, reason: String) -> void:
-	var box := _card(content, offer["title"], GREEN if reason == "" else BORDER)
-	box.add_child(_label(offer["customer"], 12, MUTED))
+func _job_requirement_rows(box: Control, offer: Dictionary, with_load := true) -> void:
 	for req in offer["reqs"]:
 		var have: bool = game.owns(req)
-		_row(box, "%s %s" % [Data.LEVELS[int(req["level"])], req["kind"]], "%d parça × %s = %s%s" % [req["parts"], Data.mu_text(float(req["difficulty"])), _xfmt(float(req["workload"])), "" if have else "  (makine yok)"], TEXT if have else RED, 14)
-	for req in offer["reqs"]:
-		box.add_child(_label("%s: %s kg/parça · %.1f t %s çelik" % [req["kind"], str(req["weight"]).trim_suffix(".0"), float(req["tons"]), "nitelikli" if int(req["steel"]) > 1 else "standart"], 11, MUTED))
+		var tolerance: String = Data.tolerance_text(float(req["tolerance"])) if req.has("tolerance") else ""
+		_row(box, "%s %s%s" % [Data.LEVELS[int(req["level"])], req["kind"], (" · " + tolerance) if tolerance != "" else ""],
+			"%d parça × %s = %s" % [req["parts"], Data.mu_text(float(req["difficulty"])), _xfmt(float(req["workload"]))] if with_load else "", TEXT if have else RED, 14)
+		box.add_child(_label("%s kg/parça · yaklaşık %s kg %s çelik gerekir" % [str(req["weight"]).trim_suffix(".0").replace(".", ","), str(int(roundf(float(req["tons"]) * 1000.0))), "nitelikli" if int(req["steel"]) > 1 else "standart"], 11, MUTED))
+		if not have:
+			box.add_child(_label("Makine yok: bu hassasiyet için %s gerekli." % Data.level_needed_text(int(req["level"])), 11, RED))
+
+func _offer_card(offer: Dictionary, reason: String) -> void:
+	var box := _card(content, offer["title"], GREEN if reason == "" else BORDER)
+	var photo := Art.pick_image("res://art/jobs", int(offer["id"]))
+	if photo != null:
+		var picture := TextureRect.new()
+		picture.texture = photo
+		picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		picture.custom_minimum_size = Vector2(0, 170)
+		picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.add_child(picture)
+	box.add_child(_label(offer["customer"], 12, MUTED))
+	_job_requirement_rows(box, offer)
 	_row(box, "Teslim süresi", "%d ay" % offer["months"])
-	_row(box, "En erken üretim başlangıcı", "bu ay" if int(offer["start_delay"]) == 0 else "%d ay sonra" % offer["start_delay"], MUTED)
+	var wait: int = game.transit_wait(offer)
+	if wait > 0:
+		_row(box, "En erken başlama", "%d Ay (Makine yolda)" % wait, GOLD)
 	box.add_child(_label("%s = Parça İşleme Katsayısı (yüksek = zor parça). İş yükü = parça × %s. Daha yüksek seviye tezgâh alt seviye işi de yapabilir (ama daha pahalıya)." % [Data.DIFFICULTY_SYMBOL, Data.DIFFICULTY_SYMBOL], 11, MUTED))
 	if game.quote_mode:
 		box.add_child(_label(Data.urgency_hint(offer), 12, MUTED))
@@ -927,7 +1024,7 @@ func _ask_accept(id: int) -> void:
 	var lines: Array = [
 		offer["title"] + " · " + offer["customer"],
 		"Yük: " + ", ".join(reqs_text),
-		"Teslim süresi: %d ay (üretim en erken: %s)" % [offer["months"], "bu ay" if int(offer["start_delay"]) == 0 else "%d ay sonra" % offer["start_delay"]],
+		"Teslim süresi: %d ay" % offer["months"],
 		"Kabulde gelen peşinat: %s" % Data.usd(game.advance_of(offer)),
 		"Teslimde kalan bakiye: %s" % Data.usd(float(offer["revenue"]) - game.advance_of(offer)),
 	]
@@ -996,8 +1093,7 @@ func _detail_quote() -> void:
 	var head := _card(content, offer["title"], GOLD, true)
 	head.add_child(_label(offer["customer"], 13, MUTED))
 	head.add_child(_label(Data.urgency_hint(offer), 12, GOLD))
-	for req in offer["reqs"]:
-		_row(head, "%s %s" % [Data.LEVELS[int(req["level"])], req["kind"]], "%d parça × %s = %s" % [req["parts"], Data.mu_text(float(req["difficulty"])), _xfmt(float(req["workload"]))], TEXT, 14)
+	_job_requirement_rows(head, offer)
 	head.add_child(_label("%s = Parça İşleme Katsayısı (yüksek = zor parça). İş yükü = parça × %s." % [Data.DIFFICULTY_SYMBOL, Data.DIFFICULTY_SYMBOL], 11, MUTED))
 	_row(head, "Müşterinin istediği teslim", "%d ay" % offer["months"], TEXT, 14)
 	var estimate: Dictionary = game.cost_estimate(offer, quote_edit)
@@ -1125,7 +1221,7 @@ func _page_suppliers() -> void:
 	box.add_child(_label("Hammadde, işin üretimi başlamadan gelmelidir. Uzun vadeli ve ucuz tedarikçi yavaş ve riskli; peşin tedarikçi pahalı ama hızlı ve kaliteli.", 12, MUTED))
 	var auto := CheckBox.new()
 	auto.text = "Kabulde varsayılan tedarikçiden otomatik sipariş ver"
-	auto.add_theme_font_size_override("font_size", 14)
+	auto.add_theme_font_size_override("font_size", _fs(14))
 	auto.custom_minimum_size = Vector2(0, 48)
 	auto.button_pressed = game.auto_order
 	auto.toggled.connect(_toggle_auto_order)
@@ -1154,7 +1250,7 @@ func _detail_order() -> void:
 		content.add_child(_label("İş bulunamadı.", 14, MUTED))
 		return
 	var head := _card(content, "Hammadde siparişi", GOLD)
-	head.add_child(_label("%s · işin en erken başlangıcı Ay %d, teslim tarihi Ay %d. Hammadde ondan önce gelmezse üretim başlamaz." % [job["title"], job["start_month"], job["due_month"]], 13, MUTED))
+	head.add_child(_label("%s · teslim tarihi Ay %d. Hammadde gelmeden üretim başlamaz." % [job["title"], job["due_month"]], 13, MUTED))
 	for supplier in Data.SUPPLIERS:
 		_supplier_card(supplier, game.material_quote(job, supplier["id"]), int(job["id"]))
 
@@ -1180,9 +1276,35 @@ func _page_tezgah() -> void:
 		type_filter = id
 		selected_listing = -1
 		_render())
+	var level_options: Array = [{"id": "0", "title": "Tüm seviyeler"}]
+	for level in [1, 2, 3]:
+		level_options.append({"id": str(level), "title": Data.LEVELS[level]})
+	_chips(content, level_options, str(level_filter), func(id: String) -> void:
+		level_filter = int(id)
+		selected_listing = -1
+		_render())
+	_chips(content, [{"id": "price_up", "title": "Fiyat ↑"}, {"id": "price_down", "title": "Fiyat ↓"}, {"id": "cond_up", "title": "Kondisyon ↑"}, {"id": "cond_down", "title": "Kondisyon ↓"}],
+		sort_mode, func(id: String) -> void:
+			sort_mode = id
+			selected_listing = -1
+			_render())
+	var shown: Array = []
 	for listing in Data.machine_listings():
 		if type_filter != "Tümü" and listing["kind"] != type_filter:
 			continue
+		if level_filter != 0 and int(listing["level"]) != level_filter:
+			continue
+		shown.append(listing)
+	shown.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		match sort_mode:
+			"price_down":
+				return float(a["price"]) > float(b["price"])
+			"cond_up":
+				return float(a["condition"]) < float(b["condition"])
+			"cond_down":
+				return float(a["condition"]) > float(b["condition"])
+		return float(a["price"]) < float(b["price"]))
+	for listing in shown:
 		_machine_card(listing)
 	_update_area_preview()
 
@@ -1229,31 +1351,83 @@ func _update_area_preview(hover_area := -1.0) -> void:
 	area_label.text = text
 	area_label.add_theme_color_override("font_color", YELLOW if extra > 0.0 else MUTED)
 
+func _feature_tile(icon_name: String, title: String, value: String) -> Control:
+	var tile := PanelContainer.new()
+	tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tile.add_theme_stylebox_override("panel", _box(Color(0, 0, 0, 0), Color("#e8eef4"), 12, 1))
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 3)
+	tile.add_child(_margin(column, 4, 8))
+	var texture := Art.find("res://art/ui/" + icon_name)
+	if texture != null:
+		var icon := TextureRect.new()
+		icon.texture = texture
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.custom_minimum_size = Vector2(0, 38)
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		column.add_child(icon)
+	var caption := _label(title, 11, MUTED, false)
+	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(caption)
+	var number := _label(value, 12, TEXT, false)
+	number.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	number.clip_text = true
+	column.add_child(number)
+	return tile
+
 func _machine_card(listing: Dictionary) -> void:
 	var selected: bool = listing["uid"] == selected_listing
 	var box := _card(content, "", GOLD if selected else BORDER, true)
 	var panel := _panel_of(box)
 	listing_cards[listing["uid"]] = panel
+	var level_name: String = Data.LEVELS[int(listing["level"])]
 	box.add_child(_image_slot("machines", "%s_%d" % [Art.slug(listing["kind"]), listing["level"]], Color("#26313d")))
-	box.add_child(_label(listing["model"], 22, TEXT))
-	var age_text := "Yeni (sıfır)" if int(listing["age"]) == 0 else "İkinci el · %d yaşında" % listing["age"]
-	box.add_child(_label("%s · %s · %s" % [listing["kind"], Data.LEVELS[int(listing["level"])], age_text], 15, MUTED))
-	box.add_child(_label("Mevcut: %d ad (%s %s)" % [game.machines_owned(listing["kind"], int(listing["level"])), Data.LEVELS[int(listing["level"])], listing["kind"]], 13, GOLD if game.machines_owned(listing["kind"], int(listing["level"])) > 0 else MUTED))
+	# title on the left, price on the right
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 8)
+	var names := VBoxContainer.new()
+	names.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	names.add_child(_label("%s %s" % [level_name, listing["kind"]], 24, TEXT, false))
+	names.add_child(_label(listing["model"], 14, MUTED, false))
+	head.add_child(names)
+	var price_box := VBoxContainer.new()
+	price_box.alignment = BoxContainer.ALIGNMENT_END
 	if float(listing["discount"]) > 0.0:
-		box.add_child(_rich("[s][color=#93a3b3]%s[/color][/s]  [color=#3ddc84][b]%s[/b][/color]  [color=#eac47a](-%%%d)[/color]" % [
-			Data.usd(float(listing["base_price"])), Data.usd(float(listing["price"])), int(roundf(float(listing["discount"]) * 100.0))], 22))
+		var old := _rich("[right][s][color=#93a3b3]%s[/color][/s][/right]" % Data.usd(float(listing["base_price"])), 14)
+		price_box.add_child(old)
+		price_box.add_child(_rich("[right][color=#eac47a]-%%%d[/color]  [color=#3ddc84][b]%s[/b][/color][/right]" % [int(roundf(float(listing["discount"]) * 100.0)), Data.usd(float(listing["price"]))], 22))
 	else:
-		box.add_child(_rich("[b]%s[/b]" % Data.usd(float(listing["price"])), 22))
-	_row(box, "Teorik kapasite", "%s/ay (3 vardiya)" % _xfmt(float(listing["nameplate"])), TEXT, 16)
-	_row(box, "Performans / hurda", "%%%d · %%%.1f" % [int(roundf(float(listing["perf"]) * 100.0)), float(listing["scrap"]) * 100.0], TEXT, 16)
-	_row(box, "Tek vardiya etkin", "≈ %s/ay" % _xfmt(float(listing["nameplate"]) / 3.0 * float(listing["perf"]) * (1.0 - float(listing["scrap"]))), GREEN, 16)
-	_row(box, "Alan / yükseklik", "%d m² · %.1f m" % [listing["area"], listing["height"]], TEXT, 16)
-	_row(box, "Enerji", "%d kW · %s/ay" % [listing["kw"], Data.usd(float(listing["energy"]))], TEXT, 16)
-	_row(box, "Personel", "%d kişi (teslimde işe başlar)" % listing["personnel"], TEXT, 16)
-	_row(box, "Teslim", "%d ay" % listing["delivery"], TEXT, 16)
-	_row(box, "Bakım riski (yaş)", Data.maintenance_risk(int(listing["age"])), TEXT, 16)
+		price_box.add_child(_rich("[right][color=#3ddc84][b]%s[/b][/color][/right]" % Data.usd(float(listing["price"])), 22))
+	price_box.custom_minimum_size = Vector2(190, 0)
+	head.add_child(price_box)
+	box.add_child(head)
+	# five feature tiles
+	var tiles := HBoxContainer.new()
+	tiles.add_theme_constant_override("separation", 6)
+	tiles.add_child(_feature_tile("tezgah_ilan_motor_gucu", "Güç", ("%.1f kW" % float(listing["power"])).replace(".", ",")))
+	tiles.add_child(_feature_tile("tezgah_ilan_tolerans", "Hassasiyet", Data.tolerance_text(float(listing["precision"]))))
+	tiles.add_child(_feature_tile("tezgah_ilan_kondisyon", "Kondisyon", "%% %d" % int(listing["condition"])))
+	tiles.add_child(_feature_tile("tezgah_ilan_olculer", "Ölçüler", ("%d m² x %.1fm" % [int(listing["area"]), float(listing["height"])]).replace(".0m", "m").replace(".", ",")))
+	tiles.add_child(_feature_tile("tezgah_ilan_teslimat", "Teslimat", "%d Ay" % int(listing["delivery"])))
+	box.add_child(tiles)
+	# forecast for one shift
+	box.add_child(_label("Öngörülen Veriler (1 Vardiya)", 15, GOLD, false))
+	var steps: float = Data.condition_steps(float(listing["condition"]))
+	var energy: float = float(listing["energy"]) * (1.0 + steps * float(Data.ENERGY_STEP_RANGE[0]))   # the listing shows the low end; operation rolls 5-10 percent a step
+	var maintenance: float = steps * float(Data.MAINT_STEP_PCT[int(listing["level"])]) * float(listing["price"])
+	for entry in [["Kapasite", "%s/ay" % _xfmt(float(listing["nameplate"]) / 3.0)], ["Enerji Gideri", "%s /ay" % Data.usd(energy)], ["Bakım Masrafı", "%s /ay" % Data.usd(maintenance)]]:
+		var line := HBoxContainer.new()
+		var name_label := _label("○  " + String(entry[0]), 15, GOLD, false)
+		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		line.add_child(name_label)
+		line.add_child(_label(entry[1], 15, GOLD, false))
+		box.add_child(line)
+	box.add_child(_label("Operatör: %d kişi (teslimde işe başlar) · Hurda ≈ %%%.1f" % [int(listing["personnel"]), float(listing["scrap"]) * 100.0], 12, MUTED))
+	var owned: int = game.machines_owned(listing["kind"], int(listing["level"]))
 	var reason: String = game.listing_block_reason(listing["uid"])
 	box.add_child(_button("Satın al" if reason == "" else reason, _ask_buy.bind(listing["uid"]), reason == "", reason != "", true))
+	box.add_child(_label("Mevcut: %d ad (%s %s)" % [owned, level_name, listing["kind"]], 13, GOLD if owned > 0 else MUTED))
 	if not OS.has_feature("mobile"):
 		panel.mouse_entered.connect(func() -> void: _update_area_preview(float(listing["area"])))
 		panel.mouse_exited.connect(func() -> void: _update_area_preview())
@@ -1402,7 +1576,7 @@ func _page_shifts() -> void:
 		row.add_theme_constant_override("separation", 8)
 		var tick := CheckBox.new()
 		tick.text = "Vardiya %d" % n
-		tick.add_theme_font_size_override("font_size", 15)
+		tick.add_theme_font_size_override("font_size", _fs(15))
 		tick.custom_minimum_size = Vector2(0, 48)
 		tick.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		tick.button_pressed = game.plan_shifts >= n
@@ -1411,7 +1585,7 @@ func _page_shifts() -> void:
 		row.add_child(tick)
 		var overtime := CheckBox.new()
 		overtime.text = "Mesai (+4 sa)"
-		overtime.add_theme_font_size_override("font_size", 14)
+		overtime.add_theme_font_size_override("font_size", _fs(14))
 		overtime.custom_minimum_size = Vector2(0, 48)
 		overtime.button_pressed = bool(game.plan_ot[n - 1])
 		overtime.disabled = not editable or n > game.plan_shifts or game.plan_shifts >= 3
@@ -1420,7 +1594,7 @@ func _page_shifts() -> void:
 		box.add_child(row)
 	var patron := CheckBox.new()
 	patron.text = "Patron operatörlük yapar"
-	patron.add_theme_font_size_override("font_size", 15)
+	patron.add_theme_font_size_override("font_size", _fs(15))
 	patron.custom_minimum_size = Vector2(0, 52)
 	patron.button_pressed = game.plan_patron
 	patron.disabled = not editable
@@ -1470,16 +1644,6 @@ func _apply_plan(shifts: int, overtime: Array, patron: bool) -> void:
 # ------------------------------------------------------------------ Profil
 
 func _page_profil() -> void:
-	var sound := _card(content, "Ses")
-	for entry in [["Müzik", audio.music_on, audio.set_music], ["Ses efektleri", audio.sfx_on, audio.set_sfx], ["Titreşim (telefon)", audio.haptics_on, audio.set_haptics]]:
-		var tick := CheckBox.new()
-		tick.text = entry[0]
-		tick.add_theme_font_size_override("font_size", 15)
-		tick.custom_minimum_size = Vector2(0, 48)
-		tick.button_pressed = entry[1]
-		tick.toggled.connect(entry[2])
-		sound.add_child(tick)
-	sound.add_child(_label("Müzik dosyası: godot/audio/music/main.ogg (yoksa sessiz). Efektler kodla üretilir.", 11, MUTED))
 	var skills := _card(content, "Yetkinlikler")
 	for name in BossState.SKILLS:
 		var row := HBoxContainer.new()
@@ -1539,6 +1703,35 @@ func _render_detail() -> void:
 		"quote":
 			title.text = "  Teklif"
 			_detail_quote()
+		"settings":
+			title.text = "  Ayarlar"
+			_detail_settings()
+
+func _detail_settings() -> void:
+	var box := _card(content, "Ses", GREEN, true)
+	var music := CheckBox.new()
+	music.text = "Müzik"
+	music.add_theme_font_size_override("font_size", _fs(16))
+	music.custom_minimum_size = Vector2(0, 52)
+	music.button_pressed = audio.music_on
+	music.toggled.connect(audio.set_music)
+	box.add_child(music)
+	box.add_child(_label("Müzik ses yüksekliği", 13, MUTED))
+	var slider := HSlider.new()
+	slider.min_value = 0.0
+	slider.max_value = 1.0
+	slider.step = 0.05
+	slider.value = audio.music_volume
+	slider.custom_minimum_size = Vector2(0, 40)
+	slider.value_changed.connect(audio.set_music_volume)
+	box.add_child(slider)
+	var click := CheckBox.new()
+	click.text = "Click ve efekt sesleri"
+	click.add_theme_font_size_override("font_size", _fs(16))
+	click.custom_minimum_size = Vector2(0, 52)
+	click.button_pressed = audio.sfx_on
+	click.toggled.connect(audio.set_sfx)
+	box.add_child(click)
 
 func _detail_factory(factory: Dictionary) -> void:
 	var hero := _card(content, "", BORDER, true)
@@ -1552,23 +1745,41 @@ func _detail_factory(factory: Dictionary) -> void:
 	_row(hero, "Elektrik altyapısı", "%d kVA" % factory["kva"], MUTED, 15)
 	hero.add_child(_label("Bina bilgileri şimdilik bilgi amaçlıdır.", 12, MUTED))
 	var terms := _card(content, "Sözleşme süresi", BORDER, true)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	terms.add_child(row)
+	var base_rent: float = float(factory["rent"]) * Data.rent_scale
+	var group := ButtonGroup.new()
 	for term in Data.TERMS:
-		var chosen: bool = term["months"] == picked_term
+		var months: int = term["months"]
+		var chosen: bool = months == picked_term
+		var price := snappedf(base_rent * float(term["factor"]), 0.001)
 		var button := Button.new()
-		button.text = "%d ay\n%s" % [term["months"], Data.usd(roundf(float(factory["rent"]) * float(term["factor"])))]
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.custom_minimum_size = Vector2(0, 66)
-		button.add_theme_font_size_override("font_size", 17)
-		button.add_theme_stylebox_override("normal", _box(GREEN_DIM if chosen else PANEL_ALT, GREEN if chosen else BORDER, 10, 2 if chosen else 1))
-		button.pressed.connect(_pick_term.bind(term["months"]))
-		row.add_child(button)
+		button.toggle_mode = true
+		button.button_group = group
+		button.button_pressed = chosen
+		button.custom_minimum_size = Vector2(0, 60)
+		for style_name in ["normal", "hover", "pressed", "hover_pressed"]:
+			button.add_theme_stylebox_override(style_name, _box(GREEN_DIM if chosen else PANEL_ALT, GREEN if chosen else BORDER, 10, 2 if chosen else 1))
+		var label := RichTextLabel.new()
+		label.bbcode_enabled = true
+		label.fit_content = false
+		label.scroll_active = false
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		label.offset_left = 14
+		label.offset_right = -10
+		label.offset_top = 14
+		label.add_theme_font_size_override("normal_font_size", _fs(17))
+		label.add_theme_font_size_override("bold_font_size", _fs(17))
+		var struck := "" if is_equal_approx(float(term["factor"]), 1.0) else "[s][color=#93a3b3]%s[/color][/s]  " % Data.usd(base_rent)
+		var tint := "#f08080" if float(term["factor"]) > 1.0 else ("#3ddc84" if float(term["factor"]) < 1.0 else "#e8eef4")
+		label.text = "%s [b]%d ay[/b] × %s[color=%s][b]%s[/b][/color] /ay" % ["◉" if chosen else "○", months, struck, tint, Data.usd(price)]
+		button.add_child(label)
+		button.pressed.connect(_pick_term.bind(months))
+		_juice(button)
+		terms.add_child(button)
 	var quote: Dictionary = game.prepay_quote(factory["id"], picked_term)
 	var prepay := CheckBox.new()
 	prepay.text = "İlk %d ayın kirasını peşin öde (%%%d indirim)" % [quote["half"], int(roundf(float(quote["discount"]) * 100.0))]
-	prepay.add_theme_font_size_override("font_size", 15)
+	prepay.add_theme_font_size_override("font_size", _fs(15))
 	prepay.custom_minimum_size = Vector2(0, 48)
 	prepay.button_pressed = picked_prepay
 	prepay.toggled.connect(_toggle_prepay)
@@ -1689,7 +1900,7 @@ func _detail_credit() -> void:
 		var value: float = game.current_value(machine)
 		var check := CheckBox.new()
 		check.text = "%s · %s" % [machine["model"], Data.usd(value)]
-		check.add_theme_font_size_override("font_size", 15)
+		check.add_theme_font_size_override("font_size", _fs(15))
 		check.custom_minimum_size = Vector2(0, 48)
 		check.button_pressed = collateral_picks.has(machine["uid"])
 		check.toggled.connect(_toggle_collateral.bind(machine["uid"]))
@@ -1780,8 +1991,9 @@ func _detail_machines() -> void:
 		var box := _card(content, machine["model"], accent, true)
 		_row(box, "Durum", status, TEXT, 15)
 		_row(box, "Tür / seviye", "%s · %s" % [machine["kind"], Data.LEVELS[int(machine["level"])]], TEXT, 15)
-		_row(box, "Yaş", "%d yıl" % machine["age"], TEXT, 15)
-		_row(box, "Teorik · performans · hurda", "%s · %%%d · %%%.1f" % [_xfmt(float(machine["nameplate"])), int(roundf(float(machine["perf"]) * 100.0)), float(machine["scrap"]) * 100.0], TEXT, 14)
+		_row(box, "Kondisyon", "%% %d" % int(roundf(float(machine["condition"]))), TEXT, 15)
+		_row(box, "Teorik kapasite · hurda", "%s · %%%.1f" % [_xfmt(float(machine["nameplate"])), game.machine_scrap(machine) * 100.0], TEXT, 14)
+		_row(box, "Aylık enerji + bakım (1 vardiya)", Data.usd(game.machine_energy(machine) + game.machine_maintenance(machine)), TEXT, 14)
 		_row(box, "Güncel değer", Data.usd(game.current_value(machine)), TEXT, 15)
 		if delivered:
 			_row(box, "Vardiya", "%d%s%s" % [machine["shifts"], " (+mesai)" if game.plan_ot[0] else "", " · 1. vardiya patron" if machine.get("patron", false) else ""], TEXT, 15)

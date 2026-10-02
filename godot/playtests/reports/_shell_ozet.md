@@ -22,3 +22,12 @@ Karakter | Kiralanamadı | Ayakta | Zorunlu kapanış | İflas | Ort. son net ka
 3. **Küçük temkinli** (Pacific Alloy, tek vardiya) çoğunlukla batıyor; Pacific hâlâ tuzak.
 4. Sermayeli karakterler (yeni makine, büyük) yüksek ve istikrarlı; ancak 24 ayda 10–15× büyüme hızlı sayılır, kalibrasyon sürüyor.
 5. Müşteri marjı ve talep bandı ayarlanabilir (`mid=` ve `slope=` bağımsız değişkenleri).
+
+
+## Tezgâh modeli v2 (güç, kondisyon, hassasiyet, bakım) — ilk ölçüm
+
+Başlangıç parası $24k, başlangıç tezgâhı ikinci el Manuel Torna (kondisyon %40, fiyat sıfır fiyatın %30'u). Sonuç: tek makineyle başlayan profillerin tamamı iflas ediyor (kasa 24k'dan eriyor); vardiyalı küçük profil %50, sermayeli profiller ayakta.
+
+Nedenleri: (1) %40 kondisyonlu tezgâh kapasitesinin %70'ini, ayrıca %45 fazla enerji, aylık ~$500 bakım ve daha çok hurda getiriyor; (2) sabit gider 150 m² için ~$1,2k/ay; (3) iş ilanı kabulden teslime 3–4 ay sürdüğü ve avans %30 olduğu için işletme sermayesi ihtiyacı ~$10k, oysa ekipman seti ($6,7k) ve tezgâh ($12k) sonrası ~$5k kalıyor. Marj (`mid=`) 0,6'dan 2,0'a çıkarılınca bile tek makineli profil kurtulmuyor; sorun fiyat değil, nakit çevrimi ve eski makinenin verimsizliği.
+
+Karar bekleyen kaldıraçlar: başlangıç parası, başlangıç ekipman seti fiyatı, ilk tezgâhın kondisyonu ve avans oranı.

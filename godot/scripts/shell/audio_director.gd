@@ -11,6 +11,7 @@ const MUSIC_BASES := ["res://audio/music/main"]
 var sfx_on := true
 var music_on := true
 var haptics_on := true
+var music_volume := 0.7
 var sounds := {}
 var pool: Array[AudioStreamPlayer] = []
 var music_player: AudioStreamPlayer
@@ -28,8 +29,8 @@ func _ready() -> void:
 		add_child(player)
 		pool.append(player)
 	music_player = AudioStreamPlayer.new()
-	music_player.volume_db = -14.0
 	add_child(music_player)
+	_apply_volume()
 	sounds = {
 		"tap": _make([[1250.0, 0.035, 0.30], [650.0, 0.03, 0.15]]),
 		"confirm": _make([[660.0, 0.07, 0.35], [880.0, 0.10, 0.35]]),
@@ -39,6 +40,17 @@ func _ready() -> void:
 		"month": _make([[523.0, 0.09, 0.32], [659.0, 0.09, 0.32], [784.0, 0.09, 0.32], [1046.0, 0.22, 0.34]]),
 		"drop": _make([[500.0, 0.05, 0.28], [380.0, 0.07, 0.28]])
 	}
+
+	call_deferred("start_music")
+
+func _apply_volume() -> void:
+	if music_player != null:
+		music_player.volume_db = linear_to_db(maxf(0.0001, music_volume)) - 6.0
+
+func set_music_volume(value: float) -> void:
+	music_volume = clampf(value, 0.0, 1.0)
+	_apply_volume()
+	_save_settings()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not active() or music_started:
@@ -106,6 +118,7 @@ func set_music(on: bool) -> void:
 
 func set_sfx(on: bool) -> void:
 	sfx_on = on
+	haptics_on = on
 	_save_settings()
 
 func set_haptics(on: bool) -> void:
@@ -119,6 +132,7 @@ func _load_settings() -> void:
 	sfx_on = bool(config.get_value("audio", "sfx", true))
 	music_on = bool(config.get_value("audio", "music", true))
 	haptics_on = bool(config.get_value("audio", "haptics", true))
+	music_volume = float(config.get_value("audio", "volume", 0.7))
 
 func _save_settings() -> void:
 	if not active():
@@ -127,4 +141,5 @@ func _save_settings() -> void:
 	config.set_value("audio", "sfx", sfx_on)
 	config.set_value("audio", "music", music_on)
 	config.set_value("audio", "haptics", haptics_on)
+	config.set_value("audio", "volume", music_volume)
 	config.save(CONFIG_PATH)
