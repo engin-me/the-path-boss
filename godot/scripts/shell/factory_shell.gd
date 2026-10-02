@@ -11,6 +11,7 @@ const SaveStore = preload("res://scripts/shell/save_store.gd")
 const Art = preload("res://scripts/shell/art.gd")
 const FloorScript = preload("res://scripts/shell/factory_floor.gd")
 const AudioDirector = preload("res://scripts/shell/audio_director.gd")
+const GaugeScript = preload("res://scripts/shell/gauge.gd")
 
 const BG := Color("#0f1720")
 const PANEL := Color("#1a232e")
@@ -28,8 +29,8 @@ const FONT_SCALE := 1.12   # the whole UI text is 12 percent larger than the bas
 
 const TABS := [
 	{"id": "ozet", "icon": "🏠", "title": "Özet"},
-	{"id": "isler", "icon": "📋", "title": "İşler"},
-	{"id": "tezgah", "icon": "⚙", "title": "Tezgah"},
+	{"id": "ilanlar", "icon": "📋", "title": "İlanlar"},
+	{"id": "mail", "icon": "✉", "title": "Mail"},
 	{"id": "fabrika", "icon": "🏭", "title": "Fabrika"},
 	{"id": "profil", "icon": "👤", "title": "Profil"}
 ]
@@ -37,7 +38,11 @@ const TABS := [
 var game = ShellBoss.new()
 var flash := ""
 var page := "ozet"
-var subtab := {"ozet": "genel", "isler": "tum", "tezgah": "tezgah", "fabrika": "yerlesim"}
+var subtab := {"ozet": "genel", "ilanlar": "isler", "fabrika": "yerlesim"}
+var job_filter := "Tümü"
+var mail_open := -1
+var mail_show_offer := false
+var quote_details := false
 var type_filter := "Tümü"
 var detail := ""
 var detail_arg := ""
@@ -45,7 +50,7 @@ var picked_term := 12
 var quote_price := 0.0
 var quote_margin := 0.30
 var quote_edit := {}   # requirement index -> {scrap_pt, overhead_pct, personnel_pct}: the player's own cost assumptions
-var quote_adv := 30
+var quote_adv := 20
 var quote_months := 0
 var picked_prepay := false
 var selected_listing := -1
@@ -211,7 +216,7 @@ func _build_header() -> Control:
 	var gear := Button.new()
 	gear.flat = true
 	gear.custom_minimum_size = Vector2(44, 40)
-	var gear_texture := Art.find("res://art/ui/settings")
+	var gear_texture := Art.find("res://art/ui/btn_ayarlar")
 	if gear_texture != null:
 		gear.icon = gear_texture
 		gear.expand_icon = true
@@ -232,7 +237,7 @@ func _build_tab_bar() -> Control:
 	bar.add_child(_margin(row, 8, 8))
 	for tab in TABS:
 		var button := Button.new()
-		var tab_icon := Art.find("res://art/ui/but_" + String(tab["id"]))
+		var tab_icon := Art.find("res://art/ui/btn_" + String(tab["id"]))
 		if tab_icon != null:
 			button.text = tab["title"]
 			button.icon = tab_icon
@@ -358,7 +363,7 @@ func _bar(value: float, maximum: float, color := GREEN) -> ProgressBar:
 	bar.add_theme_stylebox_override("fill", _box(color, color, 5, 0))
 	return bar
 
-func _chips(parent: Control, options: Array, current: String, callback: Callable) -> void:
+func _chips(parent: Control, options: Array, current: String, callback: Callable, accents := {}) -> void:
 	var scroll := ScrollContainer.new()
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.custom_minimum_size = Vector2(0, 46)
@@ -374,12 +379,13 @@ func _chips(parent: Control, options: Array, current: String, callback: Callable
 		var active: bool = option["id"] == current
 		if active:
 			active_button = button
+		var accent: Color = accents.get(option["id"], GREEN)
 		for style_name in ["normal", "hover", "pressed"]:
-			var chip := _box(GREEN_DIM if active else PANEL_ALT, GREEN if active else BORDER, 20, 1)
+			var chip := _box(Color(accent.r, accent.g, accent.b, 0.22) if active or accents.has(option["id"]) else PANEL_ALT, accent if active or accents.has(option["id"]) else BORDER, 20, 1)
 			chip.content_margin_left = 16
 			chip.content_margin_right = 16
 			button.add_theme_stylebox_override(style_name, chip)
-		button.add_theme_color_override("font_color", GREEN if active else TEXT)
+		button.add_theme_color_override("font_color", accent if active or accents.has(option["id"]) else TEXT)
 		button.pressed.connect(callback.bind(option["id"]))
 		_juice(button)
 		row.add_child(button)
@@ -524,6 +530,9 @@ func _render_inner() -> void:
 	header_date.text = Data.month_label(int(game.month))
 	header_money.text = Data.usd(float(game.cash))
 	header_hours.text = "⏱ %d/%d sa" % [game.hours_left, game.monthly_hours] if game.phase == "report" else ""
+	if tab_buttons.has("mail"):
+		var unread: int = game.unread_mails()
+		tab_buttons["mail"].text = "Mail (%d)" % unread if unread > 0 else "Mail"
 	for id in tab_buttons:
 		var active: bool = id == page
 		var button: Button = tab_buttons[id]
@@ -546,7 +555,7 @@ func _render_inner() -> void:
 	var show_floor: bool = rented and subtab["fabrika"] == "yerlesim"
 	scroll_view.visible = not show_floor
 	if rented:
-		_chips(sticky, [{"id": "yerlesim", "title": "Yerleşim (üstten)"}, {"id": "vardiya", "title": "Vardiya"}, {"id": "sozlesme", "title": "Sözleşme"}], subtab["fabrika"],
+		_chips(sticky, [{"id": "yerlesim", "title": "Yerleşim (üstten)"}, {"id": "isler", "title": "İşler (%d)" % game.jobs.size()}, {"id": "tedarik", "title": "Tedarik"}, {"id": "vardiya", "title": "Vardiya"}, {"id": "sozlesme", "title": "Sözleşme"}], subtab["fabrika"],
 			func(id: String) -> void:
 				subtab["fabrika"] = id
 				_render())
@@ -576,8 +585,8 @@ func _render_inner() -> void:
 		return
 	match page:
 		"ozet": _page_ozet()
-		"isler": _page_isler()
-		"tezgah": _page_tezgah()
+		"ilanlar": _page_ilanlar()
+		"mail": _page_mail()
 		"fabrika": _page_fabrika()
 		"profil": _page_profil()
 
@@ -708,8 +717,8 @@ func _ozet_general() -> void:
 		["Güncel değer", Data.usd(float(game.investment_value())), "detail:machines"],
 		["OEE (24 saat)", oee, "detail:oee"],
 		["Üretilebilir kapasite", "%s/ay" % _xfmt(game.effective_capacity()), "detail:oee"],
-		["Teslim skoru", "%%%d" % int(roundf(float(game.delivery_score) * 100.0)), "tab:isler"],
-		["Aktif iş", str(game.jobs.size()), "tab:isler"],
+		["Teslim skoru", "%%%d" % int(roundf(float(game.delivery_score) * 100.0)), "tab:ilanlar"],
+		["Aktif iş", str(game.jobs.size()), "fabjobs"],
 		["Aylık gider", Data.usd(float(game.ordinary_expense())), "detail:costs"],
 		["Sözleşme", "%d ay kaldı" % int(game.months_left), "tab:fabrika"],
 		["Patron zamanı", "%d / %d sa" % [game.hours_left if game.phase == "report" else game.monthly_hours - game.patron_hours(), game.monthly_hours], "sub:dep"]
@@ -832,13 +841,16 @@ func _on_tile_input(event: InputEvent, target: String) -> void:
 	match parts[0]:
 		"detail": _open_detail(parts[1])
 		"tab": _on_tab(parts[1])
+		"fabjobs":
+			subtab["fabrika"] = "isler"
+			_on_tab("fabrika")
 		"sub":
 			subtab["ozet"] = parts[1]
 			_render()
 
 func _go_equipment() -> void:
-	subtab["tezgah"] = "ekipman"
-	_on_tab("tezgah")
+	subtab["ilanlar"] = "ekipman"
+	_on_tab("ilanlar")
 
 func _page_end() -> void:
 	var outcome := {"survived": "Fabrika test süresince ayakta kaldı.", "forced": "Zorunlu kapanış: tasfiye borcu kapattı, iflas değil.", "bankrupt": "Zorunlu kapanış ve iflas: tasfiyeden sonra borç kaldı."}
@@ -869,54 +881,6 @@ func _restart() -> void:
 	_render()
 
 # ------------------------------------------------------------------ İşler
-
-func _page_isler() -> void:
-	if game.factory_id == "":
-		_locked("İş teklifleri fabrikan olunca açılır.")
-		return
-	var doable := 0
-	for offer in game.offers:
-		if game.fit_block_reason(offer["id"]) == "":
-			doable += 1
-	_chips(content, [
-		{"id": "tum", "title": "Tümü (%d)" % game.offers.size()},
-		{"id": "yapabilir", "title": "Yapabileceklerim (%d)" % doable},
-		{"id": "kabul", "title": "Kabul edilenler (%d)" % game.jobs.size()},
-		{"id": "mail", "title": "Mailler (%d)" % _pending_mails()},
-		{"id": "tedarik", "title": "Tedarikçiler"}],
-		subtab["isler"], func(id: String) -> void:
-			subtab["isler"] = id
-			_render())
-	var box := _card(content, "Üretilebilir kapasite (şu anki vardiyalarla)")
-	var any := false
-	for kind in Data.TYPES:
-		var cap: float = game.effective_capacity(kind)
-		if cap > 0.0:
-			any = true
-			_row(box, kind, "%s/ay" % _xfmt(cap), TEXT, 14)
-	if not any:
-		box.add_child(_label("Teslim alınmış tezgah yok; gelecekte başlayan işleri şimdiden kabul edebilirsin.", 13, MUTED))
-	box.add_child(_label("Gerekli ekipman: %s · Teslim skoru %%%d" % ["tamam" if game.package_bought else "EKSİK", int(roundf(float(game.delivery_score) * 100.0))], 12, MUTED if game.package_bought else RED))
-	if game.phase != "offers":
-		content.add_child(_label("Rapor açık: iş kabulü yeni ayın başında yapılır. \"Yapabileceklerim\" makinelerine ve nakdine uyan ilanları sayar.", 12, GOLD))
-	if subtab["isler"] == "tedarik":
-		_page_suppliers()
-		return
-	if subtab["isler"] == "mail":
-		_page_mails()
-		return
-	if subtab["isler"] == "kabul":
-		if game.jobs.is_empty():
-			content.add_child(_label("Henüz kabul edilmiş iş yok.", 14, MUTED))
-		var finish: Dictionary = game.projection()
-		for job in game.jobs:
-			_job_card(job, int(finish.get(job["id"], 0)))
-		return
-	for offer in game.offers:
-		var reason: String = game.accept_block_reason(offer["id"])
-		if subtab["isler"] == "yapabilir" and game.fit_block_reason(offer["id"]) != "":
-			continue
-		_offer_card(offer, reason)
 
 func _job_card(job: Dictionary, finish_month: int) -> void:
 	var late: bool = finish_month == 0 or finish_month > int(job["due_month"])
@@ -987,33 +951,6 @@ func _job_requirement_rows(box: Control, offer: Dictionary, with_load := true) -
 		if not have:
 			box.add_child(_label("Makine yok: bu hassasiyet için %s gerekli." % Data.level_needed_text(int(req["level"])), 11, RED))
 
-func _offer_card(offer: Dictionary, reason: String) -> void:
-	var box := _card(content, offer["title"], GREEN if reason == "" else BORDER)
-	var photo := Art.pick_image("res://art/jobs", int(offer["id"]))
-	if photo != null:
-		var picture := TextureRect.new()
-		picture.texture = photo
-		picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-		picture.custom_minimum_size = Vector2(0, 170)
-		picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		box.add_child(picture)
-	box.add_child(_label(offer["customer"], 12, MUTED))
-	_job_requirement_rows(box, offer)
-	_row(box, "Teslim süresi", "%d ay" % offer["months"])
-	var wait: int = game.transit_wait(offer)
-	if wait > 0:
-		_row(box, "En erken başlama", "%d Ay (Makine yolda)" % wait, GOLD)
-	box.add_child(_label("%s = Parça İşleme Katsayısı (yüksek = zor parça). İş yükü = parça × %s. Daha yüksek seviye tezgâh alt seviye işi de yapabilir (ama daha pahalıya)." % [Data.DIFFICULTY_SYMBOL, Data.DIFFICULTY_SYMBOL], 11, MUTED))
-	if game.quote_mode:
-		box.add_child(_label(Data.urgency_hint(offer), 12, MUTED))
-		box.add_child(_button("Teklif ver" if reason == "" else reason, _open_detail.bind("quote", str(offer["id"])), reason == "", reason != ""))
-		return
-	_row(box, "Gelir", Data.usd(float(offer["revenue"])), GREEN)
-	_row(box, "Peşinat (%%%d, kabulde gelir)" % int(Data.ADVANCE_RATE * 100.0), Data.usd(game.advance_of(offer)), GREEN, 14)
-	_row(box, "Tahmini hammadde (%%%d)" % int(roundf(float(offer["share"]) * 100.0)), Data.usd(float(offer["material"])), TEXT, 14)
-	box.add_child(_button("Kabul et" if reason == "" else reason, _ask_accept.bind(offer["id"]), reason == "", reason != ""))
-
 func _ask_accept(id: int) -> void:
 	var offer: Dictionary = game.offer_by_id(id)
 	if offer.is_empty():
@@ -1043,12 +980,181 @@ func _accept_offer(id: int) -> void:
 
 # ------------------------------------------------------------------ Teklif
 
-func _pending_mails() -> int:
-	var count := 0
+# ------------------------------------------------------------------ İlanlar
+
+func _job_no(offer: Dictionary) -> int:
+	return 261000 + int(offer["id"])
+
+func _kind_list_text(offer: Dictionary) -> String:
+	var kinds: Array = []
+	for req in offer["reqs"]:
+		if not kinds.has(req["kind"]):
+			kinds.append(req["kind"])
+	if kinds.size() == 1:
+		return kinds[0]
+	return ", ".join(kinds.slice(0, kinds.size() - 1)) + " ve " + kinds[kinds.size() - 1]
+
+func _offer_photo(offer: Dictionary, height := 170) -> TextureRect:
+	var photo := Art.pick_image("res://art/jobs", int(offer["id"]))
+	if photo == null:
+		return null
+	var picture := TextureRect.new()
+	picture.texture = photo
+	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	picture.custom_minimum_size = Vector2(0, height)
+	picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return picture
+
+func _icon_rect(icon_name: String, side: int) -> TextureRect:
+	var texture: Texture2D = Art.find("res://art/ui/" + icon_name)
+	if texture == null:
+		return null
+	var icon := TextureRect.new()
+	icon.texture = texture
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.custom_minimum_size = Vector2(side, side)
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return icon
+
+func _page_ilanlar() -> void:
+	if game.factory_id == "":
+		_locked("İlanlar fabrikan olunca açılır: iş, tezgah ve ekipman ilanları.")
+		return
+	var waiting := 0
 	for mail in game.mails:
 		if mail["status"] == "counter":
-			count += 1
-	return count
+			waiting += 1
+	var sub: String = subtab["ilanlar"]
+	if sub == "tezgah" or sub == "ekipman":
+		_build_area_bar()
+	var pick_sub := func(id: String) -> void:
+		subtab["ilanlar"] = id
+		selected_listing = -1
+		_render()
+	_chips(content, [
+		{"id": "isler", "title": "İş İlanları (%d)" % game.offers.size()},
+		{"id": "tezgah", "title": "Tezgah"},
+		{"id": "ekipman", "title": "Ekipman"},
+		{"id": "bekleyen", "title": "Teklif Bekleyen İşler (%d)" % waiting}], sub, pick_sub, {"bekleyen": GOLD})
+	match sub:
+		"tezgah": _machines_board()
+		"ekipman": _page_equipment()
+		"bekleyen": _waiting_board()
+		_: _jobs_board()
+
+func _jobs_board() -> void:
+	if game.phase != "offers":
+		content.add_child(_label("Rapor açık: teklif ay başında (rapordan önce) verilir.", 12, GOLD))
+	var kind_options: Array = [{"id": "Tümü", "title": "Tümü"}]
+	for kind in Data.TYPES:
+		kind_options.append({"id": kind, "title": kind})
+	kind_options.append({"id": "elimde", "title": "Elimdeki tezgaha göre"})
+	var pick_filter := func(id: String) -> void:
+		job_filter = id
+		_render()
+	_chips(content, kind_options, job_filter, pick_filter, {"elimde": GREEN})
+	var shown := 0
+	for offer in game.offers:
+		if job_filter == "elimde":
+			if game.fit_block_reason(offer["id"]) != "":
+				continue
+		elif job_filter != "Tümü":
+			var uses := false
+			for req in offer["reqs"]:
+				if req["kind"] == job_filter:
+					uses = true
+			if not uses:
+				continue
+		shown += 1
+		_offer_card(offer, game.accept_block_reason(offer["id"]))
+	if shown == 0:
+		content.add_child(_label("Bu filtreye uyan ilan yok.", 14, MUTED))
+
+func _waiting_board() -> void:
+	var any := false
+	for mail in game.mails:
+		if mail["status"] != "counter":
+			continue
+		any = true
+		var box := _card(content, "%s · %s" % [mail["title"], mail["customer"]], GOLD)
+		box.add_child(_label("Müşteri yanıt verdi; teklifi güncelleyip güncellemeyeceğine karar vermen gerekiyor.", 12, MUTED))
+		_row(box, "Teklifin", Data.usd(float(mail["my_price"])), TEXT, 14)
+		_row(box, "Müşterinin istediği", Data.usd(float(mail["price"])) if mail["kind_counter"] == "price" else "%d ay teslim" % int(mail["months"]), GOLD, 14)
+		box.add_child(_button("Maile git", _open_mail.bind(mail["id"]), true))
+	if not any:
+		content.add_child(_label("Yanıtını bekleyen teklif yok.", 14, MUTED))
+
+func _offer_card(offer: Dictionary, reason: String) -> void:
+	var box := _card(content, "", GREEN if reason == "" else BORDER)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 12)
+	var photo := _offer_photo(offer, 96)
+	if photo != null:
+		photo.custom_minimum_size = Vector2(132, 96)
+		head.add_child(photo)
+	var info := VBoxContainer.new()
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	info.add_theme_constant_override("separation", 3)
+	info.add_child(_label("İş No: %d" % _job_no(offer), 11, MUTED))
+	info.add_child(_label(offer["title"], 17, TEXT))
+	info.add_child(_label(offer["customer"], 12, MUTED))
+	head.add_child(info)
+	box.add_child(head)
+	var tiles := HBoxContainer.new()
+	tiles.add_theme_constant_override("separation", 8)
+	var tol := 99.0
+	for req in offer["reqs"]:
+		tol = minf(tol, float(req.get("tolerance", 0.1)))
+	tiles.add_child(_feature_tile("tezgah_ilan_tolerans", "Hassasiyet", Data.tolerance_text(tol)))
+	tiles.add_child(_feature_tile("tezgah_ilan_teslimat", "Teslimat", "%d Ay" % int(offer["months"])))
+	tiles.add_child(_feature_tile("is_ilani_malzeme", "Malzeme", Data.STEEL_GRADE[int(offer["reqs"][0]["steel"])]))
+	box.add_child(tiles)
+	box.add_child(_label("Tezgah İhtiyacı: " + _kind_list_text(offer), 13, GOLD))
+	box.add_child(_button("Teklif ver" if reason == "" else reason, _open_detail.bind("quote", str(offer["id"])), reason == "", reason != ""))
+
+func _gold_italic(text: String, size := 13) -> Label:
+	var label := _label(text, size, GOLD)
+	var font := SystemFont.new()
+	font.font_italic = true
+	label.add_theme_font_override("font", font)
+	return label
+
+func _quote_row(parent: Control, left: String, right: String, color := GOLD, size := 14) -> void:
+	var row := HBoxContainer.new()
+	var name_label := _gold_italic(left, size)
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(name_label)
+	var value := _label(right, size, color, false)
+	value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	row.add_child(value)
+	parent.add_child(row)
+
+func _slider_row(parent: Control, caption: String, low: int, high: int, value: int, on_change: Callable) -> Label:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	var name_label := _label(caption, 15, TEXT, false)
+	name_label.custom_minimum_size = Vector2(86, 0)
+	row.add_child(name_label)
+	var slider := HSlider.new()
+	slider.min_value = low
+	slider.max_value = high
+	slider.step = 1
+	slider.value = value
+	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	slider.custom_minimum_size = Vector2(0, 44)
+	row.add_child(slider)
+	var shown := _label("", 15, GOLD, false)
+	shown.custom_minimum_size = Vector2(66, 0)
+	shown.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	row.add_child(shown)
+	slider.value_changed.connect(func(v: float) -> void: on_change.call(int(v), shown))
+	parent.add_child(row)
+	on_change.call(value, shown)
+	return shown
+
+# ------------------------------------------------------------------ Teklif
 
 func _open_quote(offer_id: int) -> void:
 	var offer: Dictionary = game.offer_by_id(offer_id)
@@ -1056,8 +1162,9 @@ func _open_quote(offer_id: int) -> void:
 		return
 	quote_margin = 0.30
 	quote_edit = {}
-	quote_adv = 30
+	quote_adv = 20
 	quote_months = int(offer["months"])
+	quote_details = false
 
 func _stepper(parent: Control, label_text: String, value_text: String, edit_index: int, key: String, step: float, changed := false) -> void:
 	var row := HBoxContainer.new()
@@ -1083,6 +1190,26 @@ func _edit_cost(index: int, key: String, delta: float) -> void:
 	quote_edit[index] = edit
 	_render()
 
+func _sum_lines(lines: Array, key: String) -> float:
+	var total := 0.0
+	for line in lines:
+		total += float(line[key])
+	return total
+
+# Wait before the offer's machines exist, plus the months the owned capacity needs for the workload.
+func _delivery_check(offer: Dictionary, months_offered: int) -> String:
+	var wait: int = maxi(0, game.transit_wait(offer))
+	var needed := 0
+	for req in offer["reqs"]:
+		var capacity: float = game.effective_capacity(req["kind"])
+		if capacity <= 0.0:
+			return "Teslim alınmış %s tezgahı yok; bu süre için yetişmez." % req["kind"]
+		needed = maxi(needed, int(ceil(float(req["workload"]) / capacity)))
+	var finish := wait + needed
+	if finish > months_offered:
+		return "Mevcut kapasiteyle tahmini bitiş %d ay; %d ayda yetişmez. Teslim skorun düşer." % [finish, months_offered]
+	return ""
+
 func _detail_quote() -> void:
 	var offer: Dictionary = game.offer_by_id(int(detail_arg))
 	if offer.is_empty():
@@ -1090,71 +1217,142 @@ func _detail_quote() -> void:
 		return
 	if quote_months == 0:
 		_open_quote(int(detail_arg))
-	var head := _card(content, offer["title"], GOLD, true)
-	head.add_child(_label(offer["customer"], 13, MUTED))
-	head.add_child(_label(Data.urgency_hint(offer), 12, GOLD))
-	_job_requirement_rows(head, offer)
-	head.add_child(_label("%s = Parça İşleme Katsayısı (yüksek = zor parça). İş yükü = parça × %s." % [Data.DIFFICULTY_SYMBOL, Data.DIFFICULTY_SYMBOL], 11, MUTED))
-	_row(head, "Müşterinin istediği teslim", "%d ay" % offer["months"], TEXT, 14)
+	var wanted: int = int(offer["months"])
 	var estimate: Dictionary = game.cost_estimate(offer, quote_edit)
-	quote_price = ceilf(float(estimate["total"]) * (1.0 + quote_margin) * 100.0) / 100.0
-	var box := _card(content, "Teklifin", GREEN, true)
-	_row(box, "Fiyat", Data.usd(quote_price), GREEN, 20)
-	_row(box, "Toplam maliyet (ayrıntı aşağıda)", Data.usd(float(estimate["total"])), MUTED, 13)
-	_row(box, "Kâr marjı (toplam maliyete göre)", "%%%d" % int(roundf(quote_margin * 100.0)), TEXT if quote_margin >= 0.0 else RED, 15)
-	var steps := HBoxContainer.new()
-	steps.add_theme_constant_override("separation", 6)
-	for delta in [-0.05, -0.01, 0.01, 0.05]:
-		var button := _button("%s%%%d" % ["+" if delta > 0 else "−", int(absf(delta) * 100.0)], _bump_price.bind(delta))
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		steps.add_child(button)
-	box.add_child(steps)
-	box.add_child(_label("Peşinat", 13, MUTED))
-	var adv_options: Array = []
-	for pct in [20, 30, 40, 50]:
-		adv_options.append({"id": str(pct), "title": "%%%d" % pct})
-	_chips(box, adv_options, str(quote_adv), func(id: String) -> void:
-		quote_adv = int(id)
-		_render())
-	box.add_child(_label("Teslim süresi", 13, MUTED))
-	var time_options: Array = []
-	for m in [int(offer["months"]) - 1, int(offer["months"]), int(offer["months"]) + 1]:
-		if m >= 1:
-			time_options.append({"id": str(m), "title": "%d ay" % m})
-	_chips(box, time_options, str(quote_months), func(id: String) -> void:
-		quote_months = int(id)
-		_render())
-	box.add_child(_label("Daha hızlı teslim fiyat toleransını biraz artırır, daha yavaş düşürür; yüksek peşinat düşürür. Teslimat skorun (%%%d) de etkiler." % int(roundf(float(game.delivery_score) * 100.0)), 12, MUTED))
-	var reason: String = game.quote_block_reason(int(detail_arg), quote_price)
-	box.add_child(_button("Teklifi gönder" if reason == "" else reason, _send_quote.bind(int(detail_arg)), reason == "", reason != "", true))
+	var lines: Array = estimate["lines"]
+	var total: float = float(estimate["total"])
+	var box := _card(content, "", GOLD, true)
+	var title_row := HBoxContainer.new()
+	var no_label := _label("İş No: %d" % _job_no(offer), 18, TEXT, false)
+	no_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	no_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	title_row.add_child(no_label)
+	box.add_child(title_row)
+	var photo := _offer_photo(offer, 190)
+	if photo != null:
+		box.add_child(photo)
+	var who := HBoxContainer.new()
+	who.add_theme_constant_override("separation", 10)
+	var avatar := _icon_rect("is_ilani_yetkili_kisi", 40)
+	if avatar != null:
+		who.add_child(avatar)
+	who.add_child(_label(offer["customer"], 15, TEXT, false))
+	box.add_child(who)
+	box.add_child(_label(offer["title"], 24, TEXT))
+	var parts := 0
+	var load_total := 0.0
+	var difficulty := 0.0
+	for req in offer["reqs"]:
+		parts = maxi(parts, int(req["parts"]))
+		load_total += float(req["workload"])
+		difficulty = maxf(difficulty, float(req["difficulty"]))
+	_row(box, "Parça Sayısı", "%s Ad" % _xfmt(float(parts)), TEXT, 15)
+	_row(box, "Parça İş Gücü", Data.mu_text(difficulty), TEXT, 15)
+	_row(box, "Teslim Süresi", "%d Ay" % wanted, TEXT, 15)
+	var tiles := HBoxContainer.new()
+	tiles.add_theme_constant_override("separation", 8)
+	var tol := 99.0
+	for req in offer["reqs"]:
+		tol = minf(tol, float(req.get("tolerance", 0.1)))
+	tiles.add_child(_feature_tile("tezgah_ilan_tolerans", "Hassasiyet", Data.tolerance_text(tol)))
+	tiles.add_child(_feature_tile("tezgah_ilan_teslimat", "Teslimat", "%d Ay" % wanted))
+	tiles.add_child(_feature_tile("is_ilani_malzeme", "Malzeme", Data.STEEL_GRADE[int(offer["reqs"][0]["steel"])]))
+	box.add_child(tiles)
+	box.add_child(_label("Öngörülen Veriler", 16, GOLD))
+	box.add_child(_gold_italic("Tezgah İhtiyacı: " + _kind_list_text(offer), 13))
+	var kg := 0
+	for req in offer["reqs"]:
+		kg += int(roundf(float(req["tons"]) * 1000.0))
+	var grade: String = Data.STEEL_GRADE[int(offer["reqs"][0]["steel"])]
+	box.add_child(_gold_italic("Hammadde: %d parça için yaklaşık %s kg %s çelik (parça başına %s kg)." % [parts, _xfmt(float(kg)), grade, str(offer["reqs"][0]["weight"]).trim_suffix(".0").replace(".", ",")], 12))
+	_quote_row(box, "Gerekli Kapasite", "%s μ" % _xfmt(load_total))
+	_quote_row(box, "Enerji Gideri", Data.usd(_sum_lines(lines, "energy")))
+	_quote_row(box, "Hammadde Gideri", Data.usd(float(estimate["material"])))
+	_quote_row(box, "Hurda Gideri", Data.usd(_sum_lines(lines, "scrap")))
+	_quote_row(box, "Sarf Malzeme Gideri", Data.usd(_sum_lines(lines, "consumables")))
+	_quote_row(box, "Personel Gideri", Data.usd(_sum_lines(lines, "personnel")))
+	_quote_row(box, "Genel Gider + Amortisman", Data.usd(_sum_lines(lines, "overhead") + _sum_lines(lines, "amortization")))
+	_quote_row(box, "Toplam Maliyet", Data.usd(total), TEXT, 17)
+	var price_label := _label("", 20, GREEN, false)
+	price_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	var lower := HBoxContainer.new()
+	lower.add_theme_constant_override("separation", 10)
+	var sliders := VBoxContainer.new()
+	sliders.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sliders.add_theme_constant_override("separation", 4)
+	lower.add_child(sliders)
+	var gauge_box := VBoxContainer.new()
+	gauge_box.custom_minimum_size = Vector2(150, 0)
+	gauge_box.add_child(_label("İşi Alma İhtimali", 12, MUTED, false))
+	var gauge: Control = GaugeScript.new()
+	gauge_box.add_child(gauge)
+	var gauge_panel := PanelContainer.new()
+	gauge_panel.add_theme_stylebox_override("panel", _box(Color(0, 0, 0, 0), Color("#e8eef4"), 12, 1))
+	gauge_panel.add_child(_margin(gauge_box, 8, 6))
+	var warning := _label("", 12, RED)
+	var refresh := func() -> void:
+		quote_price = ceilf(total * (1.0 + quote_margin) * 100.0) / 100.0
+		price_label.text = "Teklif tutarı: " + Data.usd(quote_price)
+		gauge.set_value(float(game.accept_probability(offer, quote_price, quote_adv, quote_months)["accept"]))
+		var text: String = _delivery_check(offer, quote_months)
+		warning.text = text
+		warning.visible = text != ""
+	box.add_child(price_label)
+	_slider_row(sliders, "Peşinat", 0, 100, quote_adv, func(v: int, shown: Label) -> void:
+		quote_adv = v
+		shown.text = "%% %d" % v
+		if is_instance_valid(gauge): refresh.call())
+	_slider_row(sliders, "Teslimat", 1, wanted + 1, clampi(quote_months, 1, wanted + 1), func(v: int, shown: Label) -> void:
+		quote_months = v
+		shown.text = "%d Ay" % v
+		if is_instance_valid(gauge): refresh.call())
+	_slider_row(sliders, "Kar Marjı", 0, 100, int(roundf(quote_margin * 100.0)), func(v: int, shown: Label) -> void:
+		quote_margin = float(v) / 100.0
+		shown.text = "%%%d" % v
+		if is_instance_valid(gauge): refresh.call())
+	box.add_child(lower)
+	lower.add_child(gauge_panel)
+	box.add_child(warning)
+	refresh.call()
+	var reason: String = game.quote_block_reason(int(detail_arg), maxf(quote_price, 0.001))
+	var send := _button("TEKLİF VER" if reason == "" else reason, _ask_send_quote.bind(int(detail_arg)), reason == "", reason != "", true)
+	box.add_child(send)
 
-	content.add_child(_label("Maliyet ayrıntısı: hurda, genel gider ve personel varsayımlarını değiştirebilirsin; fiyat toplam maliyete göre güncellenir.", 12, MUTED))
+	var toggle := _button("Maliyet ayrıntısı %s" % ("▴" if quote_details else "▾"), func() -> void:
+		quote_details = not quote_details
+		_render())
+	content.add_child(toggle)
+	if not quote_details:
+		return
+	content.add_child(_label("Hurda, genel gider, amortisman, sarf ve personel varsayımlarını değiştirebilirsin; maliyet ve teklif tutarı buna göre güncellenir. Hammadde değiştirilemez.", 12, MUTED))
 	var material_card := _card(content, "Hammadde", BORDER)
 	_row(material_card, "Hammadde (%s)" % Data.supplier_by_id(game.default_supplier)["name"], Data.usd(float(estimate["material"])), TEXT, 14)
-	material_card.add_child(_label("Hammadde maliyeti değiştirilemez; tedarikçiyi İşler > Tedarikçiler'den seçersin.", 11, MUTED))
-	var lines: Array = estimate["lines"]
 	for i in lines.size():
 		var line: Dictionary = lines[i]
 		var edit: Dictionary = quote_edit.get(i, {})
 		var card := _card(content, "%s %s tezgahı · %d makine × %d ay" % [Data.LEVELS[int(line["level"])], line["kind"], int(line["count"]), int(offer["duration"])], BORDER)
 		_stepper(card, "Hurda giderleri", "%%%.0f · %s" % [float(line["scrap_rate_used"]) * 100.0, Data.usd(float(line["scrap"]))], i, "scrap_pt", 1.0, edit.has("scrap_pt") and float(edit["scrap_pt"]) != 0.0)
 		var span: Array = line["scrap_range"]
-		card.add_child(_label("Bu tür iş için olağan aralık %%%d–%%%d (ortalama %%%.1f); oran, parçaya dönüşen malzeme üzerinden hesaplanır (çapak ve talaş hammadde fiyatındadır); işi alınca gerçek oran bu aralıkta çıkar ve ay sonunda üretilen miktara göre kasadan düşer. Tahmini düşürmek fiyatı indirir, gerçek hurda aynı kalır." % [int(roundf(float(span[0]) * 100.0)), int(roundf(float(span[1]) * 100.0)), float(line["scrap_rate"]) * 100.0], 11, MUTED))
-		_stepper(card, "Genel giderler (kira, kredi, enerji)", Data.usd(float(line["overhead"])), i, "overhead_pct", 10.0, edit.has("overhead_pct") and float(edit["overhead_pct"]) != 0.0)
+		card.add_child(_label("Bu tür iş için olağan aralık %%%d–%%%d (ortalama %%%.1f). Tahmini düşürmek fiyatı indirir, gerçek hurda aynı kalır." % [int(roundf(float(span[0]) * 100.0)), int(roundf(float(span[1]) * 100.0)), float(line["scrap_rate"]) * 100.0], 11, MUTED))
+		_stepper(card, "Genel giderler (kira, kredi, enerji)", Data.usd(float(line["overhead"]) + float(line["energy"])), i, "overhead_pct", 10.0, edit.has("overhead_pct") and float(edit["overhead_pct"]) != 0.0)
 		_stepper(card, "Amortisman (bedel ÷ %d ay)" % Data.AMORT_MONTHS, Data.usd(float(line["amortization"])), i, "amortization_pct", 10.0, edit.has("amortization_pct") and float(edit["amortization_pct"]) != 0.0)
 		if int(line["serving_level"]) > int(line["level"]):
-			card.add_child(_label("Bu işi %s tezgâhın yapar: daha pahalı enerji, personel ve amortisman. Alt seviye tezgâh kullanmak daha ucuzdur." % Data.LEVELS[int(line["serving_level"])], 11, GOLD))
+			card.add_child(_label("Bu işi %s tezgâhın yapar: daha pahalı enerji, personel ve amortisman." % Data.LEVELS[int(line["serving_level"])], 11, GOLD))
 		_stepper(card, "Sarf malzeme (maliyetin %%%.1f'i)" % (Data.CONSUMABLE_SHARE * 100.0), Data.usd(float(line["consumables"])), i, "consumables_pct", 10.0, edit.has("consumables_pct") and float(edit["consumables_pct"]) != 0.0)
 		_stepper(card, "Personel giderleri", Data.usd(float(line["personnel"])), i, "personnel_pct", 10.0, edit.has("personnel_pct") and float(edit["personnel_pct"]) != 0.0)
 		_row(card, "Tezgah maliyeti", Data.usd(float(line["subtotal"])), GREEN, 15)
-	var totals := _card(content, "Toplam maliyet", BORDER)
-	_row(totals, "Hammadde + tezgah maliyetleri", Data.usd(float(estimate["total"])), GREEN, 17)
-	if float(estimate["total"]) < float(estimate["base_total"]) - 0.5:
-		totals.add_child(_label("Varsayımların gerçek tahminin %s altında; fark senin cebinden çıkar." % Data.usd(float(estimate["base_total"]) - float(estimate["total"])), 12, RED))
+	if total < float(estimate["base_total"]) - 0.5:
+		content.add_child(_label("Varsayımların gerçek tahminin %s altında; fark senin cebinden çıkar." % Data.usd(float(estimate["base_total"]) - total), 12, RED))
 
-func _bump_price(delta: float) -> void:
-	quote_margin = snappedf(quote_margin + delta, 0.01)
-	_render()
+func _ask_send_quote(offer_id: int) -> void:
+	var offer: Dictionary = game.offer_by_id(offer_id)
+	if offer.is_empty():
+		return
+	_confirm("Teklifi gönder", [
+		"%s · %s" % [offer["title"], offer["customer"]],
+		"Teklif tutarı: %s (maliyet %s, marj %%%d)" % [Data.usd(quote_price), Data.usd(float(game.cost_estimate(offer, quote_edit)["total"])), int(roundf(quote_margin * 100.0))],
+		"Peşinat %%%d · Teslimat %d ay" % [quote_adv, quote_months]], "Teklif ver", _send_quote.bind(offer_id),
+		"Müşteri yanıtı hemen Mail kutuna düşer. Anlaşırsan iş fabrikana eklenir.")
 
 func _send_quote(offer_id: int) -> void:
 	var result: Dictionary = game.submit_quote(offer_id, quote_price, quote_adv, quote_months)
@@ -1164,31 +1362,216 @@ func _send_quote(offer_id: int) -> void:
 		_render()
 		return
 	detail = ""
-	page = "isler"
-	subtab["isler"] = "mail" if result["status"] != "accepted" else "kabul"
-	_say({"accepted": "Teklif kabul edildi.", "counter": "Müşteri karşı teklif gönderdi; Mailler'e bak.", "rejected": "Teklif reddedildi; nedeni Mailler'de."}[result["status"]])
+	page = "mail"
+	mail_open = int(result["mail"]["id"])
+	mail_show_offer = false
+	_say({"accepted": "Teklif kabul edildi.", "counter": "Müşteri karşı teklif gönderdi.", "rejected": "Teklif reddedildi."}[result["status"]])
 	_render()
 
-func _page_mails() -> void:
+# ------------------------------------------------------------------ Mail
+
+func _open_mail(id: int) -> void:
+	mail_open = id
+	mail_show_offer = false
+	page = "mail"
+	detail = ""
+	_render()
+
+func _mail_status_text(mail: Dictionary) -> String:
+	return {"accepted": "Anlaşıldı", "counter": "Yanıt bekliyor", "rejected": "Reddedildi", "declined": "Vazgeçtiniz", "expired": "Süresi doldu", "revised": "Güncellendi", "info": "Bilgi"}.get(mail["status"], "")
+
+func _page_mail() -> void:
+	if mail_open >= 0:
+		var mail: Dictionary = game.mail_by_id(mail_open)
+		if mail.is_empty():
+			mail_open = -1
+		else:
+			_mail_detail(mail)
+			return
 	if game.mails.is_empty():
-		content.add_child(_label("Henüz yazışma yok. Bir ilana teklif verince müşteri burada yanıt verir.", 14, MUTED))
+		content.add_child(_label("Mail kutun boş. Bir ilana teklif verince müşteri burada yanıt verir; sistem bildirimleri de buraya düşer.", 14, MUTED))
 		return
 	for mail in game.mails:
-		var colors := {"accepted": GREEN, "counter": GOLD, "rejected": RED, "declined": MUTED, "expired": MUTED}
-		var box := _card(content, "%s · %s" % [mail["title"], mail["customer"]], colors.get(mail["status"], BORDER))
-		box.add_child(_label({"accepted": "Kabul", "counter": "Yanıt bekliyor", "rejected": "Reddedildi", "declined": "Siz reddettiniz", "expired": "Süresi doldu"}[mail["status"]] + " · Ay %d" % mail["month"], 12, colors.get(mail["status"], MUTED)))
+		_mail_row(mail)
+
+func _mail_row(mail: Dictionary) -> void:
+	var unread: bool = not bool(mail.get("read", true))
+	var colors := {"accepted": GREEN, "counter": GOLD, "rejected": RED}
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", _box(Color(PANEL.r, PANEL.g, PANEL.b, 0.94), colors.get(mail["status"], BORDER) if unread else BORDER, 14, 2 if unread else 1))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	panel.add_child(_margin(row, 12, 10))
+	var envelope := Control.new()
+	envelope.custom_minimum_size = Vector2(52, 52)
+	var icon := _icon_rect("btn_mail", 48)
+	if icon != null:
+		envelope.add_child(icon)
+	if unread:
+		var dot := ColorRect.new()
+		dot.color = Color("#e84b3c")
+		dot.custom_minimum_size = Vector2(14, 14)
+		dot.size = Vector2(14, 14)
+		dot.position = Vector2(0, 0)
+		envelope.add_child(dot)
+	row.add_child(envelope)
+	var info := VBoxContainer.new()
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	info.add_theme_constant_override("separation", 2)
+	info.add_child(_label(mail["title"], 16, TEXT if unread else MUTED))
+	info.add_child(_label("%s · %s" % [mail["customer"], _mail_status_text(mail)], 12, colors.get(mail["status"], MUTED)))
+	info.add_child(_label("Ay %d" % mail["month"], 11, MUTED))
+	row.add_child(info)
+	if not mail.get("offer", {}).is_empty():
+		var photo := _offer_photo(mail["offer"], 64)
+		if photo != null:
+			photo.custom_minimum_size = Vector2(88, 64)
+			row.add_child(photo)
+	panel.gui_input.connect(func(event: InputEvent) -> void:
+		if _is_tap(event):
+			_open_mail(mail["id"]))
+	content.add_child(panel)
+
+func _mail_detail(mail: Dictionary) -> void:
+	mail["read"] = true
+	var top := HBoxContainer.new()
+	var back := _button("‹ Mail kutusu", func() -> void:
+		mail_open = -1
+		_render())
+	back.custom_minimum_size = Vector2(150, 44)
+	top.add_child(back)
+	content.add_child(top)
+	var offer: Dictionary = mail.get("offer", {})
+	var box := _card(content, "", GOLD, true)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 12)
+	var envelope := _icon_rect("btn_mail", 56)
+	if envelope != null:
+		head.add_child(envelope)
+	var info := VBoxContainer.new()
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	info.add_child(_label(mail["title"], 20, TEXT))
+	var who := HBoxContainer.new()
+	who.add_theme_constant_override("separation", 8)
+	var avatar := _icon_rect("is_ilani_yetkili_kisi", 30)
+	if avatar != null:
+		who.add_child(avatar)
+	who.add_child(_label("%s%s" % [mail["customer"], (" · " + String(mail["contact"])) if String(mail.get("contact", "")) != "" else ""], 13, MUTED, false))
+	info.add_child(who)
+	head.add_child(info)
+	box.add_child(head)
+	if not offer.is_empty():
+		var photo := _offer_photo(offer, 170)
+		if photo != null:
+			box.add_child(photo)
+		box.add_child(_label("Konu: %d nolu işe verdiğiniz teklif hk." % _job_no(offer), 14, TEXT))
+	if mail.get("kind", "quote") == "quote":
+		box.add_child(_label("Bu işle ilgili %d. mesaj" % int(mail.get("mail_no", 1)), 11, MUTED))
+	var status: String = mail["status"]
+	if status == "counter" and mail.get("kind_counter", "") == "price":
+		var body := RichTextLabel.new()
+		body.bbcode_enabled = true
+		body.fit_content = true
+		body.scroll_active = false
+		body.add_theme_font_size_override("normal_font_size", _fs(15))
+		body.text = "Merhaba, Teklifinizi [color=#3ddc84]%s[/color] olarak güncelleyebilir misiniz?" % Data.usd(float(mail["price"]))
+		box.add_child(body)
+	else:
 		for line in mail["lines"]:
-			box.add_child(_label(str(line), 13, TEXT))
-		if mail["status"] == "counter":
-			var row := HBoxContainer.new()
-			row.add_theme_constant_override("separation", 10)
-			var yes := _button("Evet", _answer_counter.bind(mail["id"], true), true, game.phase != "offers")
-			var no := _button("Hayır", _answer_counter.bind(mail["id"], false), false, game.phase != "offers")
-			yes.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			no.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			row.add_child(yes)
-			row.add_child(no)
-			box.add_child(row)
+			box.add_child(_label(str(line), 14, TEXT))
+	if mail.get("kind", "quote") != "quote":
+		return
+	var wanted_price: float = float(mail.get("price", 0.0))
+	var prob_label := _label("", 14, GOLD, false)
+	_quote_row(box, "Teklif Tutarı", Data.usd(float(mail["my_price"])))
+	if status == "counter" and mail.get("kind_counter", "") == "price":
+		_quote_row(box, "Talep Edilen İndirim", "%%%d – %s" % [int(roundf(float(mail["request_pct"]) * 100.0)), Data.usd(float(mail["my_price"]) - wanted_price)])
+	elif status == "counter":
+		_quote_row(box, "Talep Edilen Teslimat", "%d Ay (sizin teklifiniz %d Ay)" % [int(mail["months"]), int(mail["my_months"])])
+	_quote_row(box, "Proje Maliyeti (Öngörü)", Data.usd(float(mail["cost_total"])))
+	var prob_row := HBoxContainer.new()
+	var prob_name := _gold_italic("İşi Alma İhtimali", 14)
+	prob_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	prob_row.add_child(prob_name)
+	prob_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	prob_row.add_child(prob_label)
+	box.add_child(prob_row)
+	var editable: bool = status == "counter" and game.phase == "offers"
+	var update_prob := func(price: float) -> void:
+		var months_now: int = int(mail["months"]) if mail.get("kind_counter", "") == "time" else int(mail["my_months"])
+		prob_label.text = "%%%d" % int(roundf(float(game.accept_probability(offer, price, int(mail["my_advance"]), months_now, true)["accept"]) * 100.0))
+	update_prob.call(wanted_price if status == "counter" and mail.get("kind_counter", "") == "price" else float(mail["my_price"]))
+	if editable:
+		var price_edit := LineEdit.new()
+		price_edit.text = str(int(roundf((wanted_price if mail.get("kind_counter", "") == "price" else float(mail["my_price"])) * Data.MONEY_UNIT_USD)))
+		price_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
+		price_edit.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_NUMBER
+		price_edit.custom_minimum_size = Vector2(0, 54)
+		price_edit.add_theme_font_size_override("font_size", _fs(20))
+		price_edit.text_changed.connect(func(text: String) -> void:
+			if text.is_valid_float():
+				update_prob.call(float(text) / float(Data.MONEY_UNIT_USD)))
+		box.add_child(_label("Yeni teklif tutarı ($)", 12, MUTED))
+		box.add_child(price_edit)
+		box.add_child(_button("TEKLİFİ GÜNCELLE", func() -> void:
+			var value: float = float(price_edit.text) / float(Data.MONEY_UNIT_USD) if price_edit.text.is_valid_float() else 0.0
+			_revise_mail(mail["id"], value), true, false, true))
+	elif status == "counter":
+		box.add_child(_label("Yanıt ay başında (rapordan önce) verilir.", 12, GOLD))
+	var buttons := HBoxContainer.new()
+	buttons.add_theme_constant_override("separation", 10)
+	var show := _button("TEKLİFİ GÖSTER" if not mail_show_offer else "TEKLİFİ GİZLE", func() -> void:
+		mail_show_offer = not mail_show_offer
+		_render())
+	show.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	buttons.add_child(show)
+	if status == "counter":
+		var no := _button("Vazgeç", func() -> void:
+			_answer_counter(mail["id"], false))
+		no.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		buttons.add_child(no)
+	var trash := Button.new()
+	trash.custom_minimum_size = Vector2(52, 44)
+	var trash_icon: Texture2D = Art.find("res://art/ui/btn_delete")
+	if trash_icon != null:
+		trash.icon = trash_icon
+		trash.expand_icon = true
+	else:
+		trash.text = "🗑"
+	trash.pressed.connect(func() -> void:
+		game.delete_mail(mail["id"])
+		mail_open = -1
+		_render())
+	_juice(trash)
+	buttons.add_child(trash)
+	box.add_child(buttons)
+	if mail_show_offer:
+		_mail_offer_snapshot(mail)
+
+func _mail_offer_snapshot(mail: Dictionary) -> void:
+	var offer: Dictionary = mail["offer"]
+	var card := _card(content, "Verdiğiniz teklif", BORDER)
+	_job_requirement_rows(card, offer)
+	_row(card, "Teklif tutarı", Data.usd(float(mail["my_price"])), GREEN, 15)
+	_row(card, "Peşinat", "%%%d" % int(mail["my_advance"]), TEXT, 14)
+	_row(card, "Teslimat", "%d ay (müşteri %d ay istedi)" % [int(mail["my_months"]), int(offer["months"])], TEXT, 14)
+	_row(card, "Proje maliyeti (öngörü)", Data.usd(float(mail["cost_total"])), TEXT, 14)
+	_row(card, "Kâr marjı", "%%%d" % int(roundf(float(mail["my_margin"]) * 100.0)), TEXT, 14)
+
+func _revise_mail(mail_id: int, price: float) -> void:
+	var mail: Dictionary = game.mail_by_id(mail_id)
+	var months_wanted := -1
+	if mail.get("kind_counter", "") == "time":
+		months_wanted = int(mail["months"])
+	var result: Dictionary = game.revise_quote(mail_id, price, months_wanted)
+	if not result["ok"]:
+		_say(result["reason"])
+		_render()
+		return
+	mail_open = int(result["mail"]["id"])
+	mail_show_offer = false
+	_say({"accepted": "Teklif kabul edildi.", "counter": "Müşteri yine karşı teklif gönderdi.", "rejected": "Teklif reddedildi."}[result["status"]])
+	_render()
 
 func _answer_counter(mail_id: int, yes: bool) -> void:
 	var result: String = game.answer_counter(mail_id, yes)
@@ -1256,19 +1639,7 @@ func _detail_order() -> void:
 
 # ------------------------------------------------------------------ Tezgah
 
-func _page_tezgah() -> void:
-	if game.factory_id == "":
-		_locked("Tezgah almak için önce bir yer kiralamalısın; makineler alan tüketir.")
-		return
-	_build_area_bar()
-	_chips(content, [{"id": "tezgah", "title": "Tezgahlar"}, {"id": "ekipman", "title": "Ekipman"}],
-		subtab["tezgah"], func(id: String) -> void:
-			subtab["tezgah"] = id
-			selected_listing = -1
-			_render())
-	if subtab["tezgah"] == "ekipman":
-		_page_equipment()
-		return
+func _machines_board() -> void:
 	var type_options: Array = [{"id": "Tümü", "title": "Tümü"}]
 	for kind in Data.TYPES:
 		type_options.append({"id": kind, "title": kind})
@@ -1540,6 +1911,12 @@ func _page_fabrika() -> void:
 	if game.factory_id != "" and subtab["fabrika"] == "vardiya":
 		_page_shifts()
 		return
+	if game.factory_id != "" and subtab["fabrika"] == "isler":
+		_page_jobs()
+		return
+	if game.factory_id != "" and subtab["fabrika"] == "tedarik":
+		_page_suppliers()
+		return
 	if game.factory_id != "":
 		var factory: Dictionary = game.factory()
 		var box := _card(content, "Kiraladığın yer", GREEN, true)
@@ -1562,6 +1939,23 @@ func _page_fabrika() -> void:
 		_row(box, "Tavan yüksekliği", "%.1f m" % factory["height"], TEXT, 16)
 		_row(box, "Aylık kira (Sözleşme: 12 Ay)", Data.usd(float(factory["rent"])), GREEN, 18)
 		box.add_child(_button("İncele", _open_detail.bind("factory", factory["id"]), true, false, true))
+
+func _page_jobs() -> void:
+	var box := _card(content, "Üretilebilir kapasite (şu anki vardiyalarla)")
+	var any := false
+	for kind in Data.TYPES:
+		var cap: float = game.effective_capacity(kind)
+		if cap > 0.0:
+			any = true
+			_row(box, kind, "%s/ay" % _xfmt(cap), TEXT, 14)
+	if not any:
+		box.add_child(_label("Teslim alınmış tezgah yok; gelecekte başlayan işleri şimdiden kabul edebilirsin.", 13, MUTED))
+	box.add_child(_label("Gerekli ekipman: %s · Teslim skoru %%%d" % ["tamam" if game.package_bought else "EKSİK", int(roundf(float(game.delivery_score) * 100.0))], 12, MUTED if game.package_bought else RED))
+	if game.jobs.is_empty():
+		content.add_child(_label("Henüz kabul edilmiş iş yok. İlanlar sekmesinden teklif ver.", 14, MUTED))
+	var finish: Dictionary = game.projection()
+	for job in game.jobs:
+		_job_card(job, int(finish.get(job["id"], 0)))
 
 # ------------------------------------------------------------------ Vardiya
 

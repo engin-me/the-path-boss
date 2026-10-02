@@ -267,19 +267,19 @@ const SUPPLIERS := [
 ]
 const CONTACTS := ["Mary Collins", "Tom Bennett", "Laura Finch", "Henry Walsh", "Nora Keane", "Paul Sterling"]
 
-# Hidden urgency (1-10) leaks through a small signal; the noise keeps it from being exact.
-static func urgency_hint(offer: Dictionary) -> String:
-	var contact: String = CONTACTS[int(offer["id"]) % CONTACTS.size()]
-	var noisy: int = clampi(int(offer["urgency"]) + (int(offer["id"]) % 3) - 1, 1, 10)
-	if noisy >= 9:
-		return "Senin aldığın not: %s (%s) bu hafta 4 kez aradı." % [contact, offer["customer"]]
-	if noisy >= 7:
-		return "Senin aldığın not: %s (%s) iki kez arayıp durumu sordu." % [contact, offer["customer"]]
-	if noisy >= 5:
-		return "Senin aldığın not: %s (%s) e-posta attı; ton sakin." % [contact, offer["customer"]]
-	if noisy >= 3:
-		return "Senin aldığın not: %s (%s) başka tedarikçilere de soruyor gibi." % [contact, offer["customer"]]
-	return "Senin aldığın not: %s (%s) yanıt vermesi iki hafta sürdü; acelesi yok." % [contact, offer["customer"]]
+# Hidden urgency (1-10) leaks through one small signal only: how many reminders the customer has sent about the job.
+static func urgency_noisy(offer: Dictionary) -> int:
+	return clampi(int(offer["urgency"]) + (int(offer["id"]) % 3) - 1, 1, 10)
+
+# Number of mails the customer has sent about this job when it answers a quote (1 = relaxed, 4 = pressing); every
+# revision round adds one.
+static func mail_count(offer: Dictionary, round: int) -> int:
+	return 1 + int(floor(float(urgency_noisy(offer) - 1) / 3.0)) + (round - 1)
+
+static func contact_of(offer: Dictionary) -> String:
+	return CONTACTS[int(offer["id"]) % CONTACTS.size()]
+
+const STEEL_GRADE := {1: "HR42", 2: "42CrMo4", 3: "42CrMo4"}
 
 const QUALITY_NAMES := ["", "Ekonomik", "Standart", "Premium"]
 const QUALITY_YIELD := {1: 0.96, 2: 1.0, 3: 1.015}

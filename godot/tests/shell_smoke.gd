@@ -24,7 +24,7 @@ func _run() -> void:
 	var Data = shell.Data
 	var Boss = shell.ShellBoss
 	var game = shell.game
-	for tab in ["ozet", "isler", "tezgah", "fabrika", "profil"]:
+	for tab in ["ozet", "ilanlar", "mail", "fabrika", "profil"]:
 		shell._on_tab(tab)
 		if shell.content.get_child_count() == 0:
 			return _fail("Empty page: " + tab)
@@ -358,12 +358,12 @@ func _run() -> void:
 	var cn3: Dictionary = q.submit_quote(o3["id"], q.customer_limit(o3, 30, int(o3["months"])) * 1.05, 30, int(o3["months"]))
 	if q.answer_counter(cn3["mail"]["id"], false) != "" or q.jobs.size() != jobs_before + 1 or q.mail_by_id(cn3["mail"]["id"])["status"] != "declined":
 		return _fail("Saying no must end the negotiation")
-	# reject: far above the limit; the note reveals the customer's cost and urgency
+	# reject: far above the limit; the note reveals the customer's cost
 	var o4: Dictionary = doable[3]
 	var rj: Dictionary = q.submit_quote(o4["id"], q.customer_limit(o4, 30, int(o4["months"])) * 1.6, 30, int(o4["months"]))
 	var note_text := "\n".join(rj["mail"]["lines"])
-	if rj["status"] != "rejected" or not note_text.contains("aciliyet") or not note_text.contains("tahmini maliyet"):
-		return _fail("A rejection must explain the customer's cost estimate and urgency")
+	if rj["status"] != "rejected" or not note_text.contains("tahmini maliyet"):
+		return _fail("A rejection must explain the customer's cost estimate")
 	# counters left unanswered expire at month end
 	var leftover: Dictionary = {}
 	for candidate in q.offers:
@@ -393,16 +393,26 @@ func _run() -> void:
 			break
 	if quote_offer.is_empty():
 		return _fail("Expected a doable offer for the quote screens")
-	shell._on_tab("isler")
-	shell.subtab["isler"] = "tum"
+	shell.subtab["ilanlar"] = "isler"
+	shell._on_tab("ilanlar")
 	shell._open_detail("quote", str(quote_offer["id"]))
-	if shell.content.get_child_count() < 4:
+	if shell.content.get_child_count() < 3:
 		return _fail("Quote screen did not render")
 	shell._send_quote(quote_offer["id"])
-	shell.subtab["isler"] = "mail"
-	shell._on_tab("isler")
-	if shell.game.mails.is_empty() or shell.content.get_child_count() < 3:
+	shell._on_tab("mail")
+	if shell.game.mails.is_empty() or shell.content.get_child_count() < 2:
 		return _fail("Sending a quote must create a mail and show it")
+	shell._open_mail(shell.game.mails[0]["id"])
+	if shell.content.get_child_count() < 2 or not shell.game.mails[0]["read"]:
+		return _fail("Opening a mail must render it and mark it read")
+	shell.subtab["ilanlar"] = "bekleyen"
+	shell._on_tab("ilanlar")
+	shell.subtab["ilanlar"] = "tezgah"
+	shell._on_tab("ilanlar")
+	shell.subtab["fabrika"] = "isler"
+	shell._on_tab("fabrika")
+	shell.subtab["fabrika"] = "tedarik"
+	shell._on_tab("fabrika")
 	# ---- top-down factory view: layout stays inside the building and machines do not overlap
 	shell._reset_state(8)
 	shell.game.cash = 1500.0
