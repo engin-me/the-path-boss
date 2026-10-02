@@ -40,7 +40,7 @@ var page := "ozet"
 var subtab := {"ozet": "genel", "ilanlar": "isler", "fabrika": "yerlesim"}
 const MONTH_DAYS := 30
 const FLOW_SECONDS_PER_MONTH := 24.0   # one month at 1x
-var flow_on := false          # experimental: the clock runs day by day (IDEA-019); off keeps the monthly buttons
+var flow_on := true           # the clock runs day by day (IDEA-019); Ayarlar can switch back to the monthly buttons
 var flow_speed := 0           # 0 paused, then 1 / 2 / 4
 var flow_resume := 0          # speed to resume after the month report
 var flow_day := 0.0
@@ -353,7 +353,7 @@ func _month_banner() -> void:
 func _load_flow_setting() -> void:
 	var config := ConfigFile.new()
 	if config.load("user://settings.cfg") == OK:
-		flow_on = bool(config.get_value("time", "flow", false))
+		flow_on = bool(config.get_value("time", "flow", true))
 
 func _set_flow_on(on: bool) -> void:
 	flow_on = on
@@ -811,8 +811,15 @@ func _page_ozet() -> void:
 		_: _ozet_general()
 
 func _phase_button() -> void:
+	if flow_on:
+		if game.phase == "offers":
+			if flow_speed == 0:
+				content.add_child(_label("Zaman duruyor: üstteki ▶ ile başlat. Dururken ilanlara bakabilir, teklif verebilir, tezgah alabilirsin.", 13, GOLD))
+		elif game.phase == "report":
+			content.add_child(_button("Raporu kapat ve devam et ▶", _close_month, true, false, true))
+		return
 	if game.phase == "offers":
-		content.add_child(_button("Ayı hemen bitir (zamanı atla) ▶" if flow_on else "Ayı çalıştır ▶", _open_report, true, false, true))
+		content.add_child(_button("Ayı çalıştır ▶", _open_report, true, false, true))
 	elif game.phase == "report":
 		content.add_child(_button("Ayı bitir ▶", _close_month, true, false, true))
 
@@ -923,7 +930,7 @@ func _ozet_report() -> void:
 	if game.phase != "report":
 		var box := _card(content, "Ay raporu")
 		if game.last_lines.is_empty():
-			box.add_child(_label("Rapor, ay başında \"Ayı çalıştır\" ile açılır.", 14, MUTED))
+			box.add_child(_label("Rapor, ay sonunda zaman dolunca kendiliğinden açılır." if flow_on else "Rapor, ay başında \"Ayı çalıştır\" ile açılır.", 14, MUTED))
 		else:
 			box.add_child(_label("Geçen ayın kapanışı:", 13, MUTED))
 			for line in game.last_lines:
@@ -2504,7 +2511,7 @@ func _detail_settings() -> void:
 	flow.button_pressed = flow_on
 	flow.toggled.connect(_set_flow_on)
 	time_card.add_child(flow)
-	time_card.add_child(_label("Açıkken zaman gün gün akar; ⏸ ▶ ⏩ ⏭ ile durdurur, hızlandırırsın. Karar penceresi (onay, teklif) saati durdurur; ay bitince rapor açılır. Üretim sonuçları hâlâ ay sonunda işlenir; çalışan tezgahın ilerleyişi tahminidir. IDEA-019 deneme sürümü.", 12, MUTED))
+	time_card.add_child(_label("Açıkken zaman gün gün akar; ⏸ ▶ ⏩ ⏭ ile durdurur, hızlandırırsın. Karar penceresi (onay, teklif) saati durdurur; ay bitince rapor açılır. Üretim sonuçları hâlâ ay sonunda işlenir; çalışan tezgahın ilerleyişi tahminidir. Kapatırsan eski \"Ayı çalıştır\" düğmeleri döner. IDEA-019 deneme sürümü.", 12, MUTED))
 
 func _detail_factory(factory: Dictionary) -> void:
 	var hero := _card(content, "", BORDER, true)
