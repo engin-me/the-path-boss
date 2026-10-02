@@ -39,6 +39,7 @@ var flash := ""
 var page := "ozet"
 var subtab := {"ozet": "genel", "ilanlar": "isler", "fabrika": "yerlesim"}
 var office_last := "ozet"
+var open_offer := -1
 var job_filters: Array = []
 var job_sort := "yeni"
 var mail_open := -1
@@ -1055,6 +1056,124 @@ func _icon_rect(icon_name: String, side: int) -> TextureRect:
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return icon
 
+# ------------------------------------------------------------------ narrow listing rows
+
+# Small bordered value tile for narrow rows: icon and value only.
+func _mini_tile(icon_name: String, value: String) -> Control:
+	var tile := PanelContainer.new()
+	tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tile.add_theme_stylebox_override("panel", _box(Color(0, 0, 0, 0), Color("#e8eef4"), 10, 1))
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 6)
+	tile.add_child(_margin(row, 6, 5))
+	var icon := _icon_rect(icon_name, 22)
+	if icon != null:
+		row.add_child(icon)
+	row.add_child(_label(value, 12, TEXT, false))
+	return tile
+
+# Photo (cropped around its centre), title block and the right-hand value of a narrow row.
+func _row_head(photo: Texture2D, title: String, sub: String, right_bbcode: String) -> HBoxContainer:
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 10)
+	if photo != null:
+		var picture := TextureRect.new()
+		picture.texture = photo
+		picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		picture.custom_minimum_size = Vector2(104, 80)
+		picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		head.add_child(picture)
+	var info := VBoxContainer.new()
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	info.add_theme_constant_override("separation", 2)
+	info.add_child(_label(title, 16, TEXT))
+	info.add_child(_label(sub, 11, MUTED))
+	head.add_child(info)
+	if right_bbcode != "":
+		var right := _rich(right_bbcode, 13)
+		right.fit_content = true
+		right.custom_minimum_size = Vector2(120, 0)
+		head.add_child(right)
+	return head
+
+func _tap_panel(box: VBoxContainer, on_tap: Callable) -> void:
+	_panel_of(box).gui_input.connect(func(event: InputEvent) -> void:
+		if _is_tap(event):
+			on_tap.call())
+
+# Keeps the scroll position when a row opens or closes.
+func _render_keep_scroll() -> void:
+	var keep: int = scroll_view.scroll_vertical
+	_render()
+	await get_tree().process_frame
+	scroll_view.scroll_vertical = keep
+
+# Popup of chips that wrap onto several lines (the filters no longer take space on the page).
+func _filter_popup(title: String, build: Callable) -> void:
+	_close_overlay()
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.66)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.add_child(center)
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(480, 0)
+	panel.add_theme_stylebox_override("panel", _box(PANEL, GREEN, 14, 2))
+	center.add_child(panel)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 10)
+	panel.add_child(_margin(box, 18, 16))
+	box.add_child(_label(title, 20, TEXT))
+	build.call(box)
+	box.add_child(_button("Tamam", func() -> void:
+		_close_overlay()
+		_render(), true))
+
+func _flow_chips(parent: Control, caption: String, options: Array, current, callback: Callable, accents := {}) -> void:
+	parent.add_child(_label(caption, 12, MUTED))
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 8)
+	flow.add_theme_constant_override("v_separation", 8)
+	for option in options:
+		var button := Button.new()
+		button.text = option["title"]
+		button.custom_minimum_size = Vector2(0, 38)
+		var active: bool = (current.has(option["id"]) if current is Array else option["id"] == current)
+		var accent: Color = accents.get(option["id"], GREEN)
+		for style_name in ["normal", "hover", "pressed"]:
+			var chip := _box(Color(accent.r, accent.g, accent.b, 0.22) if active else PANEL_ALT, accent if active else BORDER, 19, 1)
+			chip.content_margin_left = 14
+			chip.content_margin_right = 14
+			button.add_theme_stylebox_override(style_name, chip)
+		button.add_theme_color_override("font_color", accent if active else TEXT)
+		button.add_theme_font_size_override("font_size", _fs(14))
+		button.pressed.connect(callback.bind(option["id"]))
+		_juice(button)
+		flow.add_child(button)
+	parent.add_child(flow)
+
+# One slim line above a list: opens the filter popup, shows how many filters are on.
+func _filter_bar(active_count: int, summary: String, on_open: Callable, on_clear: Callable) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	var open := _button("Filtre%s" % (" (%d)" % active_count if active_count > 0 else ""), on_open, active_count > 0)
+	open.custom_minimum_size = Vector2(120, 42)
+	row.add_child(open)
+	var text := _label(summary, 12, MUTED, false)
+	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text.clip_text = true
+	row.add_child(text)
+	if active_count > 0:
+		var clear := _button("Temizle", on_clear)
+		clear.custom_minimum_size = Vector2(96, 42)
+		row.add_child(clear)
+	content.add_child(row)
+
 func _page_ilanlar() -> void:
 	if game.factory_id == "":
 		_locked("İlanlar fabrikan olunca açılır: iş, tezgah ve ekipman ilanları.")
@@ -1078,23 +1197,11 @@ func _page_ilanlar() -> void:
 func _jobs_board() -> void:
 	if game.phase != "offers":
 		content.add_child(_label("Rapor açık: teklif ay başında (rapordan önce) verilir.", 12, GOLD))
-	var kind_options: Array = [{"id": "Tümü", "title": "Tümü"}]
-	for kind in Data.TYPES:
-		kind_options.append({"id": kind, "title": kind})
-	kind_options.append({"id": "elimde", "title": "Elimdeki tezgaha göre"})
-	var pick_filter := func(id: String) -> void:
-		if id == "Tümü":
+	var sort_names := {"yeni": "ilan sırası", "hassas": "en hassas önce", "genis": "en geniş tolerans önce"}
+	_filter_bar(job_filters.size(), "%s · %s" % [", ".join(job_filters.map(func(f): return "Elimdeki tezgah" if f == "elimde" else f)) if not job_filters.is_empty() else "Tümü", sort_names[job_sort]],
+		_open_job_filters, func() -> void:
 			job_filters.clear()
-		elif job_filters.has(id):
-			job_filters.erase(id)
-		else:
-			job_filters.append(id)
-		_render()
-	_chips(content, kind_options, job_filters if not job_filters.is_empty() else "Tümü", pick_filter, {"elimde": GREEN})
-	var pick_sort := func(id: String) -> void:
-		job_sort = id
-		_render()
-	_chips(content, [{"id": "yeni", "title": "Sıra: ilan"}, {"id": "hassas", "title": "En hassas"}, {"id": "genis", "title": "En geniş tolerans"}], job_sort, pick_sort)
+			_render())
 	var shown: Array = []
 	for offer in game.offers:
 		var ok := true
@@ -1121,6 +1228,22 @@ func _jobs_board() -> void:
 	if shown.is_empty():
 		content.add_child(_label("Bu filtreye uyan ilan yok.", 14, MUTED))
 
+func _open_job_filters() -> void:
+	_filter_popup("Filtre ve sıralama", func(box: VBoxContainer) -> void:
+		var kind_options: Array = []
+		for kind in Data.TYPES:
+			kind_options.append({"id": kind, "title": kind})
+		kind_options.append({"id": "elimde", "title": "Elimdeki tezgaha göre"})
+		_flow_chips(box, "Tezgah (birden fazla seçilirse hepsini içeren işler gelir)", kind_options, job_filters, func(id: String) -> void:
+			if job_filters.has(id):
+				job_filters.erase(id)
+			else:
+				job_filters.append(id)
+			_open_job_filters(), {"elimde": GREEN})
+		_flow_chips(box, "Sıralama", [{"id": "yeni", "title": "İlan sırası"}, {"id": "hassas", "title": "En hassas"}, {"id": "genis", "title": "En geniş tolerans"}], job_sort, func(id: String) -> void:
+			job_sort = id
+			_open_job_filters()))
+
 func _offer_tolerance(offer: Dictionary) -> float:
 	var tol := 99.0
 	for req in offer["reqs"]:
@@ -1128,32 +1251,30 @@ func _offer_tolerance(offer: Dictionary) -> float:
 	return tol
 
 func _offer_card(offer: Dictionary, reason: String) -> void:
-	var box := _card(content, "", GREEN if reason == "" else BORDER)
-	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 12)
-	var photo := _offer_photo(offer, 96)
-	if photo != null:
-		photo.custom_minimum_size = Vector2(132, 96)
-		head.add_child(photo)
-	var info := VBoxContainer.new()
-	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	info.add_theme_constant_override("separation", 3)
-	info.add_child(_label("İş No: %d" % _job_no(offer), 11, MUTED))
-	info.add_child(_label(offer["title"], 17, TEXT))
-	info.add_child(_label(offer["customer"], 12, MUTED))
-	head.add_child(info)
-	box.add_child(head)
-	var tiles := HBoxContainer.new()
-	tiles.add_theme_constant_override("separation", 8)
-	var tol := 99.0
+	var open: bool = open_offer == int(offer["id"])
+	var doable: bool = game.fit_block_reason(offer["id"]) == ""
+	var box := _card(content, "", GREEN if doable else BORDER)
+	var parts := 0
+	var difficulty := 0.0
 	for req in offer["reqs"]:
-		tol = minf(tol, float(req.get("tolerance", 0.1)))
-	tiles.add_child(_feature_tile("tezgah_ilan_tolerans", "Hassasiyet", Data.tolerance_text(tol)))
-	tiles.add_child(_feature_tile("tezgah_ilan_teslimat", "Teslimat", "%d Ay" % int(offer["months"])))
-	tiles.add_child(_feature_tile("is_ilani_malzeme", "Malzeme", Data.STEEL_GRADE[int(offer["reqs"][0]["steel"])]))
+		parts = maxi(parts, int(req["parts"]))
+		difficulty = maxf(difficulty, float(req["difficulty"]))
+	box.add_child(_row_head(Art.pick_image("res://art/jobs", int(offer["id"])), offer["title"], "İş No: %d · %s" % [_job_no(offer), offer["customer"]],
+		"[right][color=#3ddc84]%s Ad[/color] x %s[/right]" % [Data.usd(float(parts) / 1000.0).trim_prefix("$"), Data.mu_text(difficulty)]))
+	var tiles := HBoxContainer.new()
+	tiles.add_theme_constant_override("separation", 6)
+	tiles.add_child(_mini_tile("tezgah_ilan_tolerans", Data.tolerance_text(_offer_tolerance(offer))))
+	tiles.add_child(_mini_tile("tezgah_ilan_teslimat", "%d Ay" % int(offer["months"])))
+	tiles.add_child(_mini_tile("is_ilani_malzeme", Data.STEEL_GRADE[int(offer["reqs"][0]["steel"])]))
 	box.add_child(tiles)
-	box.add_child(_label("Tezgah İhtiyacı: " + _kind_list_text(offer), 13, GOLD))
-	box.add_child(_button("Teklif ver" if reason == "" else reason, _open_detail.bind("quote", str(offer["id"])), reason == "", reason != ""))
+	box.add_child(_label("Tezgah ihtiyacı: " + _kind_list_text(offer) + ("" if doable else "  ·  " + game.fit_block_reason(offer["id"])), 11, GOLD if doable else RED))
+	if open:
+		_job_requirement_rows(box, offer)
+		_row(box, "Teslim süresi", "%d ay" % offer["months"], TEXT, 13)
+		box.add_child(_button("Teklif ver" if reason == "" else reason, _open_detail.bind("quote", str(offer["id"])), reason == "", reason != ""))
+	_tap_panel(box, func() -> void:
+		open_offer = -1 if open else int(offer["id"])
+		_render_keep_scroll())
 
 func _gold_italic(text: String, size := 13) -> Label:
 	var label := _label(text, size, GOLD)
@@ -1686,23 +1807,12 @@ func _detail_order() -> void:
 # ------------------------------------------------------------------ Tezgah
 
 func _machines_board() -> void:
-	var type_options: Array = [{"id": "Tümü", "title": "Tümü"}]
-	for kind in Data.TYPES:
-		type_options.append({"id": kind, "title": kind})
-	_chips(content, type_options, type_filter, func(id: String) -> void:
-		type_filter = id
-		selected_listing = -1
-		_render())
-	var level_options: Array = [{"id": "0", "title": "Tüm seviyeler"}]
-	for level in [1, 2, 3]:
-		level_options.append({"id": str(level), "title": Data.LEVELS[level]})
-	_chips(content, level_options, str(level_filter), func(id: String) -> void:
-		level_filter = int(id)
-		selected_listing = -1
-		_render())
-	_chips(content, [{"id": "price_up", "title": "Fiyat ↑"}, {"id": "price_down", "title": "Fiyat ↓"}, {"id": "cond_up", "title": "Kondisyon ↑"}, {"id": "cond_down", "title": "Kondisyon ↓"}],
-		sort_mode, func(id: String) -> void:
-			sort_mode = id
+	var active := (1 if type_filter != "Tümü" else 0) + (1 if level_filter != 0 else 0)
+	var sort_names := {"price_up": "fiyat ↑", "price_down": "fiyat ↓", "cond_up": "kondisyon ↑", "cond_down": "kondisyon ↓"}
+	_filter_bar(active, "%s · %s · %s" % [type_filter, "Tüm seviyeler" if level_filter == 0 else Data.LEVELS[level_filter], sort_names[sort_mode]],
+		_open_machine_filters, func() -> void:
+			type_filter = "Tümü"
+			level_filter = 0
 			selected_listing = -1
 			_render())
 	var shown: Array = []
@@ -1722,8 +1832,32 @@ func _machines_board() -> void:
 				return float(a["condition"]) > float(b["condition"])
 		return float(a["price"]) < float(b["price"]))
 	for listing in shown:
-		_machine_card(listing)
+		if listing["uid"] == selected_listing:
+			_machine_card(listing)
+		else:
+			_machine_row(listing)
 	_update_area_preview()
+
+func _open_machine_filters() -> void:
+	_filter_popup("Filtre ve sıralama", func(box: VBoxContainer) -> void:
+		var type_options: Array = [{"id": "Tümü", "title": "Tümü"}]
+		for kind in Data.TYPES:
+			type_options.append({"id": kind, "title": kind})
+		_flow_chips(box, "Tezgah türü", type_options, type_filter, func(id: String) -> void:
+			type_filter = id
+			selected_listing = -1
+			_open_machine_filters())
+		var level_options: Array = [{"id": "0", "title": "Tüm seviyeler"}]
+		for level in [1, 2, 3]:
+			level_options.append({"id": str(level), "title": Data.LEVELS[level]})
+		_flow_chips(box, "Seviye", level_options, str(level_filter), func(id: String) -> void:
+			level_filter = int(id)
+			selected_listing = -1
+			_open_machine_filters())
+		_flow_chips(box, "Sıralama", [{"id": "price_up", "title": "Fiyat ↑"}, {"id": "price_down", "title": "Fiyat ↓"}, {"id": "cond_up", "title": "Kondisyon ↑"}, {"id": "cond_down", "title": "Kondisyon ↓"}], sort_mode, func(id: String) -> void:
+			sort_mode = id
+			selected_listing = -1
+			_open_machine_filters()))
 
 func _build_area_bar() -> void:
 	var factory: Dictionary = game.factory()
@@ -1793,6 +1927,23 @@ func _feature_tile(icon_name: String, title: String, value: String) -> Control:
 	column.add_child(number)
 	return tile
 
+func _machine_row(listing: Dictionary) -> void:
+	var box := _card(content, "", BORDER)
+	var price_text := "[right][color=#3ddc84][b]%s[/b][/color][/right]" % Data.usd(float(listing["price"]))
+	if float(listing["discount"]) > 0.0:
+		price_text = "[right][color=#eac47a]-%%%d[/color]  [color=#3ddc84][b]%s[/b][/color][/right]" % [int(roundf(float(listing["discount"]) * 100.0)), Data.usd(float(listing["price"]))]
+	box.add_child(_row_head(Art.find("res://art/machines/%s_%d" % [Art.slug(listing["kind"]), listing["level"]]), "%s %s" % [Data.LEVELS[int(listing["level"])], listing["kind"]], listing["model"], price_text))
+	var tiles := HBoxContainer.new()
+	tiles.add_theme_constant_override("separation", 6)
+	tiles.add_child(_mini_tile("tezgah_ilan_tolerans", Data.tolerance_text(float(listing["precision"]))))
+	tiles.add_child(_mini_tile("tezgah_ilan_motor_gucu", ("%.1f kW" % float(listing["power"])).replace(".", ",")))
+	tiles.add_child(_mini_tile("tezgah_ilan_kondisyon", "%% %d" % int(listing["condition"])))
+	tiles.add_child(_mini_tile("tezgah_ilan_teslimat", "%d Ay" % int(listing["delivery"])))
+	box.add_child(tiles)
+	_tap_panel(box, func() -> void:
+		selected_listing = int(listing["uid"])
+		_render_keep_scroll())
+
 func _machine_card(listing: Dictionary) -> void:
 	var selected: bool = listing["uid"] == selected_listing
 	var box := _card(content, "", GOLD if selected else BORDER, true)
@@ -1860,11 +2011,8 @@ func _is_tap(event: InputEvent) -> bool:
 
 func _on_card_input(event: InputEvent, uid: int) -> void:
 	if _is_tap(event):
-		selected_listing = uid
-		for id in listing_cards:
-			var panel: PanelContainer = listing_cards[id]
-			panel.add_theme_stylebox_override("panel", _box(Color(PANEL.r, PANEL.g, PANEL.b, 0.94), GOLD if id == uid else BORDER, 14, 2))
-		_update_area_preview()
+		selected_listing = -1
+		_render_keep_scroll()
 
 func _ask_buy(uid: int) -> void:
 	var listing: Dictionary = game.listing_by_uid(uid)
@@ -1975,13 +2123,10 @@ func _page_fabrika() -> void:
 		return
 	content.add_child(_label("Kiralık yerler", 22, TEXT))
 	for factory in Data.FACTORIES:
-		var box := _card(content, factory["name"], BORDER, true)
-		box.add_child(_image_slot("factories", factory["id"], factory["tint"]))
-		_row(box, "Bölge", factory["region"], TEXT, 16)
-		_row(box, "Alan", "%d m²" % factory["m2"], TEXT, 16)
-		_row(box, "Tavan yüksekliği", "%.1f m" % factory["height"], TEXT, 16)
-		_row(box, "Aylık kira (Sözleşme: 12 Ay)", Data.usd(float(factory["rent"])), GREEN, 18)
-		box.add_child(_button("İncele", _open_detail.bind("factory", factory["id"]), true, false, true))
+		var box := _card(content, "", BORDER)
+		box.add_child(_row_head(Art.find("res://art/factories/" + String(factory["id"])), factory["name"], factory["region"], "[right]12 Ay x [color=#3ddc84]%s[/color][/right]" % Data.usd(float(factory["rent"]))))
+		box.add_child(_label("%d m² · %d tezgah · tavan %.1f m" % [factory["m2"], Data.slot_count(factory["id"]), factory["height"]], 12, TEXT))
+		_tap_panel(box, _open_detail.bind("factory", factory["id"]))
 
 func _page_jobs() -> void:
 	var box := _card(content, "Üretilebilir kapasite (şu anki vardiyalarla)")
