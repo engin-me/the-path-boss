@@ -1414,7 +1414,7 @@ func _machine_card(listing: Dictionary) -> void:
 	# forecast for one shift
 	box.add_child(_label("Öngörülen Veriler (1 Vardiya)", 15, GOLD, false))
 	var steps: float = Data.condition_steps(float(listing["condition"]))
-	var energy: float = float(listing["energy"]) * (1.0 + steps * (float(Data.ENERGY_STEP_RANGE[0]) + float(Data.ENERGY_STEP_RANGE[1])) / 2.0)
+	var energy: float = float(listing["energy"]) * (1.0 + steps * float(Data.ENERGY_STEP_RANGE[0]))   # the listing shows the low end; operation rolls 5-10 percent a step
 	var maintenance: float = steps * float(Data.MAINT_STEP_PCT[int(listing["level"])]) * float(listing["price"])
 	for entry in [["Kapasite", "%s/ay" % _xfmt(float(listing["nameplate"]) / 3.0)], ["Enerji Gideri", "%s /ay" % Data.usd(energy)], ["Bakım Masrafı", "%s /ay" % Data.usd(maintenance)]]:
 		var line := HBoxContainer.new()

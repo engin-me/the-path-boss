@@ -212,8 +212,8 @@ const EQUIPMENT := {
 	"transpalet": {"name": "Transpalet", "price": 0.45, "area": 0.0, "required": true, "note": "Kasa ve palet taşıma"},
 	"kasa": {"name": "Malzeme kasası", "price": 0.025, "area": 0.3, "required": true, "note": "Hammadde ve yarı mamul"},
 	"raf": {"name": "Depo rafı", "price": 0.35, "area": 3.0, "required": true, "note": "Depolama alanı tüketir"},
-	"el_aleti": {"name": "El aletleri seti", "price": 0.8, "area": 1.0, "required": true, "note": "Bakım ve ayar"},
-	"takim": {"name": "Takım ve fikstür seti", "price": 0.6, "area": 1.0, "required": true, "note": "Tezgah bağlama takımları"},
+	"el_aleti": {"name": "El aletleri seti", "price": 0.5, "area": 1.0, "required": true, "note": "Bakım ve ayar"},
+	"takim": {"name": "Takım ve fikstür seti", "price": 0.3, "area": 1.0, "required": true, "note": "Tezgah bağlama takımları"},
 	"forklift": {"name": "Forklift", "price": 15.0, "area": 0.0, "required": false, "note": "Depo & Sevkiyat sorun ihtimalini azaltır; OEE'ye yansır (test)"},
 	"olcum": {"name": "Kalite ölçüm seti", "price": 8.0, "area": 1.5, "required": false, "note": "Kalite sorun ihtimalini azaltır (test)"},
 	"vinc": {"name": "Köprü vinç", "price": 40.0, "area": 0.0, "required": false, "min_height": 5.0, "note": "Ağır parçalar; en az 5,0 m tavan gerekir (test)"}
@@ -255,7 +255,7 @@ const TITLES := {
 static var price_per_x := 0.0135  # units (k$) per μ for a Torna; other kinds scale with machine price and nameplate (used for the capacity-value estimate)
 static var revenue_scale := 1.0  # calibration input for simulations (not a rule)
 static var rent_scale := 1.0  # kept at 1.0; rents in FACTORIES are already the calibrated values
-static var start_cash := 24.0   # five years of saving $400 a month as an operator
+static var start_cash := 30.0   # five years of saving $400 a month as an operator, plus a little family help
 # Suppliers (foreign names). price = factor on the job's material estimate; lead = months until
 # the material arrives; terms = months after ordering until payment is due; delay = chance of +1 month;
 # quality 1..3 changes the job's yield (scrap): 1 Ekonomik, 2 Standart, 3 Premium.
