@@ -1383,8 +1383,10 @@ func job_workload(job: Dictionary) -> float:
 	return total
 
 # Projected finish month for each job at today's capacity (0 = not within a year).
-func projection() -> Dictionary:
+func projection(extra := {}) -> Dictionary:
 	var copy: Array = jobs.duplicate(true)
+	if not extra.is_empty():
+		copy.append(extra)
 	var mults := problem_mults(loss_fractions())
 	var finish := {}
 	for t in range(month, month + 13):
@@ -1405,6 +1407,21 @@ func projection() -> Dictionary:
 		if not finish.has(job["id"]):
 			finish[job["id"]] = 0
 	return finish
+
+# When a quoted offer would finish if accepted now: queue behind the accepted jobs, material from the default
+# supplier (optionally one month late), the offer's own start delay, and the machines that exist or are in transit.
+func quote_projection(offer: Dictionary, months_offered: int, delayed := false) -> Dictionary:
+	var job: Dictionary = offer.duplicate(true)
+	var quote := material_quote(offer, default_supplier)
+	job["months"] = months_offered
+	job["start_month"] = month + int(offer["start_delay"])
+	job["due_month"] = month + months_offered - 1
+	job["produced"] = 0.0
+	job["yield"] = float(quote["yield"])
+	job["order"] = {"supplier": default_supplier, "order_month": month, "arrive_month": month + int(quote["lead"]) + (1 if delayed else 0),
+		"pay_month": month + int(quote["terms"]), "amount": float(quote["amount"]), "paid": false, "delayed": delayed}
+	var finish: int = int(projection(job).get(job["id"], 0))
+	return {"finish": finish, "due": int(job["due_month"]), "late": finish == 0 or finish > int(job["due_month"]), "delay_chance": float(quote["delay"])}
 
 # ---------------------------------------------------------------- report
 

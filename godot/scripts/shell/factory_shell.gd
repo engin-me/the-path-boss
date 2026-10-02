@@ -28,17 +28,17 @@ const RED := Color("#f08080")
 const FONT_SCALE := 1.12   # the whole UI text is 12 percent larger than the base sizes
 
 const TABS := [
-	{"id": "ozet", "icon": "🏠", "title": "Özet"},
-	{"id": "ilanlar", "icon": "📋", "title": "İlanlar"},
-	{"id": "mail", "icon": "✉", "title": "Mail"},
-	{"id": "fabrika", "icon": "🏭", "title": "Fabrika"},
-	{"id": "profil", "icon": "👤", "title": "Profil"}
+	{"id": "ofis", "icon": "🏢", "title": "Ofis", "file": "ozet"},
+	{"id": "ilanlar", "icon": "📋", "title": "İlanlar", "file": "ilanlar"},
+	{"id": "mail", "icon": "✉", "title": "Mail", "file": "mail"}
 ]
+const OFFICE_PAGES := ["ozet", "fabrika", "profil"]   # everything the Ofis tab holds
 
 var game = ShellBoss.new()
 var flash := ""
 var page := "ozet"
 var subtab := {"ozet": "genel", "ilanlar": "isler", "fabrika": "yerlesim"}
+var office_last := "ozet"
 var job_filters: Array = []
 var job_sort := "yeni"
 var mail_open := -1
@@ -238,7 +238,7 @@ func _build_tab_bar() -> Control:
 	bar.add_child(_margin(row, 8, 8))
 	for tab in TABS:
 		var button := Button.new()
-		var tab_icon := Art.find("res://art/ui/btn_" + String(tab["id"]))
+		var tab_icon := Art.find("res://art/ui/btn_" + String(tab["file"]))
 		if tab_icon != null:
 			button.text = tab["title"]
 			button.icon = tab_icon
@@ -257,6 +257,31 @@ func _build_tab_bar() -> Control:
 		row.add_child(button)
 		tab_buttons[tab["id"]] = button
 	return bar
+
+# Section picker at the top of every Ofis screen: summary, plant, jobs, suppliers and the boss profile in one place.
+func _office_menu() -> void:
+	var current := "ozet"
+	if page == "profil":
+		current = "profil"
+	elif page == "fabrika":
+		current = subtab["fabrika"] if ["isler", "tedarik"].has(subtab["fabrika"]) else "fabrika"
+	var options: Array = [{"id": "ozet", "title": "Özet"}, {"id": "fabrika", "title": "Fabrika"}]
+	if game.factory_id != "":
+		options.append({"id": "isler", "title": "İşler (%d)" % game.jobs.size()})
+		options.append({"id": "tedarik", "title": "Tedarik"})
+	options.append({"id": "profil", "title": "Patron"})
+	var pick := func(id: String) -> void:
+		match id:
+			"ozet", "profil":
+				_on_tab(id)
+			"fabrika":
+				if not ["yerlesim", "vardiya", "sozlesme"].has(subtab["fabrika"]):
+					subtab["fabrika"] = "yerlesim"
+				_on_tab("fabrika")
+			_:
+				subtab["fabrika"] = id
+				_on_tab("fabrika")
+	_chips(sticky, options, current, pick)
 
 # ------------------------------------------------------------------ helpers
 
@@ -472,6 +497,10 @@ func _close_overlay() -> void:
 # ------------------------------------------------------------------ navigation
 
 func _on_tab(id: String) -> void:
+	if id == "ofis":
+		id = office_last
+	if OFFICE_PAGES.has(id):
+		office_last = id
 	page = id
 	detail = ""
 	_render()
@@ -538,7 +567,7 @@ func _render_inner() -> void:
 		var unread: int = game.unread_mails()
 		tab_buttons["mail"].text = "Mail (%d)" % unread if unread > 0 else "Mail"
 	for id in tab_buttons:
-		var active: bool = id == page
+		var active: bool = id == page or (id == "ofis" and OFFICE_PAGES.has(page))
 		var button: Button = tab_buttons[id]
 		button.add_theme_stylebox_override("normal", _box(Color("#0a2418") if active else Color("#080d13"), GREEN if active else BORDER, 10, 2 if active else 1))
 		button.add_theme_stylebox_override("hover", _box(Color("#0a2418") if active else Color("#0d141c"), GREEN if active else BORDER, 10, 2 if active else 1))
@@ -560,8 +589,10 @@ func _render_inner() -> void:
 	var rented: bool = page == "fabrika" and detail == "" and game.factory_id != ""
 	var show_floor: bool = rented and subtab["fabrika"] == "yerlesim"
 	scroll_view.visible = not show_floor
-	if rented:
-		_chips(sticky, [{"id": "yerlesim", "title": "Yerleşim (üstten)"}, {"id": "isler", "title": "İşler (%d)" % game.jobs.size()}, {"id": "tedarik", "title": "Tedarik"}, {"id": "vardiya", "title": "Vardiya"}, {"id": "sozlesme", "title": "Sözleşme"}], subtab["fabrika"],
+	if OFFICE_PAGES.has(page) and detail == "":
+		_office_menu()
+	if rented and ["yerlesim", "vardiya", "sozlesme"].has(subtab["fabrika"]):
+		_chips(sticky, [{"id": "yerlesim", "title": "Yerleşim (üstten)"}, {"id": "vardiya", "title": "Vardiya"}, {"id": "sozlesme", "title": "Sözleşme"}], subtab["fabrika"],
 			func(id: String) -> void:
 				subtab["fabrika"] = id
 				_render())
@@ -1206,19 +1237,20 @@ func _sum_lines(lines: Array, key: String) -> float:
 		total += float(line[key])
 	return total
 
-# Wait before the offer's machines exist, plus the months the owned capacity needs for the workload.
-func _delivery_check(offer: Dictionary, months_offered: int) -> String:
-	var wait: int = maxi(0, game.transit_wait(offer))
-	var needed := 0
-	for req in offer["reqs"]:
-		var capacity: float = game.effective_capacity(req["kind"])
-		if capacity <= 0.0:
-			return "Teslim alınmış %s tezgahı yok; bu süre için yetişmez." % req["kind"]
-		needed = maxi(needed, int(ceil(float(req["workload"]) / capacity)))
-	var finish := wait + needed
-	if finish > months_offered:
-		return "Mevcut kapasiteyle tahmini bitiş %d ay; %d ayda yetişmez. Teslim skorun düşer." % [finish, months_offered]
-	return ""
+# Delivery forecast for the quote: the engine's own queue projection (accepted jobs first, material arrival,
+# the offer's start delay, machines in transit), plus the case where the supplier is a month late.
+func _delivery_check(offer: Dictionary, months_offered: int) -> Array:
+	var plan: Dictionary = game.quote_projection(offer, months_offered)
+	var finish: int = int(plan["finish"])
+	var due: int = int(plan["due"])
+	if finish == 0:
+		return ["Mevcut tezgahlarla 12 ay içinde bitmiyor (makine, ekipman ya da hammadde eksik olabilir).", RED]
+	if finish > due:
+		return ["Tahmini bitiş %s; teslim %s. %d ay geç kalırsın, teslim skoru düşer." % [Data.month_label(finish), Data.month_label(due), finish - due], RED]
+	var risk: Dictionary = game.quote_projection(offer, months_offered, true)
+	if float(plan["delay_chance"]) > 0.0 and int(risk["finish"]) > due:
+		return ["Tahmini bitiş %s (teslim %s). Tedarikçi geciktirirse (%%%d ihtimal) %s olur ve geç kalırsın." % [Data.month_label(finish), Data.month_label(due), int(roundf(float(plan["delay_chance"]) * 100.0)), Data.month_label(int(risk["finish"]))], GOLD]
+	return ["Tahmini bitiş %s · teslim %s: zamanında." % [Data.month_label(finish), Data.month_label(due)], GREEN]
 
 func _detail_quote() -> void:
 	var offer: Dictionary = game.offer_by_id(int(detail_arg))
@@ -1256,7 +1288,7 @@ func _detail_quote() -> void:
 		parts = maxi(parts, int(req["parts"]))
 		load_total += float(req["workload"])
 		difficulty = maxf(difficulty, float(req["difficulty"]))
-	_row(box, "Parça Sayısı", "%s Ad" % _xfmt(float(parts)), TEXT, 15)
+	_row(box, "Parça Sayısı", "%s Ad" % Data.usd(float(parts) / 1000.0).trim_prefix("$"), TEXT, 15)
 	_row(box, "Parça İş Gücü", Data.mu_text(difficulty), TEXT, 15)
 	_row(box, "Teslim Süresi", "%d Ay" % wanted, TEXT, 15)
 	var tiles := HBoxContainer.new()
@@ -1274,8 +1306,8 @@ func _detail_quote() -> void:
 	for req in offer["reqs"]:
 		kg += int(roundf(float(req["tons"]) * 1000.0))
 	var grade: String = Data.STEEL_GRADE[int(offer["reqs"][0]["steel"])]
-	box.add_child(_gold_italic("Hammadde: %d parça için yaklaşık %s kg %s çelik (parça başına %s kg)." % [parts, _xfmt(float(kg)), grade, str(offer["reqs"][0]["weight"]).trim_suffix(".0").replace(".", ",")], 12))
-	_quote_row(box, "Gerekli Kapasite", "%s μ" % _xfmt(load_total))
+	box.add_child(_gold_italic("Hammadde: %d parça için yaklaşık %s kg %s çelik (parça başına %s kg)." % [parts, Data.usd(float(kg) / 1000.0).trim_prefix("$"), grade, str(offer["reqs"][0]["weight"]).trim_suffix(".0").replace(".", ",")], 12))
+	_quote_row(box, "Gerekli Kapasite", _xfmt(load_total))
 	_quote_row(box, "Enerji Gideri", Data.usd(_sum_lines(lines, "energy")))
 	_quote_row(box, "Hammadde Gideri", Data.usd(float(estimate["material"])))
 	_quote_row(box, "Hurda Gideri", Data.usd(_sum_lines(lines, "scrap")))
@@ -1300,14 +1332,18 @@ func _detail_quote() -> void:
 	gauge_panel.add_theme_stylebox_override("panel", _box(Color(0, 0, 0, 0), Color("#e8eef4"), 12, 1))
 	gauge_panel.add_child(_margin(gauge_box, 8, 6))
 	var warning := _label("", 12, RED)
+	var cash_label := _label("", 12, MUTED)
 	var refresh := func() -> void:
 		quote_price = ceilf(total * (1.0 + quote_margin) * 100.0) / 100.0
 		price_label.text = "Teklif tutarı: " + Data.usd(quote_price)
+		var material_terms: Dictionary = game.material_quote(offer, game.default_supplier)
+		cash_label.text = "Tahmini kâr %s · kabulde peşinat girişi %s · hammadde %s %s" % [Data.usd(quote_price - total), Data.usd(quote_price * float(quote_adv) / 100.0), Data.usd(float(estimate["material"])), "peşin çıkar" if int(material_terms["terms"]) == 0 else "%d ay vadeli çıkar" % int(material_terms["terms"])]
 		gauge.set_value(float(game.accept_probability(offer, quote_price, quote_adv, quote_months)["accept"]))
-		var text: String = _delivery_check(offer, quote_months)
-		warning.text = text
-		warning.visible = text != ""
+		var forecast: Array = _delivery_check(offer, quote_months)
+		warning.text = forecast[0]
+		warning.add_theme_color_override("font_color", forecast[1])
 	box.add_child(price_label)
+	box.add_child(cash_label)
 	_slider_row(sliders, "Peşinat", 0, 100, quote_adv, func(v: int, shown: Label) -> void:
 		quote_adv = v
 		shown.text = "%% %d" % v
