@@ -1577,11 +1577,11 @@ func _delivery_check(offer: Dictionary, months_offered: int) -> Array:
 	if finish == 0:
 		return ["Mevcut tezgahlarla 12 ay içinde bitmiyor (makine, ekipman ya da hammadde eksik olabilir).", RED]
 	if finish > due:
-		return ["Tahmini bitiş %s, %d. gün; teslim %s. %d ay geç kalırsın, teslim skoru düşer." % [Data.month_label(finish), int(plan["finish_day"]), Data.month_label(due), finish - due], RED]
+		return ["Tahmini bitiş: %s. İstenen teslim: %s. %d ay geç kalırsın; teslim skorun düşer." % [Data.date_text(finish, int(plan["finish_day"])), Data.month_end_text(due), finish - due], RED]
 	var risk: Dictionary = game.quote_projection(offer, months_offered, true)
 	if float(plan["delay_chance"]) > 0.0 and int(risk["finish"]) > due:
-		return ["Tahmini bitiş %s, %d. gün (teslim %s). Tedarikçi geciktirirse (%%%d ihtimal) %s olur ve geç kalırsın." % [Data.month_label(finish), int(plan["finish_day"]), Data.month_label(due), int(roundf(float(plan["delay_chance"]) * 100.0)), Data.month_label(int(risk["finish"]))], GOLD]
-	return ["Tahmini bitiş %s, %d. gün · teslim %s: zamanında." % [Data.month_label(finish), int(plan["finish_day"]), Data.month_label(due)], GREEN]
+		return ["Tahmini bitiş: %s. İstenen teslim: %s. Tedarikçi hammaddeyi geciktirirse (%%%d ihtimal) iş %s tarihine kayar ve geç kalırsın." % [Data.date_text(finish, int(plan["finish_day"])), Data.month_end_text(due), int(roundf(float(plan["delay_chance"]) * 100.0)), Data.date_text(int(risk["finish"]), int(risk["finish_day"]))], GOLD]
+	return ["Tahmini bitiş: %s. İstenen teslim: %s. Zamanında yetişir." % [Data.date_text(finish, int(plan["finish_day"])), Data.month_end_text(due)], GREEN]
 
 func _detail_quote() -> void:
 	var offer: Dictionary = game.offer_by_id(int(detail_arg))
@@ -2190,10 +2190,10 @@ func _machine_card(listing: Dictionary) -> void:
 	tiles.add_child(_feature_tile("tezgah_ilan_teslimat", "Teslimat", "%d Ay" % int(listing["delivery"])))
 	box.add_child(tiles)
 	# forecast for one shift
-	box.add_child(_label("Öngörülen Veriler (1 Vardiya)", 15, GOLD, false))
+	box.add_child(_label("Öngörülen Veriler (3 Vardiya)", 15, GOLD, false))
 	var energy: float = _listing_energy(listing)   # the listing shows the low end; operation rolls 5-10 percent a step
 	var maintenance: float = _listing_maintenance(listing)
-	for entry in [["Kapasite", "%s/ay" % _xfmt(float(listing["nameplate"]) / 3.0)], ["Enerji Gideri", "%s /ay" % Data.usd(energy)], ["Bakım Masrafı", "%s /ay" % Data.usd(maintenance)]]:
+	for entry in [["Teorik Kapasite (3 vardiya)", "%s/ay" % _xfmt(float(listing["nameplate"]))], ["Enerji Gideri (3 vardiya)", "%s /ay" % Data.usd(energy * 3.0)], ["Bakım Masrafı", "%s /ay" % Data.usd(maintenance)]]:
 		var line := HBoxContainer.new()
 		var name_label := _label("○  " + String(entry[0]), 15, GOLD, false)
 		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -2233,7 +2233,8 @@ func _ask_buy(uid: int) -> void:
 		"Ödeme şimdi: %s" % Data.usd(float(listing["price"])),
 		"Teslim: %d ay sonra (%s). Teslime kadar kapasite artmaz." % [listing["delivery"], Data.month_label(arrive)],
 		"Teslimde %d personel otomatik işe başlar (kişi başı %s/ay)." % [listing["personnel"], Data.usd(Data.wage_for(listing["kind"]))],
-		"Aylık işletme (1 vardiya): %s enerji + %s bakım + %s sarf" % [Data.usd(_listing_energy(listing)), Data.usd(_listing_maintenance(listing)), Data.usd(float(listing["consumables"]))],
+		"Aylık işletme: %s enerji (3 vardiya) + %s bakım" % [Data.usd(_listing_energy(listing) * 3.0), Data.usd(_listing_maintenance(listing))],
+		"Teorik kapasite %s/ay (3 vardiya); tek vardiyada bunun yaklaşık üçte biri." % _xfmt(float(listing["nameplate"])),
 		"Alan: %d m²" % listing["area"]
 	], "Satın al", _buy.bind(uid))
 

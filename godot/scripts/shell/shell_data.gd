@@ -523,6 +523,18 @@ static func term_by_months(months: int) -> Dictionary:
 static func req_text(req: Dictionary) -> String:
 	return "%d× %s %s" % [req["count"], LEVELS[int(req["level"])], req["kind"]]
 
+# "8 Aralık 2026" for a game date (month number and day of the month).
+static func date_text(month: int, day: int) -> String:
+	var names := ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"]
+	var index := (8 + month - 1) % 12
+	return "%d %s %d" % [day, names[index], 2026 + (8 + month - 1) / 12]
+
+# "Kasım 2026 sonu" for the end of a game month.
+static func month_end_text(month: int) -> String:
+	var names := ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"]
+	var index := (8 + month - 1) % 12
+	return "%s %d sonu" % [names[index], 2026 + (8 + month - 1) / 12]
+
 static func month_label(month: int) -> String:
 	var names := ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"]
 	var index := (8 + month - 1) % 12  # the game opens in September 2026
