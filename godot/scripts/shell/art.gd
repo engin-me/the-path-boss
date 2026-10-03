@@ -2,7 +2,30 @@ extends RefCounted
 
 # Art lookup: tries png, jpg, jpeg, webp so art can be dropped in without renaming code.
 
+static var _svg_cache := {}
+
+# An SVG icon is rasterised straight from the file at 96 px (sharp at the 38 px it is shown at, no import step needed).
+static func _svg(path: String) -> Texture2D:
+	if _svg_cache.has(path):
+		return _svg_cache[path]
+	var texture: Texture2D = null
+	var bytes := FileAccess.get_file_as_bytes(path)
+	if not bytes.is_empty():
+		var probe := Image.new()
+		if probe.load_svg_from_buffer(bytes, 1.0) == OK and probe.get_width() > 0:
+			var scale := 96.0 / float(maxi(probe.get_width(), probe.get_height()))
+			var image := Image.new()
+			if image.load_svg_from_buffer(bytes, scale) == OK:
+				texture = ImageTexture.create_from_image(image)
+	_svg_cache[path] = texture
+	return texture
+
 static func find(base: String) -> Texture2D:
+	var svg_path := base + ".svg"
+	if FileAccess.file_exists(svg_path) or ResourceLoader.exists(svg_path):
+		var vector := _svg(svg_path)
+		if vector != null:
+			return vector
 	for ext in ["png", "jpg", "jpeg", "webp"]:
 		var path := "%s.%s" % [base, ext]
 		if ResourceLoader.exists(path):
