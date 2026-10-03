@@ -490,6 +490,7 @@ func _rich(bbcode: String, size := 16) -> RichTextLabel:
 	rich.scroll_active = false
 	rich.text = bbcode
 	rich.add_theme_font_size_override("normal_font_size", size)
+	rich.add_theme_font_size_override("bold_font_size", size)
 	rich.add_theme_color_override("default_color", TEXT)
 	rich.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return rich
@@ -1293,7 +1294,8 @@ func _row_head(photo: Texture2D, title: String, sub: String, right_bbcode: Strin
 	info.add_theme_constant_override("separation", 2)
 	info.add_child(_label(title, 16, TEXT))
 	if sub.contains("["):
-		var sub_rich := _rich(sub, 11)
+		var sub_rich := _rich(sub, _fs(11))
+		sub_rich.add_theme_color_override("default_color", MUTED)
 		sub_rich.fit_content = true
 		info.add_child(sub_rich)
 	else:
