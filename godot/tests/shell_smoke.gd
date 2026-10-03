@@ -289,7 +289,7 @@ func _run() -> void:
 	var cash_o: float = p2.cash
 	if p2.order_material(job_p["id"], "atlas") != "" or not _near(cash_o - atlas_quote["amount"], p2.cash, 0.001):
 		return _fail("Atlas is cash on order")
-	if int(job_p["order"]["arrive_month"]) < p2.month + 1 or not job_p["order"]["paid"] or not _near(job_p["yield"], 1.015, 0.0001):
+	if int(job_p["order"]["arrive_month"]) < p2.month or not job_p["order"]["paid"] or not _near(job_p["yield"], 1.015, 0.0001):
 		return _fail("Order must arrive after the lead time, be paid and set the premium yield")
 	if p2.order_material(job_p["id"], "nord") == "":
 		return _fail("A job can be ordered only once")
@@ -913,5 +913,20 @@ func _run() -> void:
 	var fason_job: Dictionary = fason_game._create_job(fason_offer.duplicate(true), 3.0, 0.3, int(fason_offer["months"]))
 	if fason_job["order"].is_empty() or not bool(fason_job["order"]["paid"]) or float(fason_job["order"]["amount"]) != 0.0:
 		return _fail("Toll work arrives with the job: no material order, nothing to pay")
+	# ---- staff benefits: V2 needs all >= V1, V3 needs all >= V2, changes apply next month
+	var bg = Boss.new()
+	bg.default_setup(5)
+	bg.set_benefit(0, 0)
+	if int(bg.benefits_next[0]) < 1:
+		return _fail("Mandatory benefits cannot drop below V1")
+	bg.set_benefit(4, 2)
+	if int(bg.benefits_next[4]) > 1:
+		return _fail("V2 needs every benefit at V1 first")
+	var cost_before: float = bg.staff_cost_per_head()
+	for i in range(8):
+		bg.set_benefit(i, 1)
+	bg.set_benefit(0, 2)
+	if float(bg.staff_cost_per_head()) != cost_before:
+		return _fail("Benefit changes apply next month")
 	print("Shell smoke passed")
 	quit(0)

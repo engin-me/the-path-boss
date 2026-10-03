@@ -104,7 +104,7 @@ func _play(persona: Dictionary, seed_value: int, months: int, agg: Dictionary) -
 	var game = ShellBoss.new()
 	game.max_months = months
 	game.default_setup(seed_value)
-	game.staff_policy = staff_policy
+	game.apply_benefit_preset(staff_policy)
 	if persona.has("cash"):
 		game.cash = float(persona["cash"])
 	var expand: Array = persona.get("expand", []).duplicate()

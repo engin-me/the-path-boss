@@ -340,6 +340,8 @@ func _process(delta: float) -> void:
 				floor_view.refresh_state()
 			elif detail == "" and ["ozet", "fabrika"].has(page):
 				_render_keep_scroll()
+		elif floor_view == null and detail == "" and page == "fabrika" and subtab["fabrika"] == "isler":
+			_render_keep_scroll()   # the job bars follow the production of every day
 	if game.days_run >= MONTH_DAYS:
 		flow_day = float(MONTH_DAYS)
 		_flow_month_end()
@@ -703,6 +705,9 @@ func _open_detail(kind: String, arg := "") -> void:
 	_render()
 
 func _back() -> void:
+	if detail == "supplier_pick":
+		_open_detail("quote", detail_arg)
+		return
 	detail = ""
 	_render()
 
@@ -1688,6 +1693,16 @@ func _detail_quote() -> void:
 	_quote_row(box, "Gerekli Kapasite", _xfmt(load_total))
 	_quote_row(box, "Enerji Gideri", Data.usd(_sum_lines(lines, "energy")))
 	_quote_row(box, "Hammadde Gideri", "müşteri verir" if bool(offer.get("fason", false)) else Data.usd(float(estimate["material"])))
+	if not bool(offer.get("fason", false)):
+		var supplier_now: Dictionary = Data.supplier_by_id(game.default_supplier)
+		var supplier_row := HBoxContainer.new()
+		var supplier_text := _gold_italic("Tedarikçi: %s · %s · skor %%%d" % [supplier_now["name"], Data.lead_text(int(supplier_now["lead"])), Data.supplier_score(supplier_now)], 13)
+		supplier_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		supplier_row.add_child(supplier_text)
+		var change := _button("Değiştir", _open_detail.bind("supplier_pick", str(offer["id"])))
+		change.custom_minimum_size = Vector2(110, 38)
+		supplier_row.add_child(change)
+		box.add_child(supplier_row)
 	_quote_row(box, "Hurda Gideri", Data.usd(_sum_lines(lines, "scrap")))
 	_quote_row(box, "Sarf Malzeme Gideri", Data.usd(_sum_lines(lines, "consumables")))
 	_quote_row(box, "Personel Gideri", Data.usd(_sum_lines(lines, "personnel")))
@@ -2004,6 +2019,46 @@ func _answer_counter(mail_id: int, yes: bool) -> void:
 		_say(result)
 	_render()
 
+# Supplier picker of the quote screen: the current supplier on top, the others compared with it.
+func _detail_supplier_pick() -> void:
+	var offer: Dictionary = game.offer_by_id(int(detail_arg))
+	var current: Dictionary = Data.supplier_by_id(game.default_supplier)
+	var intro := _card(content, "Hammaddeyi kimden alalım?", GOLD, true)
+	intro.add_child(_label("Fiyat, teslim süresi ve tedarikçi skoru birlikte karar verir: ucuz ve hızlı olan çoğu zaman güvenilir değildir. Skor, malzemenin söz verilen günde gelme olasılığıdır; gelmezse iş bir ay kayar.", 12, MUTED))
+	var ordered: Array = [current]
+	for supplier in Data.SUPPLIERS:
+		if supplier["id"] != current["id"]:
+			ordered.append(supplier)
+	for supplier in ordered:
+		var is_current: bool = supplier["id"] == current["id"]
+		var card := _card(content, "", GOLD if is_current else BORDER, true)
+		var head := HBoxContainer.new()
+		var name_label := _label(supplier["name"], 20, TEXT, false)
+		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		head.add_child(name_label)
+		if is_current:
+			head.add_child(_label("(mevcut tedarikçi)", 13, GOLD, false))
+		card.add_child(head)
+		_row(card, "Teslim", Data.lead_text(int(supplier["lead"])), TEXT, 15)
+		var diff: float = float(supplier["price"]) / float(current["price"]) - 1.0
+		if is_current:
+			_row(card, "Fiyat", "mevcut", MUTED, 15)
+		else:
+			_row(card, "Fiyat", "%%%d %s" % [int(roundf(absf(diff) * 100.0)), "pahalı" if diff > 0.0 else "ucuz"], RED if diff > 0.0 else GREEN, 15)
+		var score: int = Data.supplier_score(supplier)
+		_row(card, "Tedarikçi skoru", "%%%d" % score, GREEN if score >= 90 else (GOLD if score >= 80 else RED), 15)
+		_row(card, "Kalite", "%s (verim %%%.1f)" % [Data.QUALITY_NAMES[int(supplier["quality"])], float(Data.QUALITY_YIELD[int(supplier["quality"])]) * 100.0], TEXT, 14)
+		_row(card, "Ödeme", "peşin" if int(supplier["terms"]) == 0 else "%d ay vadeli" % supplier["terms"], TEXT, 14)
+		if not offer.is_empty():
+			var quote: Dictionary = game.material_quote(offer, supplier["id"])
+			_row(card, "Bu işin hammaddesi", Data.usd(float(quote["amount"])), GOLD, 15)
+		if not is_current:
+			card.add_child(_button("Bu tedarikçiyi seç", _choose_supplier.bind(supplier["id"]), true))
+
+func _choose_supplier(id: String) -> void:
+	game.default_supplier = id
+	_open_detail("quote", detail_arg)
+
 # ------------------------------------------------------------------ Tedarik
 
 func _supplier_card(supplier: Dictionary, quote: Dictionary, job_id := 0) -> void:
@@ -2014,7 +2069,8 @@ func _supplier_card(supplier: Dictionary, quote: Dictionary, job_id := 0) -> voi
 		_row(card, "Hammadde bedeli", Data.usd(float(quote["amount"])), TEXT, 16)
 		_row(card, "Gelir", "Ay %d" % (game.month + int(quote["lead"])), TEXT, 15)
 	_row(card, "Fiyat", "%%%d" % int(roundf(float(supplier["price"]) * 100.0)), GREEN if float(supplier["price"]) < 1.0 else RED if float(supplier["price"]) > 1.0 else TEXT, 15)
-	_row(card, "Temin süresi", "%d ay" % supplier["lead"], TEXT, 15)
+	_row(card, "Temin süresi", Data.lead_text(int(supplier["lead"])), TEXT, 15)
+	_row(card, "Tedarikçi skoru", "%%%d" % Data.supplier_score(supplier), TEXT, 15)
 	_row(card, "Ödeme", "peşin" if int(supplier["terms"]) == 0 else "%d ay vadeli" % supplier["terms"], TEXT, 15)
 	_row(card, "Gecikme riski", "%%%d (+1 ay)" % int(roundf(float(supplier["delay"]) * 100.0)), TEXT, 15)
 	_row(card, "Kalite", "%s (verim %%%.1f)" % [Data.QUALITY_NAMES[int(supplier["quality"])], float(Data.QUALITY_YIELD[int(supplier["quality"])]) * 100.0], TEXT, 15)
@@ -2488,18 +2544,7 @@ func _page_shifts() -> void:
 	patron.toggled.connect(_on_patron_tick)
 	box.add_child(patron)
 	box.add_child(_label("Patron tek operatörlü bir tezgahın 1. vardiyasını kendisi çalıştırır (otomatik atanır); o tezgahta 2 vardiya için tek personel yeter. Yönetim saatinden %d sa harcar." % game.patron_hours(), 12, MUTED))
-	var care := _card(content, "Personel politikası (yemek, servis…)", BORDER)
-	care.add_child(_label("Kişi başı aylık yan gider. Güçlü politika, insanla ilgili sorunların başlamadan önlenme şansını artırır.", 12, MUTED))
-	var care_options: Array = []
-	for i in Data.STAFF_POLICIES.size():
-		var policy: Dictionary = Data.STAFF_POLICIES[i]
-		care_options.append({"id": str(i), "title": "%s · %s" % [policy["name"], Data.usd(float(policy["cost"]))]})
-	_chips(care, care_options, str(game.staff_policy), func(id: String) -> void:
-		var result: String = game.set_staff_policy(int(id))
-		if result != "":
-			_say(result)
-		_render())
-	care.add_child(_label("%s Önleme şansı +%%%d puan." % [Data.STAFF_POLICIES[game.staff_policy]["note"], int(roundf(float(Data.STAFF_POLICIES[game.staff_policy]["bonus"]) * 100.0))], 12, MUTED))
+	_benefits_card()
 	var summary := _card(content, "Sonuç", BORDER)
 	_row(summary, "Personel (otomatik istihdam)", "%d kişi" % game.staff_count(), TEXT, 15)
 	var wages := 0.0
@@ -2510,6 +2555,52 @@ func _page_shifts() -> void:
 	_row(summary, "Ofis kadrosu", "%d kişi · %s" % [game.office_roles().size(), Data.usd(game.office_cost())], TEXT, 15)
 	_row(summary, "Üretilebilir kapasite", "%s/ay" % _xfmt(game.effective_capacity()), GREEN, 15)
 	summary.add_child(_label("Personel, makineler teslim alındığında kadroya girer; vardiya artınca otomatik işe alınır.", 12, MUTED))
+
+# Staff benefits: one 3-step slider per benefit. Optional ones start at "none"; a higher step anywhere needs every
+# benefit one step higher first. A change starts with the next month.
+func _benefits_card() -> void:
+	var care := _card(content, "Yan haklar (sonraki aydan geçerli)", BORDER, true)
+	care.add_child(_label("İlk dört yan hak zorunludur (en az V1). Başka bir hakta V2 için her hakkın en az V1, V3 için en az V2 olması gerekir. Değişiklik bir sonraki ay başında uygulanır.", 12, MUTED))
+	for i in Data.BENEFITS.size():
+		var item: Dictionary = Data.BENEFITS[i]
+		var level: int = int(game.benefits_next[i])
+		var row := VBoxContainer.new()
+		row.add_theme_constant_override("separation", 2)
+		var top := HBoxContainer.new()
+		var name_label := _label("%d. %s%s" % [i + 1, item["name"], "  (zorunlu)" if bool(item["mandatory"]) else ""], 15, TEXT, false)
+		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		top.add_child(name_label)
+		var value_label := _label(_benefit_text(i, level), 13, GOLD if level > 0 else MUTED, false)
+		value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		top.add_child(value_label)
+		row.add_child(top)
+		var slider := HSlider.new()
+		slider.min_value = 1 if bool(item["mandatory"]) else 0
+		slider.max_value = 3
+		slider.step = 1
+		slider.value = level
+		slider.custom_minimum_size = Vector2(0, 40)
+		slider.value_changed.connect(func(v: float) -> void: value_label.text = _benefit_text(i, int(v)))
+		slider.drag_ended.connect(func(changed: bool) -> void:
+			if not changed:
+				return
+			var result: String = game.set_benefit(i, int(slider.value))
+			if result != "":
+				_say(result)
+			_render_keep_scroll())
+		row.add_child(slider)
+		care.add_child(row)
+	var total_now: float = Data.benefit_cost_of(game.benefits)
+	var total_next: float = Data.benefit_cost_of(game.benefits_next)
+	_row(care, "Kişi başı aylık gider (şimdi → sonraki ay)", "%s → %s" % [Data.usd(total_now), Data.usd(total_next)], GOLD, 14)
+	_row(care, "Sorun önleme payı (şimdi → sonraki ay)", "+%%%d → +%%%d puan" % [int(roundf(Data.benefit_bonus_of(game.benefits) * 100.0)), int(roundf(Data.benefit_bonus_of(game.benefits_next) * 100.0))], GOLD, 14)
+	care.add_child(_label("Güçlü yan haklar insanla ilgili sorunların başlamadan önlenme şansını artırır; yükselen kademe maliyeti daha hızlı artırır.", 12, MUTED))
+
+func _benefit_text(index: int, level: int) -> String:
+	if level <= 0:
+		return "Yok"
+	var item: Dictionary = Data.BENEFITS[index]
+	return "V%d · %s/kişi · +%%%.1f" % [level, Data.usd(float(item["cost"]) * float(item["mult"][level - 1])), float(item["bonus"]) * float(item["effect"][level - 1]) * 100.0]
 
 func _on_shift_tick(on: bool, n: int) -> void:
 	_apply_plan(n if on else n - 1, game.plan_ot.duplicate(), game.plan_patron)
@@ -2593,6 +2684,9 @@ func _render_detail() -> void:
 		"settings":
 			title.text = "  Ayarlar"
 			_detail_settings()
+		"supplier_pick":
+			title.text = "  Tedarikçi seç"
+			_detail_supplier_pick()
 
 func _detail_settings() -> void:
 	var box := _card(content, "Ses", GREEN, true)

@@ -68,6 +68,8 @@ func to_save() -> Dictionary:
 	data["plan_ot"] = plan_ot.duplicate()
 	data["plan_patron"] = plan_patron
 	data["staff_policy"] = staff_policy
+	data["benefits"] = benefits.duplicate()
+	data["benefits_next"] = benefits_next.duplicate()
 	data["moving_until"] = moving_until
 	data["day"] = day
 	data["days_run"] = days_run
@@ -103,6 +105,8 @@ func from_save(data: Dictionary) -> String:
 	plan_ot = copy.get("plan_ot", [false, false, false]).duplicate()
 	plan_patron = bool(copy.get("plan_patron", true))
 	staff_policy = clampi(int(copy.get("staff_policy", 1)), 0, Data.STAFF_POLICIES.size() - 1)
+	benefits = copy.get("benefits", Data.default_benefits()).duplicate()
+	benefits_next = copy.get("benefits_next", benefits).duplicate()
 	moving_until = int(copy.get("moving_until", 0))
 	day = int(copy.get("day", 1))
 	days_run = int(copy.get("days_run", 0))
@@ -352,13 +356,39 @@ func machine_running_cost(machine: Dictionary) -> float:
 	return (machine_energy(machine) * shift_equiv(machine) + machine_maintenance(machine)) + machine_wages(machine)
 
 func staff_cost_per_head() -> float:
-	return float(Data.STAFF_POLICIES[staff_policy]["cost"])
+	return Data.benefit_cost_of(benefits)
 
-func set_staff_policy(index: int) -> String:
-	if phase != "offers":
-		return "Personel politikası ay başında (rapordan önce) değişir."
-	staff_policy = clampi(index, 0, Data.STAFF_POLICIES.size() - 1)
+func staff_bonus() -> float:
+	return Data.benefit_bonus_of(benefits)
+
+# Staff benefits: the levels in force (benefits) and the ones chosen for next month (benefits_next).
+var benefits: Array = Data.default_benefits()
+var benefits_next: Array = Data.default_benefits()
+
+# Highest level a benefit may be raised to: one above the lowest level of all of them.
+func benefit_allowed_max() -> int:
+	return mini(3, int(benefits_next.min()) + 1)
+
+func set_benefit(index: int, level: int) -> String:
+	if index < 0 or index >= Data.BENEFITS.size() or level < 0 or level > 3:
+		return "Geçersiz seçim."
+	if bool(Data.BENEFITS[index]["mandatory"]) and level < 1:
+		return "%s zorunlu: en az V1." % Data.BENEFITS[index]["name"]
+	var current := int(benefits_next[index])
+	if level > current and level > benefit_allowed_max():
+		return "V%d için önce her yan hak V%d olmalı." % [level, level - 1]
+	benefits_next[index] = level
+	# lowering one level also pulls higher ones down: nothing may be more than one level above the lowest
+	var floor_level := int(benefits_next.min())
+	for i in benefits_next.size():
+		benefits_next[i] = mini(int(benefits_next[i]), floor_level + 1)
 	return ""
+
+func apply_benefit_preset(kind: int) -> void:
+	benefits = Data.default_benefits()
+	if kind >= 2:
+		benefits = [1, 1, 1, 1, 1, 1, 1, 1]
+	benefits_next = benefits.duplicate()
 
 # People on the payroll for the current plan.
 func staff_count() -> int:
@@ -2105,6 +2135,7 @@ func close_month() -> String:
 	month_revenue = 0.0
 	month_late = 0
 	month_running = 0.0
+	benefits = benefits_next.duplicate()   # a change of the staff benefits starts with the new month
 	_auto_patron()
 	if month > max_months:
 		phase = "end"
@@ -2124,7 +2155,7 @@ func _generate_problems(events: int) -> void:
 	var current: Dictionary = scale()
 	var capacity := capacity_at_least(1)
 	for i in events:
-		if rng.randf() < PERSON_SHARE and rng.randf() < MAX_PREVENTION * skills[HR_SKILL] / 100.0 + float(Data.STAFF_POLICIES[staff_policy]["bonus"]):
+		if rng.randf() < PERSON_SHARE and rng.randf() < MAX_PREVENTION * skills[HR_SKILL] / 100.0 + staff_bonus():
 			prevented_this_month += 1
 			prevented_total += 1
 			continue

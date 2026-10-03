@@ -310,11 +310,52 @@ static var start_cash := 30.0   # five years of saving $400 a month as an operat
 # the material arrives; terms = months after ordering until payment is due; delay = chance of +1 month;
 # quality 1..3 changes the job's yield (scrap): 1 Ekonomik, 2 Standart, 3 Premium.
 const SUPPLIERS := [
-	{"id": "nord", "name": "Nordhaus Steel", "price": 0.95, "lead": 1, "terms": 1, "delay": 0.10, "quality": 2, "note": "Dengeli: 30 gün vade, hızlı"},
-	{"id": "pacific", "name": "Pacific Alloy", "price": 0.88, "lead": 2, "terms": 2, "delay": 0.25, "quality": 1, "note": "Ucuz ve uzun vadeli, yavaş ve riskli"},
-	{"id": "atlas", "name": "Atlas Premium", "price": 1.10, "lead": 1, "terms": 0, "delay": 0.03, "quality": 3, "note": "Pahalı, peşin, yüksek kalite"},
+	{"id": "nord", "name": "Nordhaus Steel", "price": 0.95, "lead": 1, "terms": 1, "delay": 0.10, "quality": 2, "note": "Dengeli: 30 gün vade, 1 ay sonra teslim"},
+	{"id": "atlas", "name": "Atlas Premium", "price": 1.10, "lead": 0, "terms": 0, "delay": 0.05, "quality": 3, "note": "Hemen teslim, pahalı, peşin, yüksek kalite"},
+	{"id": "spot", "name": "Spot Alloy", "price": 0.90, "lead": 0, "terms": 0, "delay": 0.35, "quality": 1, "note": "Hemen teslim, ucuz ama güvensiz, peşin"},
+	{"id": "pacific", "name": "Pacific Alloy", "price": 0.85, "lead": 2, "terms": 2, "delay": 0.12, "quality": 1, "note": "2 ay sonra teslim, ucuz, uzun vadeli"},
 	{"id": "midland", "name": "Midland Metals", "price": 1.00, "lead": 1, "terms": 1, "delay": 0.12, "quality": 2, "note": "Liste fiyatı, 30 gün vade"}
 ]
+
+# Supplier score shown to the player: how reliably the material arrives on its day.
+static func supplier_score(supplier: Dictionary) -> int:
+	return int(roundf((1.0 - float(supplier["delay"])) * 100.0))
+
+static func lead_text(lead: int) -> String:
+	return "Hemen teslim" if lead <= 0 else "%d ay sonra teslim" % lead
+
+# Staff benefits (IDEA-018 personnel): level 0 = none, V1..V3. Cost is per head per month, k$ at V1, scaled by
+# the V1/V2/V3 multipliers; "bonus" is the share of person-related problems prevented before they start.
+# The first four are mandatory (at least V1). A higher level anywhere needs every benefit one level higher first.
+const BENEFITS := [
+	{"id": "yol", "name": "Yol", "cost": 0.030, "bonus": 0.015, "mult": [1.0, 1.0, 1.0], "effect": [1.0, 1.0, 1.0], "mandatory": true},
+	{"id": "yemek", "name": "Yemek", "cost": 0.045, "bonus": 0.025, "mult": [1.0, 1.4, 1.9], "effect": [1.0, 1.5, 2.0], "mandatory": true},
+	{"id": "sigorta", "name": "Sigorta", "cost": 0.045, "bonus": 0.030, "mult": [1.0, 1.6, 2.2], "effect": [1.0, 1.5, 2.0], "mandatory": true},
+	{"id": "izin", "name": "Yıllık İzin", "cost": 0.030, "bonus": 0.030, "mult": [1.0, 1.2, 1.6], "effect": [1.0, 1.5, 2.0], "mandatory": true},
+	{"id": "ikramiye", "name": "İkramiye", "cost": 0.040, "bonus": 0.030, "mult": [1.0, 1.5, 2.0], "effect": [1.0, 1.5, 2.0], "mandatory": false},
+	{"id": "egitim", "name": "Eğitim", "cost": 0.030, "bonus": 0.025, "mult": [1.0, 1.3, 1.8], "effect": [1.0, 1.5, 2.0], "mandatory": false},
+	{"id": "sosyal", "name": "Sosyal Etkinlik", "cost": 0.020, "bonus": 0.015, "mult": [1.0, 1.2, 1.8], "effect": [1.0, 1.5, 2.0], "mandatory": false},
+	{"id": "aile", "name": "Aile Desteği", "cost": 0.025, "bonus": 0.020, "mult": [1.0, 1.3, 1.8], "effect": [1.0, 1.5, 2.0], "mandatory": false}
+]
+const BENEFIT_BONUS_CAP := 0.40
+static func default_benefits() -> Array:
+	return [1, 1, 1, 1, 0, 0, 0, 0]
+
+static func benefit_cost_of(levels: Array) -> float:
+	var total := 0.0
+	for i in BENEFITS.size():
+		var level := int(levels[i])
+		if level > 0:
+			total += float(BENEFITS[i]["cost"]) * float(BENEFITS[i]["mult"][level - 1])
+	return total
+
+static func benefit_bonus_of(levels: Array) -> float:
+	var total := 0.0
+	for i in BENEFITS.size():
+		var level := int(levels[i])
+		if level > 0:
+			total += float(BENEFITS[i]["bonus"]) * float(BENEFITS[i]["effect"][level - 1])
+	return minf(total, BENEFIT_BONUS_CAP)
 const CONTACTS := ["Mary Collins", "Tom Bennett", "Laura Finch", "Henry Walsh", "Nora Keane", "Paul Sterling"]
 
 # Hidden urgency (1-10) leaks through one small signal only: how many reminders the customer has sent about the job.
