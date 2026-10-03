@@ -1561,6 +1561,15 @@ func _sum_lines(lines: Array, key: String) -> float:
 
 # Delivery forecast for the quote: the engine's own queue projection (accepted jobs first, material arrival,
 # the offer's start delay, machines in transit), plus the case where the supplier is a month late.
+# Why the forecast looks the way it does: real monthly output (not the 24-hour theoretical figure), the material wait
+# and the load of this job.
+func _capacity_note(offer: Dictionary, months_offered: int) -> String:
+	var lead: int = int(game.material_quote(offer, game.default_supplier)["lead"])
+	var parts: Array = []
+	for req in offer["reqs"]:
+		parts.append("%s: iş yükü %s μ, net kapasite ~%s μ/ay" % [req["kind"], Data.usd(float(req["workload"]) / 1000.0).trim_prefix("$"), Data.usd(game.requirement_capacity(req) / 1000.0).trim_prefix("$")])
+	return "%s. Hammadde %d ay sonra gelir; üretime %d ay kalır. Net kapasite, teorik kapasitenin vardiya payı, performans, hurda ve sorun kayıpları düşülmüş halidir (1 vardiya ≈ teorik / 3)." % [" · ".join(parts), lead, maxi(0, months_offered - lead)]
+
 func _delivery_check(offer: Dictionary, months_offered: int) -> Array:
 	var plan: Dictionary = game.quote_projection(offer, months_offered)
 	var finish: int = int(plan["finish"])
@@ -1662,7 +1671,7 @@ func _detail_quote() -> void:
 		cash_label.text = "Tahmini kâr %s · kabulde peşinat girişi %s · hammadde %s %s" % [Data.usd(quote_price - total), Data.usd(quote_price * float(quote_adv) / 100.0), Data.usd(float(estimate["material"])), "peşin çıkar" if int(material_terms["terms"]) == 0 else "%d ay vadeli çıkar" % int(material_terms["terms"])]
 		gauge.set_value(float(game.accept_probability(offer, quote_price, quote_adv, quote_months)["accept"]))
 		var forecast: Array = _delivery_check(offer, quote_months)
-		warning.text = forecast[0]
+		warning.text = forecast[0] + ("\n" + _capacity_note(offer, quote_months) if forecast[1] != GREEN else "")
 		warning.add_theme_color_override("font_color", forecast[1])
 	box.add_child(price_label)
 	box.add_child(cash_label)

@@ -543,6 +543,16 @@ func machine_output(machine: Dictionary, mults: Dictionary) -> float:
 		return 0.0
 	return float(machine_steps(machine, mults)["net"])
 
+# Net monthly output (current plan, problems included) of every machine that could do this requirement,
+# machines still in transit counted as if they stood there.
+func requirement_capacity(req: Dictionary) -> float:
+	var mults := problem_mults(loss_fractions())
+	var total := 0.0
+	for machine in machines:
+		if machine["kind"] == req["kind"] and int(machine["level"]) >= int(req["level"]):
+			total += float(machine_steps(machine, mults)["net"])
+	return total
+
 func effective_capacity(kind := "") -> float:
 	var mults := problem_mults(loss_fractions())
 	var total := 0.0
