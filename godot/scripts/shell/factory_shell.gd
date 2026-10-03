@@ -37,6 +37,7 @@ const OFFICE_PAGES := ["ozet", "fabrika", "profil"]   # everything the Ofis tab 
 var game = ShellBoss.new()
 var flash := ""
 var page := "ozet"
+const CapacityChart := preload("res://scripts/shell/capacity_chart.gd")
 var subtab := {"ozet": "genel", "ilanlar": "isler", "fabrika": "yerlesim"}
 const MONTH_DAYS := 30
 const FLOW_SECONDS_PER_MONTH := 24.0   # one month at 1x
@@ -461,7 +462,7 @@ func _office_menu() -> void:
 			"ozet", "profil":
 				_on_tab(id)
 			"fabrika":
-				if not ["yerlesim", "vardiya", "sozlesme"].has(subtab["fabrika"]):
+				if not ["yerlesim", "vardiya", "sozlesme", "kapasite"].has(subtab["fabrika"]):
 					subtab["fabrika"] = "yerlesim"
 				_on_tab("fabrika")
 			_:
@@ -791,8 +792,8 @@ func _render_inner() -> void:
 	scroll_view.visible = not show_floor
 	if OFFICE_PAGES.has(page) and detail == "":
 		_office_menu()
-	if rented and ["yerlesim", "vardiya", "sozlesme"].has(subtab["fabrika"]):
-		_chips(sticky, [{"id": "yerlesim", "title": "Yerleşim (üstten)"}, {"id": "vardiya", "title": "Vardiya"}, {"id": "sozlesme", "title": "Sözleşme"}], subtab["fabrika"],
+	if rented and ["yerlesim", "vardiya", "sozlesme", "kapasite"].has(subtab["fabrika"]):
+		_chips(sticky, [{"id": "yerlesim", "title": "Yerleşim (üstten)"}, {"id": "vardiya", "title": "Vardiya"}, {"id": "kapasite", "title": "Kapasite"}, {"id": "sozlesme", "title": "Sözleşme"}], subtab["fabrika"],
 			func(id: String) -> void:
 				subtab["fabrika"] = id
 				_render())
@@ -1762,6 +1763,9 @@ func _detail_quote() -> void:
 	gauge_panel.add_theme_stylebox_override("panel", _box(Color(0, 0, 0, 0), Color("#e8eef4"), 12, 1))
 	gauge_panel.add_child(_margin(gauge_box, 8, 6))
 	var warning := _label("", 12, RED)
+	var chart_holder := GridContainer.new()
+	chart_holder.columns = 2
+	chart_holder.add_theme_constant_override("h_separation", 10)
 	var cash_label := _label("", 12, MUTED)
 	var refresh := func() -> void:
 		quote_price = ceilf(total * (1.0 + quote_margin) * 100.0) / 100.0
@@ -1771,7 +1775,16 @@ func _detail_quote() -> void:
 		cash_label.text += "\nTeslim skorun %%%d: müşteri en fazla ~%%%d peşinata rahat razı olur; üstü ihtimali düşürür." % [int(roundf(float(game.delivery_score) * 100.0)), game.advance_comfort()]
 		gauge.set_value(float(game.accept_probability(offer, quote_price, quote_adv, quote_months)["accept"]))
 		var forecast: Array = _delivery_check(offer, quote_months)
-		warning.text = forecast[0] + ("\n" + _capacity_note(offer, quote_months) if forecast[1] != GREEN else "")
+		warning.text = forecast[0]
+		for old in chart_holder.get_children():
+			chart_holder.remove_child(old)
+			old.queue_free()
+		var needed: Array = []
+		for req in offer["reqs"]:
+			if not needed.has(req["kind"]):
+				needed.append(req["kind"])
+		for kind in needed:
+			chart_holder.add_child(_capacity_chart_box(kind, offer, quote_months))
 		warning.add_theme_color_override("font_color", forecast[1])
 	box.add_child(price_label)
 	box.add_child(cash_label)
@@ -1790,6 +1803,8 @@ func _detail_quote() -> void:
 	box.add_child(lower)
 	lower.add_child(gauge_panel)
 	box.add_child(warning)
+	box.add_child(chart_holder)
+	_capacity_legend(box, true)
 	refresh.call()
 	var reason: String = game.quote_block_reason(int(detail_arg), maxf(quote_price, 0.001))
 	var send := _button("TEKLİF VER" if reason == "" else reason, _ask_send_quote.bind(int(detail_arg)), reason == "", reason != "", true)
@@ -2456,9 +2471,50 @@ func _buy_equipment(id: String, qty: int) -> void:
 
 # ------------------------------------------------------------------ Fabrika
 
+# One chart (icon, name, bars) of a machine kind; `offer` adds the quoted job's load as an outline.
+func _capacity_chart_box(kind: String, offer := {}, months := 1) -> Control:
+	var color: Color = KIND_COLOR.get(kind, TEXT)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 4)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var head := HBoxContainer.new()
+	head.alignment = BoxContainer.ALIGNMENT_CENTER
+	head.add_theme_constant_override("separation", 6)
+	var icon := _icon_rect(Art.slug(kind) + "_icon", 28)
+	if icon != null:
+		icon.modulate = color
+		head.add_child(icon)
+	head.add_child(_label(kind, 15, color, false))
+	box.add_child(head)
+	var chart = CapacityChart.new()
+	chart.set_data(game.capacity_chart(kind, offer, months), color)
+	box.add_child(chart)
+	return box
+
+func _capacity_legend(parent: Control, with_extra: bool) -> void:
+	var text := "Koyu çubuk: kapasite · açık çubuk: kabul edilmiş işlerin yükü · taralı: yolda olan tezgah · altın: ince tezgahın kaba işe kaymış yükü · kırmızı: yapacak tezgahı olmayan yük"
+	if with_extra:
+		text += " · beyaz çerçeve: bu teklifin yükü"
+	parent.add_child(_label(text, 11, MUTED))
+
+func _page_capacity() -> void:
+	var box := _card(content, "Kapasite ve yük (μ/ay)", GREEN, true)
+	box.add_child(_label("Her tolerans sınıfında kapasite ile kabul ettiğin işlerin aylık yükü. İnce bir tezgah, kendi seviyesindeki iş bitince kaba işleri de alır.", 12, MUTED))
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 14)
+	for kind in Data.TYPES:
+		grid.add_child(_capacity_chart_box(kind))
+	box.add_child(grid)
+	_capacity_legend(box, false)
+
 func _page_fabrika() -> void:
 	if game.factory_id != "" and subtab["fabrika"] == "vardiya":
 		_page_shifts()
+		return
+	if game.factory_id != "" and subtab["fabrika"] == "kapasite":
+		_page_capacity()
 		return
 	if game.factory_id != "" and subtab["fabrika"] == "isler":
 		_page_jobs()

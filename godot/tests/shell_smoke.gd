@@ -948,5 +948,30 @@ func _run() -> void:
 	for req in slack_job["reqs"]:
 		if not _near(float(req["speed_mult"]), 1.0, 0.001) or not _near(float(req["scrap_mult"]), 0.5, 0.001):
 			return _fail("Scrap mode: -50%% scrap, speed unchanged")
+	# ---- capacity chart: work fills its own level first and spills up to finer machines; a quoted job adds an outline
+	var cc = Boss.new()
+	cc.from_save(snapshot_day)
+	var chart_kind: String = String(fason_offer["reqs"][0]["kind"])
+	var base_chart: Dictionary = cc.capacity_chart(chart_kind)
+	if base_chart["levels"].size() != 3:
+		return _fail("The chart has one group per tolerance level")
+	var sum_cap := 0.0
+	for lv in base_chart["levels"]:
+		sum_cap += float(lv["cap"]) + float(lv["transit"])
+	var all_net := 0.0
+	for machine in cc.machines:
+		if machine["kind"] == chart_kind:
+			all_net += float(cc.machine_steps(machine, cc.problem_mults(cc.loss_fractions()))["net"])
+	if not _near(sum_cap, all_net, 0.01):
+		return _fail("Chart capacity must equal the kind's net capacity (transit included)")
+	var spill_alloc: Dictionary = cc._level_alloc([300.0, 0.0, 0.0], [100.0, 150.0, 100.0])
+	if not _near(float(spill_alloc["used"][0]), 100.0, 0.001) or not _near(float(spill_alloc["spill"][1]), 150.0, 0.001) or not _near(float(spill_alloc["spill"][2]), 50.0, 0.001) or float(spill_alloc["unmet"][0]) != 0.0:
+		return _fail("Coarse work spills up to finer machines when its own level is full")
+	var with_extra: Dictionary = cc.capacity_chart(chart_kind, fason_offer, 1)
+	var extra_sum := 0.0
+	for lv in with_extra["levels"]:
+		extra_sum += float(lv["extra"]) + float(lv["extra_unmet"])
+	if extra_sum <= 0.0:
+		return _fail("A quoted job must add load to the chart")
 	print("Shell smoke passed")
 	quit(0)

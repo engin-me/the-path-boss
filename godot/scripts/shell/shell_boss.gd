@@ -583,6 +583,64 @@ func requirement_capacity(req: Dictionary) -> float:
 			total += float(machine_steps(machine, mults)["net"])
 	return total
 
+# Capacity and load per tolerance level of one machine kind (net, current plan, transit machines shown apart).
+# Load = remaining workload of the accepted jobs spread over the months to their due date. Work fills the machines of its own
+# level first; what is left spills up to finer machines. `extra` is a job being quoted (offer) over `extra_months`.
+func capacity_chart(kind: String, extra := {}, extra_months := 1) -> Dictionary:
+	var mults := problem_mults(loss_fractions())
+	var cap := [0.0, 0.0, 0.0]
+	var transit := [0.0, 0.0, 0.0]
+	for machine in machines:
+		if machine["kind"] != kind:
+			continue
+		var net := float(machine_steps(machine, mults)["net"])
+		if int(machine["arrive"]) > month or not package_bought:
+			transit[int(machine["level"]) - 1] += net
+		else:
+			cap[int(machine["level"]) - 1] += net
+	var demand := [0.0, 0.0, 0.0]
+	for job in jobs:
+		var months_left := maxi(1, int(job["due_month"]) - month + 1)
+		for req in job["reqs"]:
+			if req["kind"] == kind:
+				demand[int(req["level"]) - 1] += float(req["remaining"]) / float(months_left)
+	var extra_demand := [0.0, 0.0, 0.0]
+	if not extra.is_empty():
+		for req in extra["reqs"]:
+			if req["kind"] == kind:
+				extra_demand[int(req["level"]) - 1] += float(req["workload"]) / float(maxi(1, extra_months))
+	var total_cap := [cap[0] + transit[0], cap[1] + transit[1], cap[2] + transit[2]]
+	var base := _level_alloc(demand, total_cap)
+	var plus := _level_alloc([demand[0] + extra_demand[0], demand[1] + extra_demand[1], demand[2] + extra_demand[2]], total_cap)
+	var levels: Array = []
+	for i in 3:
+		levels.append({"level": i + 1, "tol": Data.tolerance_text(float(Data.PRECISION_MM[i + 1])), "cap": cap[i], "transit": transit[i],
+			"load": float(base["used"][i]), "spill": float(base["spill"][i]), "unmet": float(base["unmet"][i]),
+			"extra": maxf(0.0, float(plus["used"][i]) - float(base["used"][i])), "extra_unmet": maxf(0.0, float(plus["unmet"][i]) - float(base["unmet"][i]))})
+	if not extra.is_empty():
+		for lv in levels:
+			lv["unmet"] = float(plus["unmet"][int(lv["level"]) - 1])   # with the quoted job: what still has no machine
+	return {"kind": kind, "levels": levels}
+
+func _level_alloc(demand: Array, caps: Array) -> Dictionary:
+	var left := [float(caps[0]), float(caps[1]), float(caps[2])]
+	var used := [0.0, 0.0, 0.0]
+	var spill := [0.0, 0.0, 0.0]
+	var rest := [0.0, 0.0, 0.0]
+	for i in 3:
+		var take := minf(float(demand[i]), left[i])
+		left[i] -= take
+		used[i] += take
+		rest[i] = float(demand[i]) - take
+	for i in 3:
+		for j in range(i + 1, 3):
+			var take := minf(rest[i], left[j])
+			left[j] -= take
+			used[j] += take
+			spill[j] += take
+			rest[i] -= take
+	return {"used": used, "spill": spill, "unmet": rest}
+
 func effective_capacity(kind := "") -> float:
 	var mults := problem_mults(loss_fractions())
 	var total := 0.0

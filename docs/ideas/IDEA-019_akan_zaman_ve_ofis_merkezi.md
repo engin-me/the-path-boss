@@ -62,3 +62,6 @@ Tur 2 · 2026-10-02 · Kullanıcı yönü onayladı; ChatGPT yorumu işlendi.
 
 ## Not: Tolerans payı (kabul sonrası seçim)
 Müşterinin toleransı, işi yapacak makinenin hassasiyetinden genişse (log5 ölçeğinde 0–1 pay) kabulde bir seçim çıkar: **hızlı işle** (en çok +%25 çıktı, hurda aynı) ya da **hurdayı azalt** (en çok −%50 hurda, hız aynı). Seçim iş kartından sonradan değiştirilebilir. Hassas makinenin kaba işi alması (CNC'nin 0,3 mm işi) en yüksek payı verir.
+
+## Not: Kapasite grafiği
+Fabrika > Kapasite: her tezgah türü için tolerans sınıfı (0,1 / 0,01 / 0,001 mm) başına koyu çubuk = net kapasite, açık çubuk = kabul edilmiş işlerin aylık yükü (kalan iş ÷ teslime kalan ay). İş önce kendi seviyesindeki tezgahı doldurur, taşan yük daha ince tezgaha kayar (altın). Yolda olan tezgah taralı, karşılanamayan yük kırmızı. Teklif ekranında yalnız işin gerektirdiği türler gösterilir; teklifin yükü beyaz çerçevedir.
