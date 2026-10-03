@@ -1662,12 +1662,15 @@ func _delivery_check(offer: Dictionary, months_offered: int) -> Array:
 	var due: int = int(plan["due"])
 	if finish == 0:
 		return ["Mevcut tezgahlarla 12 ay içinde bitmiyor (makine, ekipman ya da hammadde eksik olabilir).", RED]
-	if finish > due:
-		return ["Tahmini bitiş: %s. İstenen teslim: %s. %d ay geç kalırsın; teslim skorun düşer." % [Data.date_text(finish, int(plan["finish_day"])), Data.month_end_text(due), finish - due], RED]
+	var days_late: int = int(plan["late_days"])
+	var when := "Tahmini bitiş: %s. İstenen teslim: %s." % [Data.date_text(finish, int(plan["finish_day"])), Data.month_end_text(due)]
+	if days_late > 0:
+		var drop := 12.0 * float(days_late) / float(Data.MONTH_DAYS) if days_late < Data.MONTH_DAYS else 12.0
+		return [when + " %d gün geç kalırsın; teslim skorun yaklaşık %s puan düşer (gün başına ~%s)." % [days_late, str(snappedf(drop, 0.1)).replace(".", ","), str(snappedf(12.0 / float(Data.MONTH_DAYS), 0.01)).replace(".", ",")], GOLD if days_late <= 7 else RED]
 	var risk: Dictionary = game.quote_projection(offer, months_offered, true)
-	if float(plan["delay_chance"]) > 0.0 and int(risk["finish"]) > due:
-		return ["Tahmini bitiş: %s. İstenen teslim: %s. Tedarikçi hammaddeyi geciktirirse (%%%d ihtimal) iş %s tarihine kayar ve geç kalırsın." % [Data.date_text(finish, int(plan["finish_day"])), Data.month_end_text(due), int(roundf(float(plan["delay_chance"]) * 100.0)), Data.date_text(int(risk["finish"]), int(risk["finish_day"]))], GOLD]
-	return ["Tahmini bitiş: %s. İstenen teslim: %s. Zamanında yetişir." % [Data.date_text(finish, int(plan["finish_day"])), Data.month_end_text(due)], GREEN]
+	if float(plan["delay_chance"]) > 0.0 and int(risk["late_days"]) > 0:
+		return [when + " Tedarikçi hammaddeyi geciktirirse (%%%d ihtimal) iş %s tarihine kayar, %d gün geç kalırsın." % [int(roundf(float(plan["delay_chance"]) * 100.0)), Data.date_text(int(risk["finish"]), int(risk["finish_day"])), int(risk["late_days"])], GOLD]
+	return [when + " Zamanında yetişir.", GREEN]
 
 func _detail_quote() -> void:
 	var offer: Dictionary = game.offer_by_id(int(detail_arg))

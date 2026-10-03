@@ -1709,6 +1709,14 @@ func abandon_job(id: int) -> String:
 	return ""
 
 # Delivery score in 0..1: on time pulls toward 1, late toward 0.4, dropped jobs toward 0.
+# Days a delivery on (month m, day d) is past the end of its due month; 0 when on time.
+func late_days(due_month: int, m: int, d: int) -> int:
+	return maxi(0, (m - due_month) * Data.MONTH_DAYS + (d - Data.MONTH_DAYS))
+
+# Delivery-score target of a delivery: 1 on time, falling in a straight line to 0.4 at a month late (and beyond).
+func late_target(days: int) -> float:
+	return 1.0 - 0.6 * minf(1.0, float(days) / float(Data.MONTH_DAYS))
+
 func _score_event(target: float) -> void:
 	delivery_score = clampf(delivery_score * 0.8 + target * 0.2, 0.0, 1.0)
 
@@ -1934,14 +1942,15 @@ func _deliver_job(job: Dictionary) -> Array:
 		cash -= scrap_cost
 		events.append({"text": "Hurda gideri: %s" % job["title"], "amount": -scrap_cost})
 	month_material_used += material_used_month(job)
-	var on_time := month <= int(job["due_month"])
+	var days_late := late_days(int(job["due_month"]), month, day)
+	var on_time := days_late == 0
 	var remainder := float(job["revenue"]) - float(job["advance"])
 	cash += remainder
 	month_revenue += float(job["revenue"])
-	_score_event(1.0 if on_time else 0.4)
+	_score_event(late_target(days_late))
 	if not on_time:
 		month_late += 1
-	events.append({"text": "Teslim: %s%s" % [job["title"], "" if on_time else " · GEÇ TESLİM (skor düştü)"], "amount": remainder})
+	events.append({"text": "Teslim: %s%s" % [job["title"], "" if on_time else " · %d GÜN GEÇ (skor düştü)" % days_late], "amount": remainder})
 	return events
 
 # ---------------------------------------------------------------- production (FIFO load on machines)
@@ -2073,7 +2082,8 @@ func quote_projection(offer: Dictionary, months_offered: int, delayed := false) 
 	var done: Array = projection_days(job).get(job["id"], [])
 	var finish_month: int = int(done[0]) if not done.is_empty() else 0
 	var finish_day: int = int(done[1]) if not done.is_empty() else 0
-	return {"finish": finish_month, "finish_day": finish_day, "due": int(job["due_month"]), "late": finish_month == 0 or finish_month > int(job["due_month"]), "delay_chance": float(quote["delay"])}
+	return {"finish": finish_month, "finish_day": finish_day, "due": int(job["due_month"]), "late": finish_month == 0 or late_days(int(job["due_month"]), finish_month, finish_day) > 0,
+		"late_days": 0 if finish_month == 0 else late_days(int(job["due_month"]), finish_month, finish_day), "delay_chance": float(quote["delay"])}
 
 # ---------------------------------------------------------------- report
 
@@ -2183,11 +2193,12 @@ func close_month() -> String:
 			lines.append("Hurda gideri: %s (%s)" % [Data.usd(scrap_cost), job["title"]])
 		job["elapsed"] = int(job["elapsed"]) + 1
 		if job_done(job):
-			var on_time := month <= int(job["due_month"])
+			var days_late := late_days(int(job["due_month"]), month, Data.MONTH_DAYS)
+			var on_time := days_late == 0
 			var remainder := float(job["revenue"]) - float(job["advance"])
 			cash += remainder
 			delivered_revenue += float(job["revenue"])
-			_score_event(1.0 if on_time else 0.4)
+			_score_event(late_target(days_late))
 			lines.append("Teslim: %s (+%s kalan bakiye)%s" % [job["title"], Data.usd(remainder), "" if on_time else " · GEÇ TESLİM (skor düştü)"])
 			if not on_time:
 				report["undelivered"] = int(report.get("undelivered", 0)) + 1

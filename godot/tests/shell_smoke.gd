@@ -973,5 +973,11 @@ func _run() -> void:
 		extra_sum += float(lv["extra"]) + float(lv["extra_unmet"])
 	if extra_sum <= 0.0:
 		return _fail("A quoted job must add load to the chart")
+	# ---- lateness is counted in days: a few days late costs a few days' worth of score
+	var ld = Boss.new()
+	if ld.late_days(5, 5, 30) != 0 or ld.late_days(5, 6, 7) != 7 or ld.late_days(5, 6, 30) != 30 or ld.late_days(5, 4, 20) != 0:
+		return _fail("Late days are counted from the end of the due month")
+	if not _near(ld.late_target(0), 1.0, 0.0001) or not _near(ld.late_target(15), 0.7, 0.0001) or not _near(ld.late_target(90), 0.4, 0.0001):
+		return _fail("Delivery score target falls linearly to 0.4 at a month late")
 	print("Shell smoke passed")
 	quit(0)
