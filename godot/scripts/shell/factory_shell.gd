@@ -1312,7 +1312,7 @@ const KIND_COLOR := {"Torna": Color("#6ec8eb"), "Freze": Color("#6ee1be"), "Taş
 
 # The machine kinds a job needs, one icon each (art/ui/<kind>_icon.png). Collapsed rows show the icons only; open
 # ones add the kind's name. A kind the plant has is drawn in its own colour, a missing one in red (icon and text).
-func _need_icons(offer: Dictionary, with_names: bool, icon_px := 30) -> Control:
+func _need_icons(offer: Dictionary, with_names: bool, icon_px := 38) -> Control:
 	var flow := HFlowContainer.new()
 	flow.add_theme_constant_override("h_separation", 14)
 	flow.add_theme_constant_override("v_separation", 6)
