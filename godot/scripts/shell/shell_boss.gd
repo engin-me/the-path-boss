@@ -77,6 +77,7 @@ func to_save() -> Dictionary:
 	data["month_material_used"] = month_material_used
 	data["month_revenue"] = month_revenue
 	data["month_late"] = month_late
+	data["lifetime_revenue"] = lifetime_revenue
 	data["month_running"] = month_running
 	data["rent_markup"] = rent_markup
 	data["renewal_term"] = renewal_term
@@ -114,6 +115,7 @@ func from_save(data: Dictionary) -> String:
 	month_material_used = float(copy.get("month_material_used", 0.0))
 	month_revenue = float(copy.get("month_revenue", 0.0))
 	month_late = int(copy.get("month_late", 0))
+	lifetime_revenue = float(copy.get("lifetime_revenue", 0.0))
 	month_running = float(copy.get("month_running", 0.0))
 	if days_run > 0 and not copy.has("month_running") and factory_id != "":
 		month_running = running_cost() * float(days_run) / float(Data.MONTH_DAYS)   # save from before the daily accrual: estimate the days already played
@@ -1778,6 +1780,7 @@ var days_run := 0               # days of this month already produced (0 = the m
 var month_events: Array = []    # this month's day events, printed in the closing report
 var month_material_used := 0.0  # material of jobs delivered earlier this month
 var month_revenue := 0.0        # revenue delivered earlier this month
+var lifetime_revenue := 0.0     # all delivered revenue so far (for the closing letter)
 var month_late := 0             # late deliveries earlier this month
 var month_running := 0.0        # running costs accrued day by day (crews, energy, upkeep, plant) with the plan of each day
 
@@ -2241,6 +2244,7 @@ func close_month() -> String:
 			running_jobs.append(job)
 	jobs = running_jobs
 	report["revenue"] = delivered_revenue
+	lifetime_revenue += delivered_revenue
 	cash -= finance
 	if finance > 0.0:
 		lines.append("Finansman gideri: %s" % Data.usd(finance))
@@ -2409,3 +2413,54 @@ func close_loan() -> String:
 func _release_collateral() -> void:
 	for machine in machines:
 		machine["mortgaged"] = false
+
+# ---------------------------------------------------------------- closing letter
+
+# After a forced closure the game writes the player a letter: what was visible in advance, said sharply, then a way back.
+func _close_factory(status: Dictionary) -> void:
+	super._close_factory(status)
+	var letter := closing_letter()
+	closure["letter"] = letter
+	post_mail(letter["title"], letter["lines"], "Alacaklılar adına")
+
+func closing_letter() -> Dictionary:
+	var months_played := maxi(1, month)
+	var avg_revenue := lifetime_revenue / float(months_played)
+	var expense := ordinary_expense()
+	var machine_count := machines.size()
+	var idle := 0
+	var shift_sum := 0.0
+	for machine in delivered():
+		shift_sum += float(machine["shifts"])
+		if float(machine.get("used_last", 0.0)) <= 0.0:
+			idle += 1
+	var avg_shifts := shift_sum / maxf(1.0, float(delivered().size()))
+	var findings: Array = []   # [weight, text]
+	if expense > avg_revenue * 1.05:
+		findings.append([expense - avg_revenue, "Ayda ortalama %s kazandın, ayda %s harcadın. Bu fark kasadan eridi; bunu bir tablo değil, bir takvim görseydin ilk aydan fark ederdin." % [Data.usd(avg_revenue), Data.usd(expense)]])
+	if factory_id != "" and machine_count > 0 and float(factory()["m2"]) / float(machine_count) > 90.0:
+		findings.append([float(factory()["m2"]) / float(machine_count), "%d m²'lik yeri %d tezgahla tuttun. Kira ve bina giderleri, işlik dolu olsun boş olsun akar. O alanı dolduracak işi ve sermayeyi hesaba katmadın." % [int(factory()["m2"]), machine_count]])
+	if avg_shifts >= 2.0 and jobs.size() <= 2:
+		findings.append([avg_shifts * 3.0, "Tezgahları ortalama %s vardiya çalıştırdın ama elinde %d iş vardı. Vardiya ücreti iş olsun olmasın ödenir; kapasite satış değildir." % [str(snappedf(avg_shifts, 0.1)).replace(".", ","), jobs.size()]])
+	if idle > 0:
+		findings.append([float(idle) * 2.0, "%d tezgahın bu ay hiç iş görmedi. Duran tezgah kendi kendine para kazanmaz." % idle])
+	if debt > 0.0 or not loan.is_empty():
+		findings.append([debt, "Nakit açığını borçla kapatmaya çalıştın. Faiz, açığı küçültmedi; büyüttü."])
+	if delivery_score < 0.7:
+		findings.append([(0.7 - delivery_score) * 100.0, "Teslimat skorun %%%d'e düştü. Geç teslim eden fabrikaya müşteri geri gelmez, fiyat pazarlığı da onlardan yana işler." % int(roundf(delivery_score * 100.0))])
+	findings.sort_custom(func(a, b): return float(a[0]) > float(b[0]))
+	var lines: Array = []
+	var type := String(closure.get("type", "forced"))
+	lines.append("Sayın operatör,")
+	if type == "bankrupt":
+		lines.append("Faaliyetin Ay %d itibarıyla sonlandırılmıştır. Tasfiye sonrası %s açık kaldı." % [month, Data.usd(float(closure.get("shortfall", 0.0)))])
+	else:
+		lines.append("Faaliyetin Ay %d itibarıyla sonlandırılmıştır. Tasfiye borcu kapattı; kayıtlara iflas olarak geçmeyecek." % month)
+	lines.append("Bunun olacağı %95 ihtimalle belliydi. Rakamlar her ay önündeydi; sen büyümeye bakıyordun.")
+	for i in mini(3, findings.size()):
+		lines.append("• " + String(findings[i][1]))
+	if findings.is_empty():
+		lines.append("• Tek tek bakınca büyük bir hata yok; küçük hatalar üst üste bindi. Bazen bir fabrikayı bitiren şey tek bir karar değil, hiç bakılmayan bir aydır.")
+	lines.append("Ama şunu da söyleyelim: bu fabrikayı kuran da, batıran da sendin. Bu seni yarı yolda bırakacak bir şey değil; çoğu yönetici ilk fabrikasını böyle öğrenir. Neyi bilmediğini artık biliyorsun.")
+	lines.append("Yeniden operatör olarak başlıyorsun. Önce küçük kur, işin nasıl geldiğini gör, sonra büyü. Kolay gelsin.")
+	return {"title": "Faaliyet sonlandırma bildirimi", "lines": lines}

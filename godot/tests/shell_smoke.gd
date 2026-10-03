@@ -1002,5 +1002,20 @@ func _run() -> void:
 		for other in bs.machines:
 			if other["kind"] == bm["kind"] and int(other["level"]) == int(bm["level"]) and int(other.get("boost", 0)) != 10:
 				return _fail("The group button must copy the speed-up to the same kind and level")
+	# ---- closing letter after a forced closure
+	var cl = Boss.new()
+	cl.from_save(snapshot_day)
+	cl.debt = 500.0
+	cl.cash = 0.0
+	cl._close_factory({"gap": 500.0, "threshold": 10.0})
+	if cl.phase != "end" or not cl.closure.has("letter"):
+		return _fail("A forced closure must carry the closing letter")
+	var letter_lines: Array = cl.closure["letter"]["lines"]
+	var has_hook := false
+	for line in letter_lines:
+		if str(line).contains("%95"):
+			has_hook = true
+	if letter_lines.size() < 4 or not has_hook or cl.mails.is_empty() or cl.mails[0]["title"] != cl.closure["letter"]["title"]:
+		return _fail("The letter says it was foreseeable, lists the mistakes and also arrives as mail")
 	print("Shell smoke passed")
 	quit(0)

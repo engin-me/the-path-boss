@@ -1107,9 +1107,14 @@ func _page_end() -> void:
 	var box := _card(content, "Kapanış raporu", GOLD, true)
 	box.add_child(_label(outcome.get(game.closure.get("type", ""), "Oyun bitti."), 18, TEXT))
 	box.add_child(_label("Son kasa %s · borç %s · makine %d" % [Data.usd(float(game.cash)), Data.usd(float(game.debt)), game.machines.size()], 14, MUTED))
+	var letter: Dictionary = game.closure.get("letter", {})
+	if not letter.is_empty():
+		var paper := _card(content, letter["title"], RED, true)
+		for line in letter["lines"]:
+			paper.add_child(_label(String(line), 13, TEXT))
 	for lesson in game.lessons():
 		box.add_child(_label("• " + lesson, 13, TEXT))
-	box.add_child(_button("Yeniden başla", _restart, true, false, true))
+	box.add_child(_button("Operatör olarak yeniden başla" if not letter.is_empty() else "Yeniden başla", _restart, true, false, true))
 
 func _ask_wipe() -> void:
 	_confirm("Kaydı sil", ["Kayıtlı oyun kalıcı olarak silinir ve yeni oyun başlar.", "Bu işlem geri alınamaz."], "Sil ve yeni oyun", _wipe_save)

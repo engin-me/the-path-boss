@@ -69,3 +69,6 @@ Fabrika > Kapasite: her tezgah türü için tolerans sınıfı (0,1 / 0,01 / 0,0
 ## Not: Gün bazlı gecikme ve tezgah hızlandırma
 - Gecikme gün sayılır (vade = vade ayının 30'u). Teslim skoru hedefi doğrusal düşer: zamanında 1,0 → 30+ gün geç 0,4. Müşterinin fiyat limiti ve ret kuralı hâlâ ay bazlıdır (süreyi oyuncu ay seçer).
 - Tezgah hızlandırma (kart üzerinde tik + kaydırıcı, en çok +%25): çıktı artar; hurda ve bakım ×(1+2,4·h), enerji ×(1+1,6·h). Tolerans payı hız bonusuyla birlikte toplam +%35'i geçemez. "Tüm … tezgahlara uygula" aynı tür ve seviyeye kopyalar.
+
+## Not: Batış mektubu
+Zorunlu kapanışta (iflas ya da tasfiyeyle kapanma) oyun uyarı vermek yerine sonradan öğretir: "bunun %95 ihtimalle belliydi" diyen, en ağır 3 hatayı (gelir < gider, boş alan, işsiz vardiya, boşta tezgah, borçla kapatma, düşük teslimat skoru) sayan, sonra toparlayan bir mektup yazar. Mektup hem kapanış ekranında hem Mail'de görünür; ardından "Operatör olarak yeniden başla". Başlangıçta uyarı gösterilmez (oyuncu denemek ister; acı tecrübe daha öğretici).
