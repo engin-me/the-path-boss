@@ -1017,5 +1017,16 @@ func _run() -> void:
 			has_hook = true
 	if letter_lines.size() < 4 or not has_hook or cl.mails.is_empty() or cl.mails[0]["title"] != cl.closure["letter"]["title"]:
 		return _fail("The letter says it was foreseeable, lists the mistakes and also arrives as mail")
+	# ---- cash and commitments: the free cash is the cash minus material still to be paid minus the month's costs
+	var cm = Boss.new()
+	cm.from_save(snapshot_day)
+	var com: Dictionary = cm.commitments()
+	if not _near(float(com["free"]), float(com["cash"]) - float(com["material"]) - float(com["expense"]), 0.0001):
+		return _fail("Free cash = cash - material due - monthly costs")
+	var adv_sum := 0.0
+	for job in cm.jobs:
+		adv_sum += float(job["advance"])
+	if not _near(float(com["advances"]), adv_sum, 0.0001):
+		return _fail("Commitments list the advances held for unfinished jobs")
 	print("Shell smoke passed")
 	quit(0)

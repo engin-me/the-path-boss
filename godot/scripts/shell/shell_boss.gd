@@ -166,6 +166,34 @@ func ordinary_expense() -> float:
 		expense += float(loan["installment"])
 	return expense
 
+# What the cash on the table is not really yours for: advances held for unfinished jobs, material still to be paid,
+# and the month's running costs. `free` is the cash left after the known obligations.
+func commitments() -> Dictionary:
+	var advances := 0.0
+	var material := 0.0
+	for job in jobs:
+		advances += float(job["advance"])
+		var order: Dictionary = job.get("order", {})
+		if order.is_empty():
+			if not bool(job.get("fason", false)):
+				material += float(job["material"]) * float(Data.supplier_by_id(default_supplier)["price"])
+		elif not bool(order["paid"]):
+			material += float(order["amount"])
+	var expense := ordinary_expense()
+	var first := {}
+	if not jobs.is_empty():
+		var finish := projection_days()
+		var best_m := 0
+		var best_d := 0
+		for id in finish:
+			var when: Array = finish[id]
+			if best_m == 0 or int(when[0]) < best_m or (int(when[0]) == best_m and int(when[1]) < best_d):
+				best_m = int(when[0])
+				best_d = int(when[1])
+		if best_m > 0:
+			first = {"month": best_m, "day": best_d}
+	return {"cash": cash, "advances": advances, "material": material, "expense": expense, "free": cash - material - expense, "first": first}
+
 # Known unpaid material for this month-end (supplier payment terms).
 func accepted_cost() -> float:
 	var total := 0.0

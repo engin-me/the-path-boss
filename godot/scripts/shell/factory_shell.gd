@@ -980,11 +980,26 @@ func _ozet_general() -> void:
 		var tile_panel := _panel_of(box)
 		tile_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		tile_panel.gui_input.connect(_on_tile_input.bind(tile[2]))
+	_commitments_card()
 	_phase_button()
 	if game.phase == "offers" and not game.last_lines.is_empty():
 		var last := _card(content, "Geçen ay")
 		for line in game.last_lines:
 			last.add_child(_label(str(line), 13, MUTED))
+
+# Cash is not the same as spendable cash: the advances of unfinished jobs sit in it, the material and the month's costs are still due.
+func _commitments_card() -> void:
+	var c: Dictionary = game.commitments()
+	var card := _card(content, "Nakit ve taahhütler", RED if float(c["free"]) < 0.0 else BORDER, true)
+	_row(card, "Kasa", Data.usd(float(c["cash"])), TEXT, 14)
+	_row(card, "  içinde teslim edilmemiş işlerin peşinatı", Data.usd(float(c["advances"])), MUTED, 12)
+	_row(card, "Ödenecek hammadde", "-" + Data.usd(float(c["material"])), GOLD, 14)
+	_row(card, "Aylık gider", "-" + Data.usd(float(c["expense"])), GOLD, 14)
+	_row(card, "Gerçekten harcanabilir", Data.usd(float(c["free"])), RED if float(c["free"]) < 0.0 else GREEN, 16)
+	if c["first"].is_empty():
+		card.add_child(_label("Bekleyen tahsilat yok: kalan bakiyeler iş tesliminde gelir.", 12, MUTED))
+	else:
+		card.add_child(_label("İlk tahsilat (kalan bakiye): %s, ilk iş teslim edilince." % Data.date_text(int(c["first"]["month"]), int(c["first"]["day"])), 12, MUTED))
 
 func _ozet_report() -> void:
 	if game.phase != "report":
@@ -1080,8 +1095,14 @@ func _department_card(department: String, rows: Array) -> void:
 			box.add_child(_label(row["blocked"], 12, RED))
 
 func _fix(root_id: String) -> void:
+	var capacity_before: float = game.effective_capacity()
 	var result: Dictionary = game.fix(root_id)
-	_say(game.notice)
+	var line: String = game.notice
+	if bool(result.get("ok", false)) and bool(result.get("success", false)):
+		var gained: float = game.effective_capacity() - capacity_before
+		if gained > 0.5:
+			line += " Üretilebilir kapasite +%s/ay." % _xfmt(gained)
+	_say(line)
 	_render()
 
 func _on_tile_input(event: InputEvent, target: String) -> void:
