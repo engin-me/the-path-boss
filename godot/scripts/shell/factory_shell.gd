@@ -3162,9 +3162,33 @@ func _detail_machines() -> void:
 			_row(box, "Vardiya", "%d%s%s" % [machine["shifts"], " (+mesai)" if game.plan_ot[0] else "", " · 1. vardiya patron" if machine.get("patron", false) else ""], TEXT, 15)
 			_row(box, "Etkin çıktı", "%s/ay" % _xfmt(game.machine_output(machine, mults)), GREEN, 15)
 			_row(box, "Aylık işletme", Data.usd(game.machine_running_cost(machine)), TEXT, 15)
+			_boost_controls(box, machine)
 			box.add_child(_label("Vardiya ve mesai Fabrika > Vardiya bölümünden ayarlanır.", 12, MUTED))
 		var reason: String = game.sell_block_reason(machine["uid"])
 		box.add_child(_button("Sat · +%s" % Data.usd(game.sale_income(machine)) if reason == "" else reason, _ask_sell.bind(machine["uid"]), false, reason != ""))
+
+# Per-machine speed-up: a tick opens a slider; the price is more scrap, maintenance and energy.
+func _boost_controls(box: Control, machine: Dictionary) -> void:
+	var uid: int = machine["uid"]
+	var check := CheckButton.new()
+	check.text = "Çalışma hızını yükselt"
+	check.button_pressed = int(machine.get("boost", 0)) > 0
+	check.add_theme_font_size_override("font_size", _fs(14))
+	check.toggled.connect(func(on: bool) -> void:
+		game.set_boost(uid, 10 if on else 0)
+		_render_keep_scroll())
+	box.add_child(check)
+	if int(machine.get("boost", 0)) <= 0:
+		return
+	_slider_row(box, "Hız", 1, Data.BOOST_MAX, int(machine["boost"]), func(v: int, shown: Label) -> void:
+		shown.text = "+%%%d" % v
+		if int(machine.get("boost", 0)) != v:
+			game.set_boost(uid, v))
+	var b: float = game.machine_boost(machine)
+	box.add_child(_label("Hurda ×%s · bakım ×%s · enerji ×%s" % [str(snappedf(1.0 + Data.BOOST_SCRAP * b, 0.01)).replace(".", ","), str(snappedf(1.0 + Data.BOOST_MAINT * b, 0.01)).replace(".", ","), str(snappedf(1.0 + Data.BOOST_ENERGY * b, 0.01)).replace(".", ",")], 12, GOLD))
+	box.add_child(_button("Tüm %s %s tezgahlara uygula" % [Data.LEVELS[int(machine["level"])], machine["kind"]], func() -> void:
+		game.set_boost_group(uid, int(machine["boost"]))
+		_render_keep_scroll()))
 
 func _ask_sell(uid: int) -> void:
 	var machine: Dictionary = game.machine_by_uid(uid)

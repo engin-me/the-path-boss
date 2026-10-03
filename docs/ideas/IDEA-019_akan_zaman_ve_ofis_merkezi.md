@@ -65,3 +65,7 @@ Müşterinin toleransı, işi yapacak makinenin hassasiyetinden genişse (log5 �
 
 ## Not: Kapasite grafiği
 Fabrika > Kapasite: her tezgah türü için tolerans sınıfı (0,1 / 0,01 / 0,001 mm) başına koyu çubuk = net kapasite, açık çubuk = kabul edilmiş işlerin aylık yükü (kalan iş ÷ teslime kalan ay). İş önce kendi seviyesindeki tezgahı doldurur, taşan yük daha ince tezgaha kayar (altın). Yolda olan tezgah taralı, karşılanamayan yük kırmızı. Teklif ekranında yalnız işin gerektirdiği türler gösterilir; teklifin yükü beyaz çerçevedir.
+
+## Not: Gün bazlı gecikme ve tezgah hızlandırma
+- Gecikme gün sayılır (vade = vade ayının 30'u). Teslim skoru hedefi doğrusal düşer: zamanında 1,0 → 30+ gün geç 0,4. Müşterinin fiyat limiti ve ret kuralı hâlâ ay bazlıdır (süreyi oyuncu ay seçer).
+- Tezgah hızlandırma (kart üzerinde tik + kaydırıcı, en çok +%25): çıktı artar; hurda ve bakım ×(1+2,4·h), enerji ×(1+1,6·h). Tolerans payı hız bonusuyla birlikte toplam +%35'i geçemez. "Tüm … tezgahlara uygula" aynı tür ve seviyeye kopyalar.

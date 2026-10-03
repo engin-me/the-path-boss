@@ -136,6 +136,11 @@ const NAMEPLATE := {"Torna": 2000, "Freze": 1600, "Taşlama": 1200, "Dövme": 80
 const LEVEL_PERF := {1: 1.0, 2: 1.0, 3: 1.0}   # capacity now comes from power and condition only
 # Machine model: power (index, kW) sets capacity and electricity; condition (40-100 %, ages 10 points a year)
 # changes capacity, energy, maintenance and scrap; precision decides which jobs the machine may take.
+const BOOST_MAX := 25        # machine speed-up, percent
+const BOOST_SCRAP := 2.4     # scrap rises 2.4x as fast as the speed-up: +25% speed = scrap x1.6
+const BOOST_MAINT := 2.4     # maintenance likewise
+const BOOST_ENERGY := 1.6    # energy: +25% speed = x1.4
+const SPEED_CAP := 1.35      # machine speed-up and tolerance slack together never exceed +35%
 const SLACK_MIN := 0.1       # below this slack no choice is offered
 const SLACK_SPEED := 0.25   # best case +25% output
 const SLACK_SCRAP := 0.50   # best case -50% scrap

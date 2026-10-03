@@ -240,7 +240,7 @@ func _play(persona: Dictionary, seed_value: int, months: int, agg: Dictionary) -
 				text = text.substr(text.find(": ") + 2)   # day events carry a "Gün N: " prefix
 			if text.begins_with("Teslim:"):
 				agg["delivered"] += 1
-				if text.contains("GEÇ TESLİM"):
+				if (text.contains("GEÇ TESLİM") or text.contains("GÜN GEÇ")):
 					agg["late"] += 1
 			elif text.begins_with("İptal:"):
 				agg["dropped"] += 1

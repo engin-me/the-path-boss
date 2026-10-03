@@ -979,5 +979,28 @@ func _run() -> void:
 		return _fail("Late days are counted from the end of the due month")
 	if not _near(ld.late_target(0), 1.0, 0.0001) or not _near(ld.late_target(15), 0.7, 0.0001) or not _near(ld.late_target(90), 0.4, 0.0001):
 		return _fail("Delivery score target falls linearly to 0.4 at a month late")
+	# ---- machine speed-up: more output for more scrap, maintenance and energy; the group button copies it
+	var bs = Boss.new()
+	bs.from_save(snapshot_day)
+	if not bs.machines.is_empty():
+		var bm: Dictionary = bs.machines[0]
+		var bmults: Dictionary = bs.problem_mults(bs.loss_fractions())
+		var out0: float = bs.machine_steps(bm, bmults)["net"]
+		var scrap0: float = bs.machine_scrap(bm)
+		var maint0: float = bs.machine_maintenance(bm)
+		bs.set_boost(int(bm["uid"]), 99)
+		if int(bm["boost"]) != Data.BOOST_MAX:
+			return _fail("The speed-up is capped at the maximum")
+		var out1: float = bs.machine_steps(bm, bmults)["net"]
+		if float(out0) > 0.0 and float(out1) <= float(out0) * 1.0:
+			return _fail("A speed-up must raise the output")
+		if not _near(bs.machine_scrap(bm), scrap0 * 1.6, scrap0 * 0.001 + 0.000001):
+			return _fail("+25%% speed means scrap x1.6")
+		if maint0 > 0.0 and not _near(bs.machine_maintenance(bm), maint0 * 1.6, maint0 * 0.001):
+			return _fail("+25%% speed means maintenance x1.6")
+		bs.set_boost_group(int(bm["uid"]), 10)
+		for other in bs.machines:
+			if other["kind"] == bm["kind"] and int(other["level"]) == int(bm["level"]) and int(other.get("boost", 0)) != 10:
+				return _fail("The group button must copy the speed-up to the same kind and level")
 	print("Shell smoke passed")
 	quit(0)

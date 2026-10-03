@@ -329,18 +329,36 @@ func machine_wages(machine: Dictionary) -> float:
 func condition_steps_of(machine: Dictionary) -> float:
 	return Data.condition_steps(float(machine.get("condition", 100.0)))
 
+func machine_boost(machine: Dictionary) -> float:
+	return float(machine.get("boost", 0)) / 100.0
+
 func machine_energy(machine: Dictionary) -> float:
 	var rate := float(Data.ENERGY_STEP_RANGE[0]) + (float(Data.ENERGY_STEP_RANGE[1]) - float(Data.ENERGY_STEP_RANGE[0])) * float(machine.get("roll_e", 0.5))
-	return float(machine["energy"]) * (1.0 + condition_steps_of(machine) * rate)
+	return float(machine["energy"]) * (1.0 + condition_steps_of(machine) * rate) * (1.0 + Data.BOOST_ENERGY * machine_boost(machine))
 
 # Maintenance is an operating cost: a share of the price paid for every missing 10 points, a little different every month.
 func machine_maintenance(machine: Dictionary) -> float:
 	var pct := float(Data.MAINT_STEP_PCT[int(machine["level"])])
-	return condition_steps_of(machine) * pct * float(machine["price"]) * (0.8 + 0.4 * float(machine.get("roll_m", 0.5)))
+	return condition_steps_of(machine) * pct * float(machine["price"]) * (0.8 + 0.4 * float(machine.get("roll_m", 0.5))) * (1.0 + Data.BOOST_MAINT * machine_boost(machine))
 
 func machine_scrap(machine: Dictionary) -> float:
 	var rate := float(Data.SCRAP_STEP_RANGE[0]) + (float(Data.SCRAP_STEP_RANGE[1]) - float(Data.SCRAP_STEP_RANGE[0])) * float(machine.get("roll_s", 0.5))
-	return float(machine["scrap"]) * (1.0 + condition_steps_of(machine) * rate)
+	return float(machine["scrap"]) * (1.0 + condition_steps_of(machine) * rate) * (1.0 + Data.BOOST_SCRAP * machine_boost(machine))
+
+# Speed-up of one machine (0..BOOST_MAX percent): more output, more scrap, maintenance and energy.
+func set_boost(uid: int, percent: int) -> void:
+	var machine := machine_by_uid(uid)
+	if not machine.is_empty():
+		machine["boost"] = clampi(percent, 0, Data.BOOST_MAX)
+
+# The same speed-up for every machine of the same kind and level.
+func set_boost_group(uid: int, percent: int) -> void:
+	var source := machine_by_uid(uid)
+	if source.is_empty():
+		return
+	for machine in machines:
+		if machine["kind"] == source["kind"] and int(machine["level"]) == int(source["level"]):
+			machine["boost"] = clampi(percent, 0, Data.BOOST_MAX)
 
 # Value-weighted condition of the delivered park (100 when empty).
 func average_condition() -> float:
@@ -563,7 +581,7 @@ func problem_mults(fr: Dictionary) -> Dictionary:
 func machine_steps(machine: Dictionary, mults: Dictionary) -> Dictionary:
 	var theoretical := float(machine["nameplate"])
 	var after_shift := theoretical * availability(machine)
-	var after_perf := after_shift * float(machine["perf"])
+	var after_perf := after_shift * float(machine["perf"]) * (1.0 + machine_boost(machine))
 	var after_scrap := after_perf * (1.0 - machine_scrap(machine))
 	var after_phys := after_scrap * float(mults["phys"])
 	return {"theoretical": theoretical, "shift": after_shift, "perf": after_perf, "scrap": after_scrap, "phys": after_phys, "net": after_phys * float(mults["non"])}
@@ -1437,6 +1455,12 @@ func material_used_month(job: Dictionary) -> float:
 
 # Material scrapped this month: the drawn rate of each requirement, on the material of the parts
 # that were actually made (flash and chips are already inside the raw-material price).
+func _boost_scrap_factor(req: Dictionary) -> float:
+	var made := float(req.get("made_month", 0.0))
+	if made <= 0.0 or not req.has("scrap_w"):
+		return 1.0
+	return float(req["scrap_w"]) / made
+
 func scrap_cost_month(job: Dictionary) -> float:
 	var order: Dictionary = job.get("order", {})
 	var supplier := Data.supplier_by_id(String(order.get("supplier", default_supplier)))
@@ -1451,7 +1475,7 @@ func scrap_cost_month(job: Dictionary) -> float:
 		var req: Dictionary = job["reqs"][i]
 		var share := float(req.get("material_part", 0.0)) / maxf(0.001, weight_sum)
 		var drawn: float = Data.scrap_at(req["kind"], int(req["level"]), Data.scrap_position(float(draws[i]), quality)) if i < draws.size() else Data.scrap_rate(req["kind"], int(req["level"]), quality)
-		cost += material * share * drawn * float(req.get("scrap_mult", 1.0)) * float(req.get("made_month", 0.0)) / maxf(1.0, float(req["workload"]))
+		cost += material * share * drawn * float(req.get("scrap_mult", 1.0)) * _boost_scrap_factor(req) * float(req.get("made_month", 0.0)) / maxf(1.0, float(req["workload"]))
 	return cost
 
 # The customer's own cost belief (from the reference price and the job's complexity margin).
@@ -1803,6 +1827,7 @@ func advance_day() -> Dictionary:
 		for job in jobs:
 			for req in job["reqs"]:
 				req["made_month"] = 0.0
+				req["scrap_w"] = 0.0
 	var events: Array = result["events"]
 	for machine in machines:
 		if int(machine["arrive"]) == month and int(machine.get("arrive_day", 1)) == day:
@@ -1890,7 +1915,8 @@ func _allocate_at(job_list: Array, cap_left: Dictionary, m: int, d: int, record:
 				var available := float(cap_left.get(machine["uid"], 0.0))
 				if available <= 0.0:
 					continue
-				var rate_mult := job_yield * float(req.get("speed_mult", 1.0))
+				var boost := machine_boost(machine)
+				var rate_mult := job_yield * minf(float(req.get("speed_mult", 1.0)), Data.SPEED_CAP / (1.0 + boost))
 				var use := minf(available, need / rate_mult)
 				cap_left[machine["uid"]] = available - use
 				var got := use * rate_mult
@@ -1900,6 +1926,7 @@ func _allocate_at(job_list: Array, cap_left: Dictionary, m: int, d: int, record:
 				if record:
 					machine["used_last"] = float(machine.get("used_last", 0.0)) + use
 					req["made_month"] = float(req.get("made_month", 0.0)) + got
+					req["scrap_w"] = float(req.get("scrap_w", 0.0)) + got * (1.0 + Data.BOOST_SCRAP * boost)
 
 # Day-by-day forecast from today: the date (month, day) every job (and the extra one) would be done, 0 when
 # it does not finish within a year. Nothing is changed.
@@ -1984,7 +2011,8 @@ func _allocate(job_list: Array, cap_left: Dictionary, t: int, record: bool) -> v
 				var available := float(cap_left.get(machine["uid"], 0.0))
 				if available <= 0.0:
 					continue
-				var rate_mult := job_yield * float(req.get("speed_mult", 1.0))
+				var boost := machine_boost(machine)
+				var rate_mult := job_yield * minf(float(req.get("speed_mult", 1.0)), Data.SPEED_CAP / (1.0 + boost))
 				var use := minf(available, need / rate_mult)
 				cap_left[machine["uid"]] = available - use
 				var got := use * rate_mult
@@ -1994,6 +2022,7 @@ func _allocate(job_list: Array, cap_left: Dictionary, t: int, record: bool) -> v
 				if record:
 					machine["used_last"] = float(machine.get("used_last", 0.0)) + use
 					req["made_month"] = float(req.get("made_month", 0.0)) + got
+					req["scrap_w"] = float(req.get("scrap_w", 0.0)) + got * (1.0 + Data.BOOST_SCRAP * boost)
 
 # Why an accepted job is not being produced (empty when it is, or will be, loaded this month).
 func job_wait_reason(job: Dictionary) -> String:
@@ -2114,6 +2143,7 @@ func run_report() -> String:
 		for job in jobs:
 			for req in job["reqs"]:
 				req["made_month"] = 0.0
+				req["scrap_w"] = 0.0
 		_allocate(jobs, cap_left, month, true)
 	var used := 0.0
 	for machine in delivered():
