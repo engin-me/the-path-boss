@@ -1310,23 +1310,35 @@ func _row_head(photo: Texture2D, title: String, sub: String, right_bbcode: Strin
 
 const KIND_COLOR := {"Torna": Color("#6ec8eb"), "Freze": Color("#6ee1be"), "Taşlama": Color("#be9ff0"), "Dövme": Color("#f0a064")}
 
-# The machine kinds a job needs as small icons (art/ui/<kind>_icon.png, tinted per kind) followed by the text.
-func _need_row(offer: Dictionary, text: String, size: int, color: Color, italic := false) -> Control:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
+# The machine kinds a job needs, one icon each (art/ui/<kind>_icon.png). Collapsed rows show the icons only; open
+# ones add the kind's name. A kind the plant has is drawn in its own colour, a missing one in red (icon and text).
+func _need_icons(offer: Dictionary, with_names: bool, icon_px := 30) -> Control:
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 14)
+	flow.add_theme_constant_override("v_separation", 6)
 	var kinds: Array = []
 	for req in offer["reqs"]:
 		if not kinds.has(req["kind"]):
 			kinds.append(req["kind"])
 	for kind in kinds:
-		var icon := _icon_rect(Art.slug(kind) + "_icon", 26)
+		var have := true
+		var level := 1
+		for req in offer["reqs"]:
+			if req["kind"] == kind:
+				level = maxi(level, int(req["level"]))
+				if not game.owns(req):
+					have = false
+		var color: Color = KIND_COLOR.get(kind, TEXT) if have else RED
+		var cell := HBoxContainer.new()
+		cell.add_theme_constant_override("separation", 6)
+		var icon := _icon_rect(Art.slug(kind) + "_icon", icon_px)
 		if icon != null:
-			icon.modulate = KIND_COLOR.get(kind, TEXT)
-			row.add_child(icon)
-	var label: Label = _gold_italic(text, size) if italic else _label(text, size, color)
-	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(label)
-	return row
+			icon.modulate = color
+			cell.add_child(icon)
+		if with_names or icon == null:
+			cell.add_child(_label(("%s %s" % [Data.LEVELS[level], kind]) if not have else kind, 13, color, false))
+		flow.add_child(cell)
+	return flow
 
 func _tap_panel(box: VBoxContainer, on_tap: Callable) -> void:
 	_panel_of(box).gui_input.connect(func(event: InputEvent) -> void:
@@ -1497,7 +1509,9 @@ func _offer_card(offer: Dictionary, reason: String) -> void:
 	tiles.add_child(_mini_tile("tezgah_ilan_teslimat", "%d Ay" % int(offer["months"])))
 	tiles.add_child(_mini_tile("is_ilani_malzeme", Data.STEEL_GRADE[int(offer["reqs"][0]["steel"])]))
 	box.add_child(tiles)
-	box.add_child(_need_row(offer, "Tezgah ihtiyacı: " + _kind_list_text(offer) + ("" if doable else "  ·  " + game.fit_block_reason(offer["id"])), 11, GOLD if doable else RED))
+	box.add_child(_need_icons(offer, open))
+	if open and not doable:
+		box.add_child(_label(game.fit_block_reason(offer["id"]), 12, RED))
 	if open:
 		_job_requirement_rows(box, offer)
 		_row(box, "Teslim süresi", "%d ay" % offer["months"], TEXT, 13)
@@ -1661,7 +1675,8 @@ func _detail_quote() -> void:
 	tiles.add_child(_feature_tile("is_ilani_malzeme", "Malzeme", Data.STEEL_GRADE[int(offer["reqs"][0]["steel"])]))
 	box.add_child(tiles)
 	box.add_child(_label("Öngörülen Veriler", 16, GOLD))
-	box.add_child(_need_row(offer, "Tezgah İhtiyacı: " + _kind_list_text(offer), 13, GOLD, true))
+	box.add_child(_gold_italic("Tezgah İhtiyacı: " + _kind_list_text(offer), 13))
+	box.add_child(_need_icons(offer, true, 34))
 	var kg := 0
 	for req in offer["reqs"]:
 		kg += int(roundf(float(req["tons"]) * 1000.0))
