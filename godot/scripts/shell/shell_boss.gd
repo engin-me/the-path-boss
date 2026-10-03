@@ -1201,6 +1201,38 @@ func fit_block_reason(id: int) -> String:
 	return ""
 
 # Legacy path (quote_mode off): take the listed reference price with the default advance.
+# Tolerance slack: a job coarser than the machine that would serve it leaves room to trade for speed or scrap.
+# 0 = the machine is exactly as precise as the drawing, 1 = at least 5x looser.
+func req_slack(job: Dictionary, req: Dictionary) -> float:
+	var basis := serving_basis(req["kind"], int(req["level"]))
+	var precision := float(Data.PRECISION_MM[int(basis["level"])])
+	var tol := float(req.get("tolerance", precision))
+	return clampf(log(maxf(1.0, tol / precision)) / log(5.0), 0.0, 1.0)
+
+func slack_of(job: Dictionary) -> float:
+	var best := 0.0
+	for req in job["reqs"]:
+		best = maxf(best, req_slack(job, req))
+	return best
+
+# mode: "" none, "speed" (up to +25% output, scrap unchanged), "scrap" (up to -50% scrap, speed unchanged)
+func choose_bonus(job_id: int, mode: String) -> void:
+	var job := job_by_id(job_id)
+	if job.is_empty():
+		return
+	job["bonus"] = mode
+	job["bonus_ask"] = false
+	for req in job["reqs"]:
+		var slack := req_slack(job, req)
+		req["speed_mult"] = 1.0 + Data.SLACK_SPEED * slack if mode == "speed" else 1.0
+		req["scrap_mult"] = 1.0 - Data.SLACK_SCRAP * slack if mode == "scrap" else 1.0
+
+func bonus_pending() -> int:
+	for job in jobs:
+		if bool(job.get("bonus_ask", false)):
+			return int(job["id"])
+	return -1
+
 func accept_offer(id: int) -> String:
 	var reason := accept_block_reason(id)
 	if reason != "":
@@ -1233,8 +1265,12 @@ func _create_job(offer: Dictionary, price: float, advance_rate: float, due_month
 	for req in job["reqs"]:
 		draws.append(scrap_draw.randf())
 	job["scrap_draws"] = draws
+	job["bonus"] = ""
+	job["bonus_ask"] = false
 	jobs.append(job)
 	offers.erase(offer)
+	if slack_of(job) >= Data.SLACK_MIN:
+		job["bonus_ask"] = true
 	history.append("Ay %d: iş kabul edildi: %s (fiyat %.0f, peşinat %.0f)." % [month, job["title"], price, advance])
 	notice = "%s kabul edildi; %.0f peşinat kasaya girdi." % [job["title"], advance]
 	if auto_order and not bool(offer.get("fason", false)):
@@ -1348,7 +1384,7 @@ func scrap_cost_month(job: Dictionary) -> float:
 		var req: Dictionary = job["reqs"][i]
 		var share := float(req.get("material_part", 0.0)) / maxf(0.001, weight_sum)
 		var drawn: float = Data.scrap_at(req["kind"], int(req["level"]), Data.scrap_position(float(draws[i]), quality)) if i < draws.size() else Data.scrap_rate(req["kind"], int(req["level"]), quality)
-		cost += material * share * drawn * float(req.get("made_month", 0.0)) / maxf(1.0, float(req["workload"]))
+		cost += material * share * drawn * float(req.get("scrap_mult", 1.0)) * float(req.get("made_month", 0.0)) / maxf(1.0, float(req["workload"]))
 	return cost
 
 # The customer's own cost belief (from the reference price and the job's complexity margin).
@@ -1779,9 +1815,10 @@ func _allocate_at(job_list: Array, cap_left: Dictionary, m: int, d: int, record:
 				var available := float(cap_left.get(machine["uid"], 0.0))
 				if available <= 0.0:
 					continue
-				var use := minf(available, need / job_yield)
+				var rate_mult := job_yield * float(req.get("speed_mult", 1.0))
+				var use := minf(available, need / rate_mult)
 				cap_left[machine["uid"]] = available - use
-				var got := use * job_yield
+				var got := use * rate_mult
 				need -= got
 				req["remaining"] = maxf(0.0, need)
 				job["produced"] = float(job.get("produced", 0.0)) + got
@@ -1871,9 +1908,10 @@ func _allocate(job_list: Array, cap_left: Dictionary, t: int, record: bool) -> v
 				var available := float(cap_left.get(machine["uid"], 0.0))
 				if available <= 0.0:
 					continue
-				var use := minf(available, need / job_yield)
+				var rate_mult := job_yield * float(req.get("speed_mult", 1.0))
+				var use := minf(available, need / rate_mult)
 				cap_left[machine["uid"]] = available - use
-				var got := use * job_yield
+				var got := use * rate_mult
 				need -= got
 				req["remaining"] = maxf(0.0, need)
 				job["produced"] = float(job.get("produced", 0.0)) + got

@@ -928,5 +928,25 @@ func _run() -> void:
 	bg.set_benefit(0, 2)
 	if float(bg.staff_cost_per_head()) != cost_before:
 		return _fail("Benefit changes apply next month")
+	# ---- tolerance slack: speed mode produces more per capacity, scrap mode cuts the scrap bill
+	var sl = Boss.new()
+	sl.from_save(snapshot_day)
+	sl.jobs.clear()
+	var slack_offer: Dictionary = fason_offer.duplicate(true)
+	for req in slack_offer["reqs"]:
+		req["tolerance"] = 0.5 if int(req["level"]) == 1 else 5.0 * float(Data.PRECISION_MM[int(req["level"])])
+	var slack_job: Dictionary = sl._create_job(slack_offer, 3.0, 0.3, int(slack_offer["months"]))
+	if sl.slack_of(slack_job) < 0.9 or not bool(slack_job["bonus_ask"]) or sl.bonus_pending() != int(slack_job["id"]):
+		return _fail("A much looser tolerance must offer the slack choice")
+	sl.choose_bonus(int(slack_job["id"]), "speed")
+	if bool(slack_job["bonus_ask"]) or sl.bonus_pending() != -1:
+		return _fail("Choosing clears the pending question")
+	for req in slack_job["reqs"]:
+		if not _near(float(req["speed_mult"]), 1.25, 0.001) or not _near(float(req.get("scrap_mult", 1.0)), 1.0, 0.001):
+			return _fail("Speed mode: +25%% output, scrap unchanged")
+	sl.choose_bonus(int(slack_job["id"]), "scrap")
+	for req in slack_job["reqs"]:
+		if not _near(float(req["speed_mult"]), 1.0, 0.001) or not _near(float(req["scrap_mult"]), 0.5, 0.001):
+			return _fail("Scrap mode: -50%% scrap, speed unchanged")
 	print("Shell smoke passed")
 	quit(0)

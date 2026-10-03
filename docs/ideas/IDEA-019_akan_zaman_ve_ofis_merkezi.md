@@ -59,3 +59,6 @@ Tur 2 · 2026-10-02 · Kullanıcı yönü onayladı; ChatGPT yorumu işlendi.
 ## Karar Özeti
 
 - Kullanıcı ayın bitmesi/başlamasının önemini azaltmayı, zamanın akmasını, oyuncunun yatırım/araştırma için zamanı durdurmasını, olayların gün gün görünmesini ve Özet ile Fabrika'nın Ofis ekranında toplanmasını istedi; çünkü bugün makinenin çalıştığı yalnızca ay sonunda görülüyor ve yönetim ekranları dağınık. Onaylı FREEZE yoktur.
+
+## Not: Tolerans payı (kabul sonrası seçim)
+Müşterinin toleransı, işi yapacak makinenin hassasiyetinden genişse (log5 ölçeğinde 0–1 pay) kabulde bir seçim çıkar: **hızlı işle** (en çok +%25 çıktı, hurda aynı) ya da **hurdayı azalt** (en çok −%50 hurda, hız aynı). Seçim iş kartından sonradan değiştirilebilir. Hassas makinenin kaba işi alması (CNC'nin 0,3 mm işi) en yüksek payı verir.

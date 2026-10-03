@@ -732,6 +732,10 @@ func _render() -> void:
 	if last_view_key != "" and key != last_view_key:
 		_fade_in()
 	last_view_key = key
+	if overlay.get_child_count() == 0:
+		var slack_job: int = game.bonus_pending()
+		if slack_job >= 0:
+			_bonus_popup(slack_job)
 
 func _animate_money(from: float, to: float) -> void:
 	if money_tween != null and money_tween.is_valid():
@@ -1167,10 +1171,43 @@ func _job_card(job: Dictionary, finish_month: int) -> void:
 		_row(card, "Ödeme", "ödendi" if order["paid"] else "Ay %d · %s" % [order["pay_month"], Data.usd(float(order["amount"]))], MUTED, 13)
 		if order["delayed"]:
 			card.add_child(_label("Tedarikçi bu siparişi geciktirdi (+1 ay).", 12, RED))
+	if game.slack_of(job) >= Data.SLACK_MIN:
+		var bonus_names := {"": "kullanılmıyor", "speed": "hızlı işleme", "scrap": "hurda azaltma"}
+		_row(card, "Tolerans payı", bonus_names[String(job.get("bonus", ""))], GOLD, 14)
+		card.add_child(_button("Tolerans payını değiştir", _bonus_popup.bind(job["id"])))
 	_row(card, "Peşinat alındı", Data.usd(float(job["advance"])), MUTED, 13)
 	_row(card, "Gelir (tesliminde)", Data.usd(float(job["revenue"])), GREEN, 14)
 	var reason: String = game.abandon_block_reason(job["id"])
 	card.add_child(_button("İşi bırak · ceza %s" % Data.usd(game.abandon_penalty(job)) if reason == "" else reason, _ask_abandon.bind(job["id"]), false, reason != ""))
+
+# Tolerance slack: the drawing is looser than the machine, so the boss trades the room for speed or for scrap.
+func _bonus_popup(job_id: int) -> void:
+	var job: Dictionary = game.job_by_id(job_id)
+	if job.is_empty():
+		return
+	game.choose_bonus(job_id, String(job.get("bonus", "")))   # asked once; the choice stays editable on the job card
+	_filter_popup("Tolerans payı", func(box: VBoxContainer) -> void:
+		box.add_child(_label("%s · müşterinin istediği tolerans, makinenin hassasiyetinden geniş. Bu payı kullanabilirsin:" % job["title"], 13, MUTED))
+		for req in job["reqs"]:
+			var slack: float = game.req_slack(job, req)
+			if slack >= Data.SLACK_MIN:
+				_row(box, "%s %s · %s" % [Data.LEVELS[int(req["level"])], req["kind"], Data.tolerance_text(float(req["tolerance"]))],
+					"pay %%%d" % int(roundf(slack * 100.0)), GOLD, 13)
+		var mode: String = String(job.get("bonus", ""))
+		_flow_chips(box, "Payı nasıl kullanalım?", [
+			{"id": "", "title": "Kullanma"},
+			{"id": "speed", "title": "Hızlı işle (en çok +%%%d)" % int(Data.SLACK_SPEED * 100.0)},
+			{"id": "scrap", "title": "Hurdayı azalt (en çok -%%%d)" % int(Data.SLACK_SCRAP * 100.0)}], mode,
+			func(id: String) -> void:
+				game.choose_bonus(job_id, id)
+				_bonus_popup(job_id))
+		var line := "Seçim yok: işlem hızı ve hurda normal."
+		if mode == "speed":
+			line = "Hızlı işlenir; hurda oranı değişmez. İş daha erken biter."
+		elif mode == "scrap":
+			line = "Hurda azalır; işlem hızı değişmez. Hurda gideri düşer."
+		box.add_child(_label(line, 12, GREEN))
+		box.add_child(_label("Seçimi İşler ekranındaki iş kartından sonra da değiştirebilirsin.", 11, MUTED)))
 
 func _ask_abandon(id: int) -> void:
 	var job: Dictionary = game.job_by_id(id)
