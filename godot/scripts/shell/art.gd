@@ -7,6 +7,11 @@ static func find(base: String) -> Texture2D:
 		var path := "%s.%s" % [base, ext]
 		if ResourceLoader.exists(path):
 			return load(path)
+		# a picture just dropped into the folder that the editor has not imported yet: read the file directly
+		if FileAccess.file_exists(path):
+			var image := Image.load_from_file(path)
+			if image != null and not image.is_empty():
+				return ImageTexture.create_from_image(image)
 	return null
 
 static func slug(text: String) -> String:
