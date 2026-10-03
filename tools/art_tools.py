@@ -4,6 +4,7 @@
   slice   cut a grid sheet into separate transparent PNGs (chroma-key background)
   key     remove the background of single images
   resize  shrink big images so the game folder stays small
+  icon    make small UI icons from line drawings: crop, centre on a square canvas, thicken the lines so they survive being shown at 30-40 px, scale
   fix     find images whose real format does not match the file extension (Godot cannot load them) and convert them
 
 Examples:
@@ -146,6 +147,29 @@ def cmd_fix(args):
     print("done:", fixed, "files fixed")
 
 
+def cmd_icon(args):
+    """Thin line icons vanish when a 256 px picture is drawn at 38 px (the sampler skips pixels): thicken, then scale."""
+    from PIL import ImageFilter
+    for path in args.files:
+        image = Image.open(path).convert("RGBA")
+        box = image.getchannel("A").point(lambda v: 255 if v > 20 else 0).getbbox()
+        if box:
+            image = image.crop(box)
+        scale = args.fill / max(image.size)
+        image = image.resize((max(1, round(image.width * scale)), max(1, round(image.height * scale))), Image.LANCZOS)
+        canvas = Image.new("RGBA", (256, 256), (0, 0, 0, 0))
+        canvas.paste(image, ((256 - image.width) // 2, (256 - image.height) // 2), image)
+        alpha = canvas.getchannel("A").filter(ImageFilter.MaxFilter(args.thicken))   # thicker lines
+        solid = Image.new("RGBA", canvas.size, (255, 255, 255, 0))
+        solid.putalpha(alpha)
+        # keep the original colours where they were, white on the new line pixels
+        solid.paste(canvas, (0, 0), canvas)
+        out = solid.resize((args.size, args.size), Image.LANCZOS)
+        target = os.path.join(args.out, os.path.basename(path)) if args.out else path
+        out.save(target)
+        print("saved", target, out.size)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -173,6 +197,13 @@ def main():
     f = sub.add_parser("fix")
     f.add_argument("folder")
     f.set_defaults(func=cmd_fix)
+    i = sub.add_parser("icon")
+    i.add_argument("files", nargs="+")
+    i.add_argument("--out", default="")
+    i.add_argument("--size", type=int, default=96)
+    i.add_argument("--fill", type=int, default=216, help="longest side of the drawing inside the 256 canvas")
+    i.add_argument("--thicken", type=int, default=7, help="odd number: line growth (5 = +2 px each side at 256)")
+    i.set_defaults(func=cmd_icon)
     args = parser.parse_args()
     args.func(args)
 
