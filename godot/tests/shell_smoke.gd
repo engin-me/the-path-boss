@@ -35,7 +35,7 @@ func _run() -> void:
 	var by_count := {1: 0, 2: 0, 3: 0, 4: 0}
 	for offer in offers:
 		by_count[offer["count"]] += 1
-		if offer["share"] < 0.01 or offer["share"] > 0.80:
+		if (not bool(offer.get("fason", false)) and offer["share"] < 0.01) or offer["share"] > 0.80:
 			return _fail("Material share out of 1-80%")
 		for req in offer["reqs"]:
 			if req["parts"] <= 0 or absf(float(req["parts"]) * float(req["difficulty"]) - float(req["workload"])) > 0.01:
@@ -876,5 +876,42 @@ func _run() -> void:
 	var actual_index: int = int(delivered_at[0]) * 30 + int(delivered_at[1])
 	if delivered_at[0] == 0 or absi(forecast_index - actual_index) > 2:   # machine ageing moves it by a day or so
 		return _fail("Forecast %s/%s but delivered %s/%s" % [forecast["finish"], forecast["finish_day"], delivered_at[0], delivered_at[1]])
+	# ---- advance comfort follows the delivery score, a later delivery is expensive, toll (fason) work carries no material
+	var tuning = Boss.new()
+	tuning.from_save(snapshot_day)
+	tuning.delivery_score = 0.5
+	var low_comfort: int = tuning.advance_comfort()
+	tuning.delivery_score = 1.0
+	if tuning.advance_comfort() <= low_comfort + 15:
+		return _fail("A higher delivery score must allow a clearly higher advance")
+	var tune_offer: Dictionary = tuning.offers[0]
+	var on_time: float = tuning.customer_limit(tune_offer, 30, int(tune_offer["months"]))
+	var one_late: float = tuning.customer_limit(tune_offer, 30, int(tune_offer["months"]) + 1)
+	var two_late: float = tuning.customer_limit(tune_offer, 30, int(tune_offer["months"]) + 2)
+	if not (on_time > one_late and one_late > two_late) or two_late > 0.65 * on_time:
+		return _fail("Two months late must cut the customer's limit dramatically (%.2f / %.2f / %.2f)" % [on_time, one_late, two_late])
+	var over_advance: float = tuning.customer_limit(tune_offer, 100, int(tune_offer["months"]))
+	if over_advance > 0.7 * on_time:
+		return _fail("An advance far above the comfort level must cut the limit")
+	var fason_found := 0
+	var fason_offer: Dictionary = {}
+	for month_index in range(1, 7):
+		for candidate in Data.generate_offers(month_index, 0):
+			if bool(candidate.get("fason", false)):
+				fason_found += 1
+				if fason_offer.is_empty():
+					fason_offer = candidate
+	if fason_found == 0 or float(fason_offer["material"]) != 0.0:
+		return _fail("Some listings must be toll work with no material")
+	var fason_game = Boss.new()
+	fason_game.from_save(snapshot_day)
+	fason_game.jobs.clear()
+	fason_game.offers.append(fason_offer.duplicate(true))
+	var fason_cost: Dictionary = fason_game.cost_estimate(fason_offer)
+	if float(fason_cost["material"]) != 0.0:
+		return _fail("Toll work must not price any material")
+	var fason_job: Dictionary = fason_game._create_job(fason_offer.duplicate(true), 3.0, 0.3, int(fason_offer["months"]))
+	if fason_job["order"].is_empty() or not bool(fason_job["order"]["paid"]) or float(fason_job["order"]["amount"]) != 0.0:
+		return _fail("Toll work arrives with the job: no material order, nothing to pay")
 	print("Shell smoke passed")
 	quit(0)

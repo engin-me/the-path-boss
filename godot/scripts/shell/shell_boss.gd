@@ -1195,6 +1195,8 @@ func _create_job(offer: Dictionary, price: float, advance_rate: float, due_month
 	job["yield"] = 1.0
 	job["advance"] = advance
 	job["order"] = {}
+	if bool(offer.get("fason", false)):
+		job["order"] = {"supplier": "customer", "order_month": month, "arrive_month": month, "arrive_day": day, "pay_month": month, "pay_day": day, "amount": 0.0, "paid": true, "delayed": false}
 	var scrap_draw := RandomNumberGenerator.new()
 	scrap_draw.seed = 31 * int(offer["id"]) + 7 * month + 3
 	var draws: Array = []
@@ -1205,7 +1207,7 @@ func _create_job(offer: Dictionary, price: float, advance_rate: float, due_month
 	offers.erase(offer)
 	history.append("Ay %d: iş kabul edildi: %s (fiyat %.0f, peşinat %.0f)." % [month, job["title"], price, advance])
 	notice = "%s kabul edildi; %.0f peşinat kasaya girdi." % [job["title"], advance]
-	if auto_order:
+	if auto_order and not bool(offer.get("fason", false)):
 		var result := order_material(job["id"], default_supplier)
 		if result != "":
 			notice += " Hammadde otomatik sipariş edilemedi: " + result
@@ -1326,6 +1328,16 @@ func customer_cost(offer: Dictionary) -> float:
 # Highest price the customer accepts: cost x (1 + margin) where the margin runs from
 # (mid - 20 points) for a relaxed customer to (mid + 25 points) for an urgent one, then lowered
 # by a weak delivery score, a bigger advance and a later delivery.
+const ADVANCE_OVER := 0.012    # beyond the comfortable advance the limit falls 1.2 percent per extra point
+
+# The advance customers accept without a fuss grows with the delivery score (a reliable supplier may ask more).
+func advance_comfort() -> int:
+	return int(roundf(20.0 + 45.0 * delivery_score))
+
+# A later delivery is refused outright by impatient customers: one month by urgency 8+, two months by urgency 5+.
+static func time_refused(urgency: int, months_late: int) -> bool:
+	return (months_late >= 2 and urgency >= 5) or (months_late == 1 and urgency >= 8)
+
 const ADVANCE_EFFECT := 0.004   # the customer's limit falls 0.4 percent per point of advance asked (30 is neutral)
 
 func customer_limit(offer: Dictionary, advance_pct: int, months_offered: int, urgency := -1.0) -> float:
@@ -1335,9 +1347,12 @@ func customer_limit(offer: Dictionary, advance_pct: int, months_offered: int, ur
 	var limit := customer_cost(offer) * (1.0 + margin)
 	limit *= 0.90 + 0.15 * delivery_score
 	limit *= 1.0 - ADVANCE_EFFECT * float(advance_pct - 30)
+	if advance_pct > advance_comfort():
+		limit *= 1.0 - ADVANCE_OVER * float(advance_pct - advance_comfort())
 	var wanted: int = int(offer["months"])
 	if months_offered > wanted:
-		limit *= 1.0 - 0.07 * float(months_offered - wanted)
+		var late := float(months_offered - wanted)
+		limit *= 1.0 - (0.08 * late + 0.07 * late * late)   # one month later costs 15 percent, two months 42 percent
 	else:
 		limit *= 1.0 + 0.04 * float(wanted - months_offered)
 	return limit
@@ -1370,7 +1385,7 @@ func accept_probability(offer: Dictionary, price: float, advance_pct: int, month
 	for u in range(low, high + 1):
 		total += 1
 		var limit := customer_limit(offer, advance_pct, months_offered, float(u))
-		var time_block := months_offered > wanted and u >= 8
+		var time_block := months_offered > wanted and time_refused(u, months_offered - wanted)
 		if price <= limit and not time_block:
 			accept += 1
 		elif price <= limit * (1.0 + COUNTER_BAND):
@@ -1422,11 +1437,11 @@ func submit_quote(offer_id: int, price: float, advance_pct: int, months_offered:
 	var base := {"my_price": price, "my_advance": advance_pct, "my_months": months_offered, "cost_total": cost_total, "round": round,
 		"mail_no": Data.mail_count(offer, round), "my_margin": price / maxf(0.001, cost_total) - 1.0}
 	if price <= limit:
-		if months_offered > wanted and int(offer["urgency"]) >= 8 and round >= MAX_QUOTE_ROUNDS:
+		if months_offered > wanted and time_refused(int(offer["urgency"]), months_offered - wanted) and round >= MAX_QUOTE_ROUNDS:
 			var firm := _mail(offer, "rejected", ["Teslim süresi bizim için şart: %d ayda teslim edemeyeceğiniz için bu işte çalışamayacağız." % wanted], base)
 			offers.erase(offer)
 			return {"ok": true, "status": "rejected", "mail": firm}
-		if months_offered > wanted and int(offer["urgency"]) >= 8 and round < MAX_QUOTE_ROUNDS:
+		if months_offered > wanted and time_refused(int(offer["urgency"]), months_offered - wanted) and round < MAX_QUOTE_ROUNDS:
 			var extra := base.duplicate()
 			extra.merge({"price": price, "advance_pct": advance_pct, "months": wanted, "kind_counter": "time"}, true)
 			var mail := _mail(offer, "counter", ["Teşekkürler, fiyatınız uygun. Ancak %d ayda teslim istiyoruz; bu süreyi kabul ederseniz anlaşalım." % wanted], extra)
@@ -1918,6 +1933,8 @@ func quote_projection(offer: Dictionary, months_offered: int, delayed := false) 
 	job["yield"] = float(quote["yield"])
 	job["order"] = {"supplier": default_supplier, "order_month": month, "arrive_month": month + int(quote["lead"]) + (1 if delayed else 0), "arrive_day": day,
 		"pay_month": month + int(quote["terms"]), "pay_day": day, "amount": float(quote["amount"]), "paid": false, "delayed": delayed}
+	if bool(offer.get("fason", false)):
+		job["order"] = {"supplier": "customer", "arrive_month": month, "arrive_day": day, "pay_month": month, "pay_day": day, "amount": 0.0, "paid": true, "delayed": false}
 	var done: Array = projection_days(job).get(job["id"], [])
 	var finish_month: int = int(done[0]) if not done.is_empty() else 0
 	var finish_day: int = int(done[1]) if not done.is_empty() else 0

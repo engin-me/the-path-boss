@@ -116,6 +116,7 @@ const TERMS := [
 ]
 const MONTH_DAYS := 30   # a month is 30 days in the day-by-day engine
 const IDLE_WAGE_FLOOR := 0.5   # share of a crew's wage still paid on a day the machine has no work (short-time work)
+const FASON_SHARE := 0.25   # share of the listings that are toll work (customer supplies the material)
 const EXIT_FEE_RENTS := 2
 const RENEWAL_MARKUP := 0.12   # market rent: an unanswered contract renews with this rise
 const NOTICE_MONTHS := 2   # the landlord writes this many months before the contract ends
@@ -433,12 +434,12 @@ static func fill_offer(offer: Dictionary, specs: Array, rng: RandomNumberGenerat
 		var span: Array = PART_WEIGHT[kind]
 		var weight := snappedf(rng.randf_range(float(span[0]), float(span[1])), 0.5)
 		var tons := float(parts) * weight * float(RAW_FACTOR[kind]) / 1000.0
-		var material_part := tons * float(STEEL_PRICE[level])
+		var material_part := 0.0 if bool(offer.get("fason", false)) else tons * float(STEEL_PRICE[level])   # toll work: the customer supplies the steel
 		var months := float(spec["n"]) * float(offer["duration"])
 		var machine := typical_machine_month(kind, level)
 		var running := months * (float(machine["labor"]) + float(machine["energy"]) + float(machine["amort"]) + float(machine["overhead"]))
 		var consumables := CONSUMABLE_SHARE * (material_part + months * (float(machine["labor"]) + float(machine["energy"])))
-		cost += material_part * (1.0 + scrap_rate(kind, level)) + running + consumables
+		cost += material_part * (1.0 + scrap_rate(kind, level)) + running + consumables   # toll work carries no material and no scrap on it
 		material += material_part
 		reqs.append({"kind": kind, "level": level, "count": int(spec["n"]), "parts": parts, "difficulty": z, "workload": workload, "remaining": workload,
 			"weight": weight, "tons": tons, "steel": level, "material_part": material_part, "tolerance": tolerance})
@@ -484,7 +485,8 @@ static func generate_offers(month: int, salt := 0) -> Array:
 		var duration := mini(rng.randi_range(count, 3 * count) if count > 1 else rng.randi_range(1, 3), 10)
 		var delay := 0   # the customer does not wait for machines in transit; the earliest start is shown instead
 		var offer := {"id": month * 100 + i, "customer": CUSTOMERS[rng.randi_range(0, CUSTOMERS.size() - 1)], "duration": duration,
-			"start_delay": delay, "months": delay + duration + rng.randi_range(1, 2), "urgency": rng.randi_range(1, 10)}
+			"start_delay": delay, "months": delay + duration + rng.randi_range(1, 2), "urgency": rng.randi_range(1, 10),
+			"fason": rng.randf() < FASON_SHARE}
 		fill_offer(offer, specs, rng)
 		offers.append(offer)
 	return offers

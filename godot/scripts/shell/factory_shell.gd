@@ -1152,6 +1152,8 @@ func _job_card(job: Dictionary, finish_month: int) -> void:
 	if order.is_empty():
 		_row(card, "Hammadde", "Sipariş verilmedi", RED, 14)
 		card.add_child(_button("Hammadde sipariş ver", _open_detail.bind("order", str(job["id"])), true))
+	elif order["supplier"] == "customer":
+		_row(card, "Hammadde", "müşteri verdi (fason)", GREEN, 14)
 	else:
 		var supplier: Dictionary = Data.supplier_by_id(order["supplier"])
 		var arrived: bool = int(order["arrive_month"]) <= game.month
@@ -1186,7 +1188,7 @@ func _job_requirement_rows(box: Control, offer: Dictionary, with_load := true) -
 		var tolerance: String = Data.tolerance_text(float(req["tolerance"])) if req.has("tolerance") else ""
 		_row(box, "%s %s%s" % [Data.LEVELS[int(req["level"])], req["kind"], (" · " + tolerance) if tolerance != "" else ""],
 			"%d parça × %s = %s" % [req["parts"], Data.mu_text(float(req["difficulty"])), _xfmt(float(req["workload"]))] if with_load else "", TEXT if have else RED, 14)
-		box.add_child(_label("%s kg/parça · yaklaşık %s kg %s çelik gerekir" % [str(req["weight"]).trim_suffix(".0").replace(".", ","), str(int(roundf(float(req["tons"]) * 1000.0))), "nitelikli" if int(req["steel"]) > 1 else "standart"], 11, MUTED))
+		box.add_child(_label("%s kg/parça · yaklaşık %s kg %s çelik %s" % [str(req["weight"]).trim_suffix(".0").replace(".", ","), str(int(roundf(float(req["tons"]) * 1000.0))), "nitelikli" if int(req["steel"]) > 1 else "standart", "(müşteri verir)" if bool(offer.get("fason", false)) else "gerekir"], 11, MUTED))
 		if not have:
 			box.add_child(_label("Makine yok: bu hassasiyet için %s gerekli." % Data.level_needed_text(int(req["level"])), 11, RED))
 
@@ -1290,7 +1292,12 @@ func _row_head(photo: Texture2D, title: String, sub: String, right_bbcode: Strin
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	info.add_theme_constant_override("separation", 2)
 	info.add_child(_label(title, 16, TEXT))
-	info.add_child(_label(sub, 11, MUTED))
+	if sub.contains("["):
+		var sub_rich := _rich(sub, 11)
+		sub_rich.fit_content = true
+		info.add_child(sub_rich)
+	else:
+		info.add_child(_label(sub, 11, MUTED))
 	head.add_child(info)
 	if right_bbcode != "":
 		var right := _rich(right_bbcode, 13)
@@ -1298,6 +1305,26 @@ func _row_head(photo: Texture2D, title: String, sub: String, right_bbcode: Strin
 		right.custom_minimum_size = Vector2(120, 0)
 		head.add_child(right)
 	return head
+
+const KIND_COLOR := {"Torna": Color("#6ec8eb"), "Freze": Color("#6ee1be"), "Taşlama": Color("#be9ff0"), "Dövme": Color("#f0a064")}
+
+# The machine kinds a job needs as small icons (art/ui/<kind>_icon.png, tinted per kind) followed by the text.
+func _need_row(offer: Dictionary, text: String, size: int, color: Color, italic := false) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	var kinds: Array = []
+	for req in offer["reqs"]:
+		if not kinds.has(req["kind"]):
+			kinds.append(req["kind"])
+	for kind in kinds:
+		var icon := _icon_rect(Art.slug(kind) + "_icon", 26)
+		if icon != null:
+			icon.modulate = KIND_COLOR.get(kind, TEXT)
+			row.add_child(icon)
+	var label: Label = _gold_italic(text, size) if italic else _label(text, size, color)
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(label)
+	return row
 
 func _tap_panel(box: VBoxContainer, on_tap: Callable) -> void:
 	_panel_of(box).gui_input.connect(func(event: InputEvent) -> void:
@@ -1460,7 +1487,7 @@ func _offer_card(offer: Dictionary, reason: String) -> void:
 	for req in offer["reqs"]:
 		parts = maxi(parts, int(req["parts"]))
 		difficulty = maxf(difficulty, float(req["difficulty"]))
-	box.add_child(_row_head(Art.pick_image("res://art/jobs", int(offer["id"])), offer["title"], "İş No: %d · %s" % [_job_no(offer), offer["customer"]],
+	box.add_child(_row_head(Art.pick_image("res://art/jobs", int(offer["id"])), offer["title"], "İş No: %d%s · %s" % [_job_no(offer), "  [color=#ff9f43][b]FASON[/b][/color]" if bool(offer.get("fason", false)) else "", offer["customer"]],
 		"[right][color=#3ddc84]%s Ad[/color] x %s[/right]" % [Data.usd(float(parts) / 1000.0).trim_prefix("$"), Data.mu_text(difficulty)]))
 	var tiles := HBoxContainer.new()
 	tiles.add_theme_constant_override("separation", 6)
@@ -1468,7 +1495,7 @@ func _offer_card(offer: Dictionary, reason: String) -> void:
 	tiles.add_child(_mini_tile("tezgah_ilan_teslimat", "%d Ay" % int(offer["months"])))
 	tiles.add_child(_mini_tile("is_ilani_malzeme", Data.STEEL_GRADE[int(offer["reqs"][0]["steel"])]))
 	box.add_child(tiles)
-	box.add_child(_label("Tezgah ihtiyacı: " + _kind_list_text(offer) + ("" if doable else "  ·  " + game.fit_block_reason(offer["id"])), 11, GOLD if doable else RED))
+	box.add_child(_need_row(offer, "Tezgah ihtiyacı: " + _kind_list_text(offer) + ("" if doable else "  ·  " + game.fit_block_reason(offer["id"])), 11, GOLD if doable else RED))
 	if open:
 		_job_requirement_rows(box, offer)
 		_row(box, "Teslim süresi", "%d ay" % offer["months"], TEXT, 13)
@@ -1596,9 +1623,9 @@ func _detail_quote() -> void:
 	var total: float = float(estimate["total"])
 	var box := _card(content, "", GOLD, true)
 	var title_row := HBoxContainer.new()
-	var no_label := _label("İş No: %d" % _job_no(offer), 18, TEXT, false)
+	var no_label := _rich("[right]İş No: %d%s[/right]" % [_job_no(offer), "  [color=#ff9f43][b]FASON[/b][/color]" if bool(offer.get("fason", false)) else ""], 18)
+	no_label.fit_content = true
 	no_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	no_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	title_row.add_child(no_label)
 	box.add_child(title_row)
 	var photo := _offer_photo(offer, 190)
@@ -1632,15 +1659,18 @@ func _detail_quote() -> void:
 	tiles.add_child(_feature_tile("is_ilani_malzeme", "Malzeme", Data.STEEL_GRADE[int(offer["reqs"][0]["steel"])]))
 	box.add_child(tiles)
 	box.add_child(_label("Öngörülen Veriler", 16, GOLD))
-	box.add_child(_gold_italic("Tezgah İhtiyacı: " + _kind_list_text(offer), 13))
+	box.add_child(_need_row(offer, "Tezgah İhtiyacı: " + _kind_list_text(offer), 13, GOLD, true))
 	var kg := 0
 	for req in offer["reqs"]:
 		kg += int(roundf(float(req["tons"]) * 1000.0))
 	var grade: String = Data.STEEL_GRADE[int(offer["reqs"][0]["steel"])]
-	box.add_child(_gold_italic("Hammadde: %d parça için yaklaşık %s kg %s çelik (parça başına %s kg)." % [parts, Data.usd(float(kg) / 1000.0).trim_prefix("$"), grade, str(offer["reqs"][0]["weight"]).trim_suffix(".0").replace(".", ",")], 12))
+	if bool(offer.get("fason", false)):
+		box.add_child(_gold_italic("Fason iş: hammaddeyi müşteri verir (%d parça, yaklaşık %s kg %s çelik); yalnızca işçilik fiyatlanır, hurda ve hammadde gideri sende değil." % [parts, Data.usd(float(kg) / 1000.0).trim_prefix("$"), grade], 12))
+	else:
+		box.add_child(_gold_italic("Hammadde: %d parça için yaklaşık %s kg %s çelik (parça başına %s kg)." % [parts, Data.usd(float(kg) / 1000.0).trim_prefix("$"), grade, str(offer["reqs"][0]["weight"]).trim_suffix(".0").replace(".", ",")], 12))
 	_quote_row(box, "Gerekli Kapasite", _xfmt(load_total))
 	_quote_row(box, "Enerji Gideri", Data.usd(_sum_lines(lines, "energy")))
-	_quote_row(box, "Hammadde Gideri", Data.usd(float(estimate["material"])))
+	_quote_row(box, "Hammadde Gideri", "müşteri verir" if bool(offer.get("fason", false)) else Data.usd(float(estimate["material"])))
 	_quote_row(box, "Hurda Gideri", Data.usd(_sum_lines(lines, "scrap")))
 	_quote_row(box, "Sarf Malzeme Gideri", Data.usd(_sum_lines(lines, "consumables")))
 	_quote_row(box, "Personel Gideri", Data.usd(_sum_lines(lines, "personnel")))
@@ -1669,6 +1699,7 @@ func _detail_quote() -> void:
 		price_label.text = "Teklif tutarı: " + Data.usd(quote_price)
 		var material_terms: Dictionary = game.material_quote(offer, game.default_supplier)
 		cash_label.text = "Tahmini kâr %s · kabulde peşinat girişi %s · hammadde %s %s" % [Data.usd(quote_price - total), Data.usd(quote_price * float(quote_adv) / 100.0), Data.usd(float(estimate["material"])), "peşin çıkar" if int(material_terms["terms"]) == 0 else "%d ay vadeli çıkar" % int(material_terms["terms"])]
+		cash_label.text += "\nTeslim skorun %%%d: müşteri en fazla ~%%%d peşinata rahat razı olur; üstü ihtimali düşürür." % [int(roundf(float(game.delivery_score) * 100.0)), game.advance_comfort()]
 		gauge.set_value(float(game.accept_probability(offer, quote_price, quote_adv, quote_months)["accept"]))
 		var forecast: Array = _delivery_check(offer, quote_months)
 		warning.text = forecast[0] + ("\n" + _capacity_note(offer, quote_months) if forecast[1] != GREEN else "")
@@ -1679,7 +1710,7 @@ func _detail_quote() -> void:
 		quote_adv = v
 		shown.text = "%% %d" % v
 		if is_instance_valid(gauge): refresh.call())
-	_slider_row(sliders, "Teslimat", 1, wanted + 1, clampi(quote_months, 1, wanted + 1), func(v: int, shown: Label) -> void:
+	_slider_row(sliders, "Teslimat", 1, wanted + 2, clampi(quote_months, 1, wanted + 2), func(v: int, shown: Label) -> void:
 		quote_months = v
 		shown.text = "%d Ay" % v
 		if is_instance_valid(gauge): refresh.call())
