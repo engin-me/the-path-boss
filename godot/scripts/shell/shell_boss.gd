@@ -600,15 +600,24 @@ func capacity_chart(kind: String, extra := {}, extra_months := 1) -> Dictionary:
 			cap[int(machine["level"]) - 1] += net
 	var demand := [0.0, 0.0, 0.0]
 	for job in jobs:
-		var months_left := maxi(1, int(job["due_month"]) - month + 1)
+		# only the months in which production can actually run count: machines, customer preparation and material come first
+		var order: Dictionary = job.get("order", {})
+		var wait := maxi(maxi(0, int(job["start_month"]) - month), maxi(0, transit_wait(job)))
+		if not order.is_empty():
+			wait = maxi(wait, int(order["arrive_month"]) - month)
+		var months_left := maxi(1, int(job["due_month"]) - month + 1 - wait)
 		for req in job["reqs"]:
 			if req["kind"] == kind:
 				demand[int(req["level"]) - 1] += float(req["remaining"]) / float(months_left)
 	var extra_demand := [0.0, 0.0, 0.0]
 	if not extra.is_empty():
+		var extra_wait := maxi(int(extra.get("start_delay", 0)), maxi(0, transit_wait(extra)))
+		if not bool(extra.get("fason", false)):
+			extra_wait = maxi(extra_wait, int(material_quote(extra, default_supplier)["lead"]))
+		var producing := maxi(1, extra_months - extra_wait)
 		for req in extra["reqs"]:
 			if req["kind"] == kind:
-				extra_demand[int(req["level"]) - 1] += float(req["workload"]) / float(maxi(1, extra_months))
+				extra_demand[int(req["level"]) - 1] += float(req["workload"]) / float(producing)
 	var total_cap := [cap[0] + transit[0], cap[1] + transit[1], cap[2] + transit[2]]
 	var base := _level_alloc(demand, total_cap)
 	var plus := _level_alloc([demand[0] + extra_demand[0], demand[1] + extra_demand[1], demand[2] + extra_demand[2]], total_cap)
