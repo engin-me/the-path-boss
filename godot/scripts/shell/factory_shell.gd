@@ -2483,10 +2483,10 @@ func _buy_equipment(id: String, qty: int) -> void:
 func _capacity_chart_box(kind: String, offer := {}, months := 1) -> Control:
 	var color: Color = KIND_COLOR.get(kind, TEXT)
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
+	box.add_theme_constant_override("separation", 0)
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var head := HBoxContainer.new()
-	head.alignment = BoxContainer.ALIGNMENT_CENTER
+	head.alignment = BoxContainer.ALIGNMENT_BEGIN   # icon and name sit at the left, over the chart's y axis
 	head.add_theme_constant_override("separation", 6)
 	var icon := _icon_rect(Art.slug(kind) + "_icon", 28)
 	if icon != null:
