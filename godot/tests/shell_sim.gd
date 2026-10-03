@@ -186,6 +186,8 @@ func _play(persona: Dictionary, seed_value: int, months: int, agg: Dictionary) -
 			var result: Dictionary = game.submit_quote(offer["id"], price, 30, int(offer["months"]))
 			if not result["ok"]:
 				continue
+			if trace and seed_value == 1:
+				print("Q M%d %s margin %.2f est %.2f price %.2f months %d status %s" % [game.month, offer["title"], margin_used, float(estimate["total"]), price, int(offer["months"]), result["status"]])
 			agg["q_" + {"accepted": "ok", "counter": "counter", "rejected": "reject"}[result["status"]]] += 1
 			if result["status"] == "counter" and float(result["mail"]["price"]) >= float(estimate["total"]) * 1.05:
 				game.answer_counter(result["mail"]["id"], true)
@@ -245,7 +247,7 @@ func _play(persona: Dictionary, seed_value: int, months: int, agg: Dictionary) -
 			elif text.begins_with("İptal:"):
 				agg["dropped"] += 1
 		if trace and seed_value == 1:
-			print("M%d cash %.2f | %s" % [game.month, game.cash, " | ".join(game.last_lines)])
+			print("M%d cash %.2f mach=%d jobs=%d shifts=%s exp=%.2f | %s" % [game.month, game.cash, game.machines.size(), game.jobs.size(), str(game.delivered().map(func(m): return m["shifts"])), game.ordinary_expense(), " | ".join(game.last_lines)])
 		trough = minf(trough, game.cash - game.debt)
 	if game.phase == "end":
 		var kind: String = game.closure.get("type", "")
