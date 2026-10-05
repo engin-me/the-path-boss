@@ -295,13 +295,13 @@ func _build_clock() -> Control:
 	for spec in [[0, "zaman_durdur", "Durdur"], [1, "zaman_basla", "Başlat"], [2, "zaman_ileri_sar", "Hızlandır"], [-1, "zaman_ay_atla", "Ayı atla"]]:
 		var button := Button.new()
 		button.tooltip_text = spec[2]
-		button.custom_minimum_size = Vector2(46, 38)
+		button.custom_minimum_size = Vector2(38, 30)
 		var icon := Art.find("res://art/ui/" + String(spec[1]))
 		if icon != null:
 			button.icon = icon
 			button.expand_icon = true
 			button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			button.add_theme_constant_override("icon_max_width", 22)
+			button.add_theme_constant_override("icon_max_width", 16)
 		else:
 			button.text = {0: "⏸", 1: "▶", 2: "⏩", -1: "⏭"}[int(spec[0])]
 		if int(spec[0]) < 0:
@@ -1396,17 +1396,11 @@ func _kind_list_text(offer: Dictionary) -> String:
 		return kinds[0]
 	return ", ".join(kinds.slice(0, kinds.size() - 1)) + " ve " + kinds[kinds.size() - 1]
 
-func _offer_photo(offer: Dictionary, height := 170) -> TextureRect:
+func _offer_photo(offer: Dictionary, height := 170) -> Control:
 	var photo := Art.pick_image("res://art/jobs", int(offer["id"]))
 	if photo == null:
 		return null
-	var picture := TextureRect.new()
-	picture.texture = photo
-	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	picture.custom_minimum_size = Vector2(0, height)
-	picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return picture
+	return _rounded_photo(photo, Vector2(0, height), 14)
 
 func _icon_rect(icon_name: String, side: int) -> TextureRect:
 	var texture: Texture2D = Art.find("res://art/ui/" + icon_name)
@@ -1423,15 +1417,15 @@ func _icon_rect(icon_name: String, side: int) -> TextureRect:
 # ------------------------------------------------------------------ narrow listing rows
 
 # Small bordered value tile for narrow rows: icon and value only.
-func _mini_tile(icon_name: String, value: String) -> Control:
+func _mini_tile(icon_name: String, value: String, framed := true) -> Control:
 	var tile := PanelContainer.new()
 	tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	tile.add_theme_stylebox_override("panel", _box(Color(0, 0, 0, 0), TEXT, 10, 1))
+	tile.add_theme_stylebox_override("panel", _box(Color(0, 0, 0, 0), TEXT, 10, 1) if framed else StyleBoxEmpty.new())
 	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.alignment = BoxContainer.ALIGNMENT_BEGIN if not framed else BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 6)
-	tile.add_child(_margin(row, 6, 5))
-	var icon := _icon_rect(icon_name, 22)
+	tile.add_child(_margin(row, 6 if framed else 0, 5 if framed else 2))
+	var icon := _icon_rect(icon_name, 22 if framed else 20)
 	if icon != null:
 		if icon_name.begins_with("tezgah_"):
 			icon.modulate = CYAN   # the white line icons take the technical cyan
@@ -1444,13 +1438,7 @@ func _row_head(photo: Texture2D, title: String, sub: String, right_bbcode: Strin
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 10)
 	if photo != null:
-		var picture := TextureRect.new()
-		picture.texture = photo
-		picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-		picture.custom_minimum_size = Vector2(104, 80)
-		picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		head.add_child(picture)
+		head.add_child(_rounded_photo(photo, Vector2(104, 84), 12))
 	var info := VBoxContainer.new()
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	info.add_theme_constant_override("separation", 2)
@@ -1592,24 +1580,33 @@ func _flow_chips(parent: Control, caption: String, options: Array, current, call
 	parent.add_child(flow)
 
 # One slim line above a list: opens the filter popup, shows how many filters are on.
-func _filter_bar(active_count: int, summary: String, on_open: Callable, on_clear: Callable) -> void:
+func _filter_bar(active_count: int, chips: Array, on_open: Callable, on_clear: Callable) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
-	var open := _button("Filtre%s" % (" (%d)" % active_count if active_count > 0 else ""), on_open, active_count > 0)
-	open.custom_minimum_size = Vector2(120, 42)
+	var open := _button("Filtre", on_open, active_count > 0)
+	open.custom_minimum_size = Vector2(96, 38)
 	var filter_icon := Art.find("res://art/ui/filtre")
 	if filter_icon != null:
 		open.icon = filter_icon
 		open.expand_icon = true
-		open.add_theme_constant_override("icon_max_width", 20)
+		open.add_theme_constant_override("icon_max_width", 18)
 	row.add_child(open)
-	var text := _label(summary, 12, MUTED, false)
-	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	text.clip_text = true
-	row.add_child(text)
+	# the active filters sit next to the icon as small chips: "Tür: Torna", "Seviye: CNC"
+	var flow := HFlowContainer.new()
+	flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	flow.add_theme_constant_override("h_separation", 6)
+	flow.add_theme_constant_override("v_separation", 6)
+	if chips.is_empty():
+		flow.add_child(_label("Filtre yok", 12, FAINT, false))
+	for text in chips:
+		var chip := PanelContainer.new()
+		chip.add_theme_stylebox_override("panel", _box(GREEN_DIM, GREEN, 14, 1))
+		chip.add_child(_margin(_label(String(text), 12, GREEN_HI, false), 10, 3))
+		flow.add_child(chip)
+	row.add_child(flow)
 	if active_count > 0:
 		var clear := _button("Temizle", on_clear)
-		clear.custom_minimum_size = Vector2(96, 42)
+		clear.custom_minimum_size = Vector2(80, 38)
 		row.add_child(clear)
 	content.add_child(row)
 
@@ -1635,7 +1632,12 @@ func _jobs_board() -> void:
 	if game.phase != "offers":
 		content.add_child(_label("Rapor açık: teklif ay başında (rapordan önce) verilir.", 12, GOLD))
 	var sort_names := {"yeni": "ilan sırası", "hassas": "en hassas önce", "genis": "en geniş tolerans önce"}
-	_filter_bar(job_filters.size(), "%s · %s" % [", ".join(job_filters.map(func(f): return "Elimdeki tezgah" if f == "elimde" else f)) if not job_filters.is_empty() else "Tümü", sort_names[job_sort]],
+	var job_chips: Array = []
+	if not job_filters.is_empty():
+		job_chips.append("Tezgah: " + ", ".join(job_filters.map(func(f): return "elimde olan" if f == "elimde" else f)))
+	if job_sort != "yeni":
+		job_chips.append("Sıra: " + sort_names[job_sort])
+	_filter_bar(job_filters.size(), job_chips,
 		_open_job_filters, func() -> void:
 			job_filters.clear()
 			_render())
@@ -2336,7 +2338,14 @@ func _detail_order() -> void:
 func _machines_board() -> void:
 	var active := (1 if type_filter != "Tümü" else 0) + (1 if level_filter != 0 else 0)
 	var sort_names := {"price_up": "fiyat ↑", "price_down": "fiyat ↓", "cond_up": "kondisyon ↑", "cond_down": "kondisyon ↓"}
-	_filter_bar(active, "%s · %s · %s" % [type_filter, "Tüm seviyeler" if level_filter == 0 else Data.LEVELS[level_filter], sort_names[sort_mode]],
+	var machine_chips: Array = []
+	if type_filter != "Tümü":
+		machine_chips.append("Tür: " + type_filter)
+	if level_filter != 0:
+		machine_chips.append("Seviye: " + Data.LEVELS[level_filter])
+	if sort_mode != "price_up":
+		machine_chips.append("Sıra: " + sort_names[sort_mode])
+	_filter_bar(active, machine_chips,
 		_open_machine_filters, func() -> void:
 			type_filter = "Tümü"
 			level_filter = 0
@@ -2437,12 +2446,16 @@ func _update_area_preview(hover_area := -1.0) -> void:
 	area_label.text = text
 	area_label.add_theme_color_override("font_color", YELLOW if extra > 0.0 else MUTED)
 
+# The "required area" icon: gerekli_alan.svg when the artist has supplied it, else the floor-measure icon of the plant listings.
+func _area_icon() -> String:
+	return "gerekli_alan" if Art.find("res://art/ui/gerekli_alan") != null else "fabrika_zemin"
+
 # One cell of the spec grid: line icon (tinted), name, value on the right.
 func _spec_cell(icon_name: String, title: String, value: String, tint: Color, value_color := TEXT) -> Control:
 	var row := HBoxContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_theme_constant_override("separation", 8)
-	var icon := _icon_rect(icon_name, 30)
+	var icon := _icon_rect(icon_name, 24)
 	if icon != null:
 		icon.modulate = tint
 		row.add_child(icon)
@@ -2477,18 +2490,20 @@ func _feature_tile(icon_name: String, title: String, value: String) -> Control:
 	column.add_child(number)
 	return tile
 
+func _price_block(listing: Dictionary, size := 18) -> String:
+	if float(listing["discount"]) > 0.0:
+		return "[right][s][color=#98a7b6]%s[/color][/s]\n[color=#e7b75c]-%%%d[/color]  [color=#2fd17b][b]%s[/b][/color][/right]" % [Data.usd(float(listing["base_price"])), int(roundf(float(listing["discount"]) * 100.0)), Data.usd(float(listing["price"]))]
+	return "[right][color=#2fd17b][b]%s[/b][/color][/right]" % Data.usd(float(listing["price"]))
+
 func _machine_row(listing: Dictionary) -> void:
 	var box := _card(content, "", BORDER)
-	var price_text := "[right][color=#2fd17b][b]%s[/b][/color][/right]" % Data.usd(float(listing["price"]))
-	if float(listing["discount"]) > 0.0:
-		price_text = "[right][color=#e7b75c]-%%%d[/color]  [color=#2fd17b][b]%s[/b][/color][/right]" % [int(roundf(float(listing["discount"]) * 100.0)), Data.usd(float(listing["price"]))]
-	box.add_child(_row_head(Art.machine_photo(listing["kind"], int(listing["level"]), float(listing.get("condition", 100.0))), "%s %s" % [Data.LEVELS[int(listing["level"])], listing["kind"]], listing["model"], price_text))
+	box.add_child(_row_head(Art.machine_photo(listing["kind"], int(listing["level"]), float(listing.get("condition", 100.0))), "%s %s" % [Data.LEVELS[int(listing["level"])], listing["kind"]], listing["model"], _price_block(listing)))
 	var tiles := HBoxContainer.new()
-	tiles.add_theme_constant_override("separation", 6)
-	tiles.add_child(_mini_tile("tezgah_tolerans", Data.tolerance_text(float(listing["precision"]))))
-	tiles.add_child(_mini_tile("tezgah_guc", ("%.1f kW" % float(listing["power"])).replace(".", ",")))
-	tiles.add_child(_mini_tile("tezgah_kondisyon", "%% %d" % int(listing["condition"])))
-	tiles.add_child(_mini_tile("tezgah_teslim", "%d Ay" % int(listing["delivery"])))
+	tiles.add_theme_constant_override("separation", 4)
+	tiles.add_child(_mini_tile("tezgah_guc", ("%.1f kW" % float(listing["power"])).replace(".", ","), false))
+	tiles.add_child(_mini_tile("tezgah_tolerans", Data.tolerance_text(float(listing["precision"])), false))
+	tiles.add_child(_mini_tile("tezgah_kondisyon", "%% %d" % int(listing["condition"]), false))
+	tiles.add_child(_mini_tile("tezgah_teslim", "%d Ay" % int(listing["delivery"]), false))
 	box.add_child(tiles)
 	_tap_panel(box, func() -> void:
 		selected_listing = int(listing["uid"])
@@ -2501,35 +2516,29 @@ func _machine_card(listing: Dictionary) -> void:
 	listing_cards[listing["uid"]] = panel
 	var level_name: String = Data.LEVELS[int(listing["level"])]
 	var photo := Art.machine_photo(listing["kind"], int(listing["level"]), float(listing["condition"]))
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 12)
 	if photo != null:
-		var picture := TextureRect.new()
-		picture.texture = photo
-		picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-		picture.custom_minimum_size = Vector2(0, 220)
-		picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		box.add_child(picture)
+		var frame := _rounded_photo(photo, Vector2(0, 190), 16)
+		frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		frame.size_flags_stretch_ratio = 3.0
+		top.add_child(frame)
 	else:
-		box.add_child(_image_slot("machines", "%s_%d" % [Art.slug(listing["kind"]), listing["level"]], Color("#26313d")))
-	# title on the left, price on the right
-	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 8)
-	var names := VBoxContainer.new()
-	names.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	names.add_child(_label("%s %s" % [level_name, listing["kind"]], 24, TEXT, false))
-	names.add_child(_label(listing["model"], 14, MUTED, false))
-	head.add_child(names)
-	var price_box := VBoxContainer.new()
-	price_box.alignment = BoxContainer.ALIGNMENT_END
-	if float(listing["discount"]) > 0.0:
-		var old := _rich("[right][s][color=#98a7b6]%s[/color][/s][/right]" % Data.usd(float(listing["base_price"])), 14)
-		price_box.add_child(old)
-		price_box.add_child(_rich("[right][color=#e7b75c]-%%%d[/color]  [color=#2fd17b][b]%s[/b][/color][/right]" % [int(roundf(float(listing["discount"]) * 100.0)), Data.usd(float(listing["price"]))], 22))
-	else:
-		price_box.add_child(_rich("[right][color=#2fd17b][b]%s[/b][/color][/right]" % Data.usd(float(listing["price"])), 22))
-	price_box.custom_minimum_size = Vector2(190, 0)
-	head.add_child(price_box)
-	box.add_child(head)
+		var slot := _image_slot("machines", "%s_%d" % [Art.slug(listing["kind"]), listing["level"]], Color("#26313d"), 190)
+		slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		slot.size_flags_stretch_ratio = 3.0
+		top.add_child(slot)
+	var side := VBoxContainer.new()
+	side.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	side.size_flags_stretch_ratio = 2.0
+	side.add_child(_label("%s %s" % [level_name, listing["kind"]], 18, TEXT))
+	side.add_child(_label(String(listing["model"]), 13, MUTED))
+	var spacer := Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	side.add_child(spacer)
+	side.add_child(_rich(_price_block(listing), 20))
+	top.add_child(side)
+	box.add_child(top)
 	# data in two columns: icon, name, value (technical cyan icons)
 	var data_grid := GridContainer.new()
 	data_grid.columns = 2
@@ -2537,11 +2546,11 @@ func _machine_card(listing: Dictionary) -> void:
 	data_grid.add_theme_constant_override("v_separation", 10)
 	for entry in [
 		["tezgah_guc", "Motor Gücü", ("%.1f kW" % float(listing["power"])).replace(".", ",")],
-		["tezgah_ilan_olculer", "Gerekli Alan", ("%d m² x %.1fm" % [int(listing["area"]), float(listing["height"])]).replace(".0m", "m").replace(".", ",")],
+		[_area_icon(), "Gerekli Alan", ("%d m² x %.1fm" % [int(listing["area"]), float(listing["height"])]).replace(".0m", "m").replace(".", ",")],
 		["tezgah_tolerans", "Hassasiyet", Data.tolerance_text(float(listing["precision"]))],
 		["tezgah_teslim", "Teslim Süresi", "%d Ay" % int(listing["delivery"])],
 		["tezgah_kondisyon", "Kondisyon", "%% %d" % int(listing["condition"])]]:
-		data_grid.add_child(_spec_cell(entry[0], entry[1], entry[2], CYAN if String(entry[0]) != "tezgah_ilan_olculer" else Color.WHITE))
+		data_grid.add_child(_spec_cell(entry[0], entry[1], entry[2], CYAN))
 	box.add_child(data_grid)
 	# forecast, 3 shifts (amber icons)
 	box.add_child(_label("Öngörülen Veriler (3 vardiya)", 15, GOLD, false))
@@ -2552,9 +2561,9 @@ func _machine_card(listing: Dictionary) -> void:
 	forecast_grid.add_theme_constant_override("h_separation", 14)
 	forecast_grid.add_theme_constant_override("v_separation", 10)
 	for entry in [
-		["tezgah_ongoru_bakim", "Bakım Gideri", "-%s /ay" % Data.usd(maintenance), GREEN],
+		["tezgah_ongoru_bakim", "Bakım Gideri", "-%s /ay" % Data.usd(maintenance), RED],
 		["tezgah_ongoru_kapasite", "Kapasite", "%s/ay" % _xfmt(float(listing["nameplate"])), GREEN],
-		["tezgah_ongoru_enerji", "Enerji Gideri", "-%s /ay" % Data.usd(energy * 3.0), GREEN]]:
+		["tezgah_ongoru_enerji", "Enerji Gideri", "-%s /ay" % Data.usd(energy * 3.0), RED]]:
 		forecast_grid.add_child(_spec_cell(entry[0], entry[1], entry[2], GOLD, entry[3]))
 	box.add_child(forecast_grid)
 	var owned: int = game.machines_owned(listing["kind"], int(listing["level"]))
@@ -3023,13 +3032,22 @@ func _detail_settings() -> void:
 	time_card.add_child(_label("Açıkken zaman gün gün akar; ⏸ ▶ ⏩ ⏭ ile durdurur, hızlandırırsın. Karar penceresi (onay, teklif) saati durdurur; ay bitince rapor açılır. Üretim sonuçları hâlâ ay sonunda işlenir; çalışan tezgahın ilerleyişi tahminidir. Kapatırsan eski \"Ayı çalıştır\" düğmeleri döner. IDEA-019 deneme sürümü.", 12, MUTED))
 
 func _detail_factory(factory: Dictionary) -> void:
+	var moving: bool = game.factory_id != "" and factory["id"] != game.factory_id
 	var hero := _card(content, "", BORDER, true)
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 12)
 	var big: Texture2D = Art.find("res://art/factories/" + String(factory["id"]))
-	if big != null:
-		hero.add_child(_rounded_photo(big, Vector2(0, 250), 18))
-	else:
-		hero.add_child(_image_slot("factories", factory["id"], factory["tint"], 270))
-	hero.add_child(_label(String(factory["name"]), 22, TEXT, false))
+	var photo_side: Control = _rounded_photo(big, Vector2(0, 230), 18) if big != null else _image_slot("factories", factory["id"], factory["tint"], 230)
+	photo_side.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	photo_side.size_flags_stretch_ratio = 3.0
+	top.add_child(photo_side)
+	if not moving:
+		var terms_side := _terms_column(factory)
+		terms_side.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		terms_side.size_flags_stretch_ratio = 2.6
+		top.add_child(terms_side)
+	hero.add_child(top)
+	hero.add_child(_label(String(factory["name"]), 20, TEXT, false))
 	hero.add_child(_label(String(factory["region"]), 13, MUTED, false))
 	var floor_size: String = ("%d m²" % int(factory["m2"]))
 	for spec in [["fabrika_zemin", "Zemin Ölçüleri", floor_size, ""],
@@ -3037,27 +3055,40 @@ func _detail_factory(factory: Dictionary) -> void:
 			["fabrika_cati", "Çatı Yüksekliği", ("%.1f m" % float(factory["height"])).replace(".0 m", " m").replace(".", ","), ""]]:
 		var line := HBoxContainer.new()
 		line.add_theme_constant_override("separation", 12)
-		var icon := _icon_rect(String(spec[0]), 40)
+		var icon := _icon_rect(String(spec[0]), 32)
 		if icon != null:
 			icon.modulate = CYAN
 			line.add_child(icon)
-		var title := _label(String(spec[1]), 16, TEXT, false)
+		var title := _label(String(spec[1]), 15, TEXT, false)
 		title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		line.add_child(title)
 		var value_box := VBoxContainer.new()
 		value_box.alignment = BoxContainer.ALIGNMENT_CENTER
 		value_box.add_theme_constant_override("separation", 0)
-		value_box.add_child(_label(String(spec[2]), 16, TEXT, false))
+		var value_label := _label(String(spec[2]), 15, TEXT, false)
+		value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		value_box.add_child(value_label)
 		if spec[3] != "":
-			value_box.add_child(_label(String(spec[3]), 12, BLUE, false))
+			var note_label := _label(String(spec[3]), 12, BLUE, false)
+			note_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+			value_box.add_child(note_label)
 		line.add_child(value_box)
 		hero.add_child(line)
 	hero.add_child(_label("Bina yaşı %d yıl · zemin %s · %d rampa · %d kVA" % [factory["age"], factory["floor"], factory["ramps"], factory["kva"]], 12, MUTED))
-	if game.factory_id != "" and factory["id"] != game.factory_id:
+	if moving:
 		_move_section(factory)
 		return
-	var terms := _card(content, "Sözleşme süresi", BORDER, true)
+	var reason: String = game.rent_block_reason(factory["id"], picked_term, picked_prepay)
+	if reason != "":
+		content.add_child(_label(reason, 13, RED))
+	content.add_child(_button("Kirala", _ask_rent.bind(factory["id"]), true, reason != "", true))
+
+# Right-hand column of the open plant card: the contract options and the prepay choice.
+func _terms_column(factory: Dictionary) -> Control:
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 8)
+	column.add_child(_label("Sözleşme Süresi", 16, TEXT))
 	var base_rent: float = float(factory["rent"]) * Data.rent_scale
 	var group := ButtonGroup.new()
 	for term in _terms_in_order():
@@ -3068,46 +3099,50 @@ func _detail_factory(factory: Dictionary) -> void:
 		button.toggle_mode = true
 		button.button_group = group
 		button.button_pressed = chosen
-		button.custom_minimum_size = Vector2(0, 66)
+		button.custom_minimum_size = Vector2(0, 58)
 		for style_name in ["normal", "hover", "pressed", "hover_pressed"]:
-			button.add_theme_stylebox_override(style_name, _box(GREEN_DIM if chosen else PANEL_ALT, GREEN if chosen else BORDER, 10, 2 if chosen else 1))
+			button.add_theme_stylebox_override(style_name, _box(GREEN_DIM if chosen else BG, GREEN if chosen else BORDER, 10, 1))
 		var label := RichTextLabel.new()
 		label.bbcode_enabled = true
 		label.fit_content = false
 		label.scroll_active = false
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		label.offset_left = 14
-		label.offset_right = -10
-		label.offset_top = 14
-		label.add_theme_font_size_override("normal_font_size", _fs(17))
-		label.add_theme_font_size_override("bold_font_size", _fs(17))
-		var tint := "#e7edf3"
+		label.offset_left = 12
+		label.offset_right = -8
+		label.offset_top = 8
+		label.add_theme_font_size_override("normal_font_size", _fs(15))
+		label.add_theme_font_size_override("bold_font_size", _fs(15))
+		label.add_theme_font_override("normal_font", FONT_REGULAR)
+		label.add_theme_font_override("bold_font", FONT_MEDIUM)
 		var note := ""
 		var pct := int(roundf(absf(float(term["factor"]) - 1.0) * 100.0))
 		if float(term["factor"]) > 1.0:
-			note = "[color=#e7b75c]%%%d fazla ödeme[/color]" % pct
+			note = "[color=#e86f6f]+%%%d[/color]" % pct
 		elif float(term["factor"]) < 1.0:
-			note = "[color=#2fd17b]%%%d indirim[/color]" % pct
-		label.text = "[b]%d Ay[/b] x [color=#2fd17b][b]%s[/b][/color] /ay%s" % [months, Data.usd(price), ("\n[font_size=12]" + note + "[/font_size]") if note != "" else ""]
+			note = "[color=#e7b75c]-%%%d[/color]" % pct
+		label.text = "%d Ay x [color=#2fd17b][b]%s[/b][/color] /ay%s" % [months, Data.usd(price), ("\n[font_size=12]" + note + "[/font_size]") if note != "" else ""]
 		button.add_child(label)
 		button.pressed.connect(_pick_term.bind(months))
 		_juice(button)
-		terms.add_child(button)
+		column.add_child(button)
 	var quote: Dictionary = game.prepay_quote(factory["id"], picked_term)
+	var prepay_row := HBoxContainer.new()
+	prepay_row.add_theme_constant_override("separation", 6)
 	var prepay := CheckBox.new()
-	prepay.text = "%d aylık kirayı peşin öde (%%%d indirim)" % [quote["half"], int(roundf(float(quote["discount"]) * 100.0))]
-	prepay.add_theme_font_size_override("font_size", _fs(15))
-	prepay.custom_minimum_size = Vector2(0, 48)
 	prepay.button_pressed = picked_prepay
 	prepay.toggled.connect(_toggle_prepay)
-	terms.add_child(prepay)
+	prepay_row.add_child(prepay)
+	var prepay_text := VBoxContainer.new()
+	prepay_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	prepay_text.add_theme_constant_override("separation", 0)
+	prepay_text.add_child(_label("%d aylık kirayı peşin öde" % int(quote["half"]), 13, TEXT))
+	prepay_text.add_child(_label("%%%d indirim" % int(roundf(float(quote["discount"]) * 100.0)), 12, GREEN))
 	if picked_prepay:
-		terms.add_child(_label("Şimdi ödenecek: %s" % Data.usd(float(quote["amount"])), 15, GREEN))
-	var reason: String = game.rent_block_reason(factory["id"], picked_term, picked_prepay)
-	if reason != "":
-		content.add_child(_label(reason, 13, RED))
-	content.add_child(_button("Kirala", _ask_rent.bind(factory["id"]), true, reason != "", true))
+		prepay_text.add_child(_label("Şimdi: %s" % Data.usd(float(quote["amount"])), 12, GREEN_HI))
+	prepay_row.add_child(prepay_text)
+	column.add_child(prepay_row)
+	return column
 
 # Moving from the rented plant into this one (bigger, smaller or just different).
 func _move_section(factory: Dictionary) -> void:
@@ -3439,7 +3474,7 @@ func _icon_value(icon_name: String, value: String) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var icon := _icon_rect(icon_name, 26)
+	var icon := _icon_rect(icon_name, 21)
 	if icon != null:
 		icon.modulate = CYAN
 		row.add_child(icon)
