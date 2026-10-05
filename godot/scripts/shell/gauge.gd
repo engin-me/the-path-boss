@@ -3,7 +3,7 @@ extends Control
 
 var value := 0.0
 var caption := ""
-var fill_color := Color("#fcc654")
+var fill_color := Color("#e7b75c")
 var track_color := Color(1, 1, 1, 0.12)
 
 func _init() -> void:
@@ -13,7 +13,7 @@ func _init() -> void:
 func set_value(new_value: float) -> void:
 	value = clampf(new_value, 0.0, 1.0)
 	# green when likely, amber in the middle, red when the customer will probably walk away
-	fill_color = Color("#e05a4f").lerp(Color("#fcc654"), clampf(value * 2.0, 0.0, 1.0)).lerp(Color("#3ddc84"), clampf(value * 2.0 - 1.0, 0.0, 1.0))
+	fill_color = Color("#e86f6f").lerp(Color("#e7b75c"), clampf(value * 2.0, 0.0, 1.0)).lerp(Color("#2fd17b"), clampf(value * 2.0 - 1.0, 0.0, 1.0))
 	queue_redraw()
 
 func _draw() -> void:

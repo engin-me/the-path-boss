@@ -33,6 +33,7 @@ window/handheld/orientation=1
 [gui]
 
 common/default_scroll_deadzone=16
+theme/custom_font="res://art/fonts/IBMPlexSans-Regular.ttf"
 
 [rendering]
 

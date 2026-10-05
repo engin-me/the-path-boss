@@ -5,10 +5,10 @@ extends Control
 
 var data := {}
 var color := Color("#6ec8eb")
-const GOLD := Color("#fcc654")
-const RED := Color("#e05a4f")
+const GOLD := Color("#e7b75c")
+const RED := Color("#e86f6f")
 const AXIS := Color(1, 1, 1, 0.35)
-const TEXT := Color("#e8eef4")
+const TEXT := Color("#e7edf3")
 
 func _init() -> void:
 	custom_minimum_size = Vector2(0, 170)
