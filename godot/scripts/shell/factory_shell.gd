@@ -275,17 +275,20 @@ func _build_clock() -> Control:
 	clock_progress.add_theme_stylebox_override("fill", _box(GREEN, GREEN, 5, 0))
 	row.add_child(clock_progress)
 	# pause, play, fast-forward (speed 4) and skip the month (the rest of the month runs at once and the report opens)
-	for spec in [[0, "⏸", "Durdur"], [1, "▶", "Başlat"], [4, "⏩", "Hızlandır"], [-1, "⏭", "Ayı atla"]]:
+	for spec in [[0, "⏸", "Durdur"], [1, "▶", "Başlat"], [2, "⏩", "Hızlandır"], [-1, "⏭", "Ayı atla"]]:
 		var button := Button.new()
 		button.text = spec[1]
 		button.tooltip_text = spec[2]
-		button.custom_minimum_size = Vector2(46, 38)
-		button.add_theme_font_size_override("font_size", _fs(16))
+		button.custom_minimum_size = Vector2(52, 38)
+		button.add_theme_font_size_override("font_size", _fs(15))
 		if int(spec[0]) < 0:
 			button.pressed.connect(_skip_month)
 			button.add_theme_color_override("font_color", MUTED)
 			for style_name in ["normal", "hover", "pressed"]:
 				button.add_theme_stylebox_override(style_name, _box(PANEL_ALT, BORDER, 8, 1))
+		elif int(spec[0]) == 2:
+			button.pressed.connect(_fast_forward)   # 1st tap 2x, 2nd 4x, 3rd back to normal speed
+			clock_buttons[2] = button
 		else:
 			button.pressed.connect(_set_flow_speed.bind(int(spec[0])))
 			clock_buttons[int(spec[0])] = button
@@ -293,6 +296,14 @@ func _build_clock() -> Control:
 		row.add_child(button)
 	bar.visible = false
 	return bar
+
+func _fast_forward() -> void:
+	if flow_speed == 2:
+		_set_flow_speed(4)
+	elif flow_speed == 4:
+		_set_flow_speed(1)
+	else:
+		_set_flow_speed(2)
 
 func _set_flow_speed(speed: int) -> void:
 	if game.phase != "offers" and speed > 0:
@@ -327,7 +338,9 @@ func _update_clock() -> void:
 		flow_hint.visible = flow_speed == 0 and game.phase == "offers"
 	clock_progress.value = flow_day
 	for speed in clock_buttons:
-		var active: bool = speed == flow_speed
+		var active: bool = speed == flow_speed or (speed == 2 and flow_speed == 4)
+		if speed == 2:
+			clock_buttons[2].text = "⏩4x" if flow_speed == 4 else ("⏩2x" if flow_speed == 2 else "⏩")
 		var button: Button = clock_buttons[speed]
 		button.add_theme_color_override("font_color", GREEN if active else MUTED)
 		for style_name in ["normal", "hover", "pressed"]:
