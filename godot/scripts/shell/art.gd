@@ -37,6 +37,16 @@ static func find(base: String) -> Texture2D:
 				return ImageTexture.create_from_image(image)
 	return null
 
+# Machine photo by kind, level and condition: art/machines/<kind>_<level>_<100|70|40>, e.g. torna_manuel_100.
+# Condition 85+ shows the 100 picture, 60+ the 70 one, below 60 the 40 one; the old <kind>_<level number> picture is the fallback.
+static func machine_photo(kind: String, level: int, condition: float) -> Texture2D:
+	var names := ["", "manuel", "cnc", "hassas"]
+	var bucket := 100 if condition >= 85.0 else (70 if condition >= 60.0 else 40)
+	var texture := find("res://art/machines/%s_%s_%d" % [slug(kind), names[clampi(level, 1, 3)], bucket])
+	if texture == null:
+		texture = find("res://art/machines/%s_%d" % [slug(kind), level])
+	return texture
+
 static func slug(text: String) -> String:
 	var out := text.to_lower()
 	for pair in [["ş", "s"], ["ö", "o"], ["ü", "u"], ["ğ", "g"], ["ı", "i"], ["ç", "c"], ["â", "a"]]:
