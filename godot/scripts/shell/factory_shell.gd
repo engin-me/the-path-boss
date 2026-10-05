@@ -274,23 +274,55 @@ func _build_clock() -> Control:
 	clock_progress.add_theme_stylebox_override("background", _box(Color("#0b1118"), BORDER, 5, 1))
 	clock_progress.add_theme_stylebox_override("fill", _box(GREEN, GREEN, 5, 0))
 	row.add_child(clock_progress)
-	for spec in [[0, "⏸"], [1, "▶"], [2, "⏩"], [4, "⏭"]]:
+	# pause, play, fast-forward (speed 4) and skip the month (the rest of the month runs at once and the report opens)
+	for spec in [[0, "⏸", "Durdur"], [1, "▶", "Başlat"], [2, "⏩", "Hızlandır"], [-1, "⏭", "Ayı atla"]]:
 		var button := Button.new()
 		button.text = spec[1]
-		button.custom_minimum_size = Vector2(46, 38)
-		button.add_theme_font_size_override("font_size", _fs(16))
-		button.pressed.connect(_set_flow_speed.bind(int(spec[0])))
+		button.tooltip_text = spec[2]
+		button.custom_minimum_size = Vector2(52, 38)
+		button.add_theme_font_size_override("font_size", _fs(15))
+		if int(spec[0]) < 0:
+			button.pressed.connect(_skip_month)
+			button.add_theme_color_override("font_color", MUTED)
+			for style_name in ["normal", "hover", "pressed"]:
+				button.add_theme_stylebox_override(style_name, _box(PANEL_ALT, BORDER, 8, 1))
+		elif int(spec[0]) == 2:
+			button.pressed.connect(_fast_forward)   # 1st tap 2x, 2nd 4x, 3rd back to normal speed
+			clock_buttons[2] = button
+		else:
+			button.pressed.connect(_set_flow_speed.bind(int(spec[0])))
+			clock_buttons[int(spec[0])] = button
 		_juice(button)
 		row.add_child(button)
-		clock_buttons[int(spec[0])] = button
 	bar.visible = false
 	return bar
+
+func _fast_forward() -> void:
+	if flow_speed == 2:
+		_set_flow_speed(4)
+	elif flow_speed == 4:
+		_set_flow_speed(1)
+	else:
+		_set_flow_speed(2)
 
 func _set_flow_speed(speed: int) -> void:
 	if game.phase != "offers" and speed > 0:
 		return
 	flow_speed = speed
 	_update_clock()
+
+# Skip the month: the remaining days run at once, then the month closes with its report.
+func _skip_month() -> void:
+	if game == null or game.phase != "offers":
+		return
+	var events: Array = game.finish_month_days()
+	for event in events:
+		_toast(String(event["text"]), float(event["amount"]))
+	_sync_cash()
+	flow_day = float(MONTH_DAYS)
+	if floor_view != null:
+		floor_view.refresh_state()
+	_flow_month_end()
 
 func _date_text() -> String:
 	return Data.month_label(int(game.month)) + ((" · Gün %d" % mini(MONTH_DAYS, game.day)) if flow_on and game.phase == "offers" else "")
@@ -306,7 +338,9 @@ func _update_clock() -> void:
 		flow_hint.visible = flow_speed == 0 and game.phase == "offers"
 	clock_progress.value = flow_day
 	for speed in clock_buttons:
-		var active: bool = speed == flow_speed
+		var active: bool = speed == flow_speed or (speed == 2 and flow_speed == 4)
+		if speed == 2:
+			clock_buttons[2].text = "⏩4x" if flow_speed == 4 else ("⏩2x" if flow_speed == 2 else "⏩")
 		var button: Button = clock_buttons[speed]
 		button.add_theme_color_override("font_color", GREEN if active else MUTED)
 		for style_name in ["normal", "hover", "pressed"]:
@@ -1445,8 +1479,38 @@ func _filter_popup(title: String, build: Callable) -> void:
 		_close_overlay()
 		_render(), true))
 
+# One chip per filter group (with the current choice in its caption); a tap opens that group's options below.
+var filter_open := ""
+
+func _filter_groups(box: VBoxContainer, groups: Array) -> void:
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 8)
+	flow.add_theme_constant_override("v_separation", 8)
+	for group in groups:
+		var active: bool = filter_open == group["id"]
+		var button := Button.new()
+		button.text = "%s: %s" % [group["title"], group["summary"]]
+		button.custom_minimum_size = Vector2(0, 38)
+		for style_name in ["normal", "hover", "pressed"]:
+			var chip := _box(Color(GREEN.r, GREEN.g, GREEN.b, 0.22) if active else PANEL_ALT, GREEN if active else BORDER, 19, 1)
+			chip.content_margin_left = 14
+			chip.content_margin_right = 14
+			button.add_theme_stylebox_override(style_name, chip)
+		button.add_theme_color_override("font_color", GREEN if active else TEXT)
+		button.add_theme_font_size_override("font_size", _fs(14))
+		button.pressed.connect(func() -> void:
+			filter_open = "" if active else String(group["id"])
+			group["reopen"].call())
+		_juice(button)
+		flow.add_child(button)
+	box.add_child(flow)
+	for group in groups:
+		if filter_open == group["id"]:
+			group["build"].call(box)
+
 func _flow_chips(parent: Control, caption: String, options: Array, current, callback: Callable, accents := {}) -> void:
-	parent.add_child(_label(caption, 12, MUTED))
+	if caption != "":
+		parent.add_child(_label(caption, 12, MUTED))
 	var flow := HFlowContainer.new()
 	flow.add_theme_constant_override("h_separation", 8)
 	flow.add_theme_constant_override("v_separation", 8)
@@ -1545,15 +1609,21 @@ func _open_job_filters() -> void:
 		for kind in Data.TYPES:
 			kind_options.append({"id": kind, "title": kind})
 		kind_options.append({"id": "elimde", "title": "Elimdeki tezgaha göre"})
-		_flow_chips(box, "Tezgah (birden fazla seçilirse hepsini içeren işler gelir)", kind_options, job_filters, func(id: String) -> void:
-			if job_filters.has(id):
-				job_filters.erase(id)
-			else:
-				job_filters.append(id)
-			_open_job_filters(), {"elimde": GREEN})
-		_flow_chips(box, "Sıralama", [{"id": "yeni", "title": "İlan sırası"}, {"id": "hassas", "title": "En hassas"}, {"id": "genis", "title": "En geniş tolerans"}], job_sort, func(id: String) -> void:
-			job_sort = id
-			_open_job_filters()))
+		var sort_names := {"yeni": "ilan sırası", "hassas": "en hassas", "genis": "en geniş tolerans"}
+		_filter_groups(box, [
+			{"id": "tezgah", "title": "Tezgah", "summary": ", ".join(job_filters) if not job_filters.is_empty() else "hepsi", "reopen": _open_job_filters,
+				"build": func(b: VBoxContainer) -> void:
+					_flow_chips(b, "Birden fazla seçilirse hepsini içeren işler gelir", kind_options, job_filters, func(id: String) -> void:
+						if job_filters.has(id):
+							job_filters.erase(id)
+						else:
+							job_filters.append(id)
+						_open_job_filters(), {"elimde": GREEN})},
+			{"id": "sira", "title": "Sıralama", "summary": sort_names[job_sort], "reopen": _open_job_filters,
+				"build": func(b: VBoxContainer) -> void:
+					_flow_chips(b, "", [{"id": "yeni", "title": "İlan sırası"}, {"id": "hassas", "title": "En hassas"}, {"id": "genis", "title": "En geniş tolerans"}], job_sort, func(id: String) -> void:
+						job_sort = id
+						_open_job_filters())}]))
 
 func _offer_tolerance(offer: Dictionary) -> float:
 	var tol := 99.0
@@ -2238,21 +2308,29 @@ func _open_machine_filters() -> void:
 		var type_options: Array = [{"id": "Tümü", "title": "Tümü"}]
 		for kind in Data.TYPES:
 			type_options.append({"id": kind, "title": kind})
-		_flow_chips(box, "Tezgah türü", type_options, type_filter, func(id: String) -> void:
-			type_filter = id
-			selected_listing = -1
-			_open_machine_filters())
 		var level_options: Array = [{"id": "0", "title": "Tüm seviyeler"}]
 		for level in [1, 2, 3]:
 			level_options.append({"id": str(level), "title": Data.LEVELS[level]})
-		_flow_chips(box, "Seviye", level_options, str(level_filter), func(id: String) -> void:
-			level_filter = int(id)
-			selected_listing = -1
-			_open_machine_filters())
-		_flow_chips(box, "Sıralama", [{"id": "price_up", "title": "Fiyat ↑"}, {"id": "price_down", "title": "Fiyat ↓"}, {"id": "cond_up", "title": "Kondisyon ↑"}, {"id": "cond_down", "title": "Kondisyon ↓"}], sort_mode, func(id: String) -> void:
-			sort_mode = id
-			selected_listing = -1
-			_open_machine_filters()))
+		var sort_names := {"price_up": "fiyat ↑", "price_down": "fiyat ↓", "cond_up": "kondisyon ↑", "cond_down": "kondisyon ↓"}
+		_filter_groups(box, [
+			{"id": "tur", "title": "Tür", "summary": type_filter, "reopen": _open_machine_filters,
+				"build": func(b: VBoxContainer) -> void:
+					_flow_chips(b, "", type_options, type_filter, func(id: String) -> void:
+						type_filter = id
+						selected_listing = -1
+						_open_machine_filters())},
+			{"id": "seviye", "title": "Seviye", "summary": "hepsi" if level_filter == 0 else Data.LEVELS[level_filter], "reopen": _open_machine_filters,
+				"build": func(b: VBoxContainer) -> void:
+					_flow_chips(b, "", level_options, str(level_filter), func(id: String) -> void:
+						level_filter = int(id)
+						selected_listing = -1
+						_open_machine_filters())},
+			{"id": "sira", "title": "Sıralama", "summary": sort_names.get(sort_mode, sort_mode), "reopen": _open_machine_filters,
+				"build": func(b: VBoxContainer) -> void:
+					_flow_chips(b, "", [{"id": "price_up", "title": "Fiyat ↑"}, {"id": "price_down", "title": "Fiyat ↓"}, {"id": "cond_up", "title": "Kondisyon ↑"}, {"id": "cond_down", "title": "Kondisyon ↓"}], sort_mode, func(id: String) -> void:
+						sort_mode = id
+						selected_listing = -1
+						_open_machine_filters())}]))
 
 func _build_area_bar() -> void:
 	var factory: Dictionary = game.factory()
@@ -2327,7 +2405,7 @@ func _machine_row(listing: Dictionary) -> void:
 	var price_text := "[right][color=#3ddc84][b]%s[/b][/color][/right]" % Data.usd(float(listing["price"]))
 	if float(listing["discount"]) > 0.0:
 		price_text = "[right][color=#eac47a]-%%%d[/color]  [color=#3ddc84][b]%s[/b][/color][/right]" % [int(roundf(float(listing["discount"]) * 100.0)), Data.usd(float(listing["price"]))]
-	box.add_child(_row_head(Art.find("res://art/machines/%s_%d" % [Art.slug(listing["kind"]), listing["level"]]), "%s %s" % [Data.LEVELS[int(listing["level"])], listing["kind"]], listing["model"], price_text))
+	box.add_child(_row_head(Art.machine_photo(listing["kind"], int(listing["level"]), float(listing.get("condition", 100.0))), "%s %s" % [Data.LEVELS[int(listing["level"])], listing["kind"]], listing["model"], price_text))
 	var tiles := HBoxContainer.new()
 	tiles.add_theme_constant_override("separation", 6)
 	tiles.add_child(_mini_tile("tezgah_ilan_tolerans", Data.tolerance_text(float(listing["precision"]))))
