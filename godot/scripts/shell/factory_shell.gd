@@ -2749,10 +2749,19 @@ func _page_fabrika() -> void:
 		_tap_panel(box, _open_detail.bind("factory", factory["id"]))
 
 # Contract end: the player picks the next period, or does nothing and the rent follows the market.
+# Contract options as shown: 12 months first (the usual), then 6, then 24.
+func _terms_in_order() -> Array:
+	var ordered: Array = []
+	for months in [12, 6, 24]:
+		for term in Data.TERMS:
+			if int(term["months"]) == months:
+				ordered.append(term)
+	return ordered
+
 func _renewal_card(factory: Dictionary) -> void:
 	var card := _card(content, "Sözleşme bitiyor · %d ay kaldı" % game.months_left, GOLD, true)
 	card.add_child(_label("Süreyi seç: seçtiğin süre için kira bugünkü seviyede kalır. Karar vermezsen sözleşme aynı süre için piyasa kirasıyla (+%%%d) yenilenir. Son ayda çıkış ya da taşınma için çıkış bedeli yoktur." % int(Data.RENEWAL_MARKUP * 100.0), 13, MUTED))
-	for entry in Data.TERMS:
+	for entry in _terms_in_order():
 		var months: int = entry["months"]
 		var chosen: bool = game.renewal_term == months
 		var row := HBoxContainer.new()
@@ -3048,7 +3057,7 @@ func _detail_factory(factory: Dictionary) -> void:
 	var terms := _card(content, "Sözleşme süresi", BORDER, true)
 	var base_rent: float = float(factory["rent"]) * Data.rent_scale
 	var group := ButtonGroup.new()
-	for term in Data.TERMS:
+	for term in _terms_in_order():
 		var months: int = term["months"]
 		var chosen: bool = months == picked_term
 		var price := snappedf(base_rent * float(term["factor"]), 0.001)
