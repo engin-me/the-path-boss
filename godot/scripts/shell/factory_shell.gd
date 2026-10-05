@@ -2740,16 +2740,12 @@ func _page_fabrika() -> void:
 		for other in Data.FACTORIES:
 			if other["id"] == game.factory_id:
 				continue
-			var row := _card(content, "", BORDER)
-			row.add_child(_row_head(Art.find("res://art/factories/" + String(other["id"])), other["name"], other["region"], "[right]12 Ay x [color=#2fd17b]%s[/color][/right]" % Data.usd(float(other["rent"]))))
-			row.add_child(_label("%d m² · %d tezgah · tavan %.1f m" % [other["m2"], Data.slot_count(other["id"]), other["height"]], 12, TEXT))
+			var row := _factory_row(other)
 			_tap_panel(row, _open_detail.bind("factory", other["id"]))
 		return
 	content.add_child(_label("Kiralık yerler", 22, TEXT))
 	for factory in Data.FACTORIES:
-		var box := _card(content, "", BORDER)
-		box.add_child(_row_head(Art.find("res://art/factories/" + String(factory["id"])), factory["name"], factory["region"], "[right]12 Ay x [color=#2fd17b]%s[/color][/right]" % Data.usd(float(factory["rent"]))))
-		box.add_child(_label("%d m² · %d tezgah · tavan %.1f m" % [factory["m2"], Data.slot_count(factory["id"]), factory["height"]], 12, TEXT))
+		var box := _factory_row(factory)
 		_tap_panel(box, _open_detail.bind("factory", factory["id"]))
 
 # Contract end: the player picks the next period, or does nothing and the rent follows the market.
@@ -3016,15 +3012,36 @@ func _detail_settings() -> void:
 
 func _detail_factory(factory: Dictionary) -> void:
 	var hero := _card(content, "", BORDER, true)
-	hero.add_child(_image_slot("factories", factory["id"], factory["tint"], 270))
-	_row(hero, "Bölge", factory["region"], TEXT, 16)
-	_row(hero, "Alan", "%d m²" % factory["m2"], TEXT, 16)
-	_row(hero, "Tavan yüksekliği", "%.1f m" % factory["height"], TEXT, 16)
-	_row(hero, "Bina yaşı", "%d yıl" % factory["age"], MUTED, 15)
-	_row(hero, "Zemin", factory["floor"], MUTED, 15)
-	_row(hero, "Yükleme rampası", str(factory["ramps"]), MUTED, 15)
-	_row(hero, "Elektrik altyapısı", "%d kVA" % factory["kva"], MUTED, 15)
-	hero.add_child(_label("Bina bilgileri şimdilik bilgi amaçlıdır.", 12, MUTED))
+	var big: Texture2D = Art.find("res://art/factories/" + String(factory["id"]))
+	if big != null:
+		hero.add_child(_rounded_photo(big, Vector2(0, 250), 18))
+	else:
+		hero.add_child(_image_slot("factories", factory["id"], factory["tint"], 270))
+	hero.add_child(_label(String(factory["name"]), 22, TEXT, false))
+	hero.add_child(_label(String(factory["region"]), 13, MUTED, false))
+	var floor_size: String = ("%d m²" % int(factory["m2"]))
+	for spec in [["fabrika_zemin", "Zemin Ölçüleri", floor_size, ""],
+			["fabrika_slot", "Makine Slot Sayısı", str(Data.slot_count(factory["id"])), "1 slot = 1 makine"],
+			["fabrika_cati", "Çatı Yüksekliği", ("%.1f m" % float(factory["height"])).replace(".0 m", " m").replace(".", ","), ""]]:
+		var line := HBoxContainer.new()
+		line.add_theme_constant_override("separation", 12)
+		var icon := _icon_rect(String(spec[0]), 40)
+		if icon != null:
+			icon.modulate = CYAN
+			line.add_child(icon)
+		var title := _label(String(spec[1]), 16, TEXT, false)
+		title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		line.add_child(title)
+		var value_box := VBoxContainer.new()
+		value_box.alignment = BoxContainer.ALIGNMENT_CENTER
+		value_box.add_theme_constant_override("separation", 0)
+		value_box.add_child(_label(String(spec[2]), 16, TEXT, false))
+		if spec[3] != "":
+			value_box.add_child(_label(String(spec[3]), 12, BLUE, false))
+		line.add_child(value_box)
+		hero.add_child(line)
+	hero.add_child(_label("Bina yaşı %d yıl · zemin %s · %d rampa · %d kVA" % [factory["age"], factory["floor"], factory["ramps"], factory["kva"]], 12, MUTED))
 	if game.factory_id != "" and factory["id"] != game.factory_id:
 		_move_section(factory)
 		return
@@ -3039,7 +3056,7 @@ func _detail_factory(factory: Dictionary) -> void:
 		button.toggle_mode = true
 		button.button_group = group
 		button.button_pressed = chosen
-		button.custom_minimum_size = Vector2(0, 60)
+		button.custom_minimum_size = Vector2(0, 66)
 		for style_name in ["normal", "hover", "pressed", "hover_pressed"]:
 			button.add_theme_stylebox_override(style_name, _box(GREEN_DIM if chosen else PANEL_ALT, GREEN if chosen else BORDER, 10, 2 if chosen else 1))
 		var label := RichTextLabel.new()
@@ -3053,16 +3070,21 @@ func _detail_factory(factory: Dictionary) -> void:
 		label.offset_top = 14
 		label.add_theme_font_size_override("normal_font_size", _fs(17))
 		label.add_theme_font_size_override("bold_font_size", _fs(17))
-		var struck := "" if is_equal_approx(float(term["factor"]), 1.0) else "[s][color=#98a7b6]%s[/color][/s]  " % Data.usd(base_rent)
-		var tint := "#e86f6f" if float(term["factor"]) > 1.0 else ("#2fd17b" if float(term["factor"]) < 1.0 else "#e7edf3")
-		label.text = "%s [b]%d ay[/b] × %s[color=%s][b]%s[/b][/color] /ay" % ["◉" if chosen else "○", months, struck, tint, Data.usd(price)]
+		var tint := "#e7edf3"
+		var note := ""
+		var pct := int(roundf(absf(float(term["factor"]) - 1.0) * 100.0))
+		if float(term["factor"]) > 1.0:
+			note = "[color=#e7b75c]%%%d fazla ödeme[/color]" % pct
+		elif float(term["factor"]) < 1.0:
+			note = "[color=#2fd17b]%%%d indirim[/color]" % pct
+		label.text = "[b]%d Ay[/b] x [color=#2fd17b][b]%s[/b][/color] /ay%s" % [months, Data.usd(price), ("\n[font_size=12]" + note + "[/font_size]") if note != "" else ""]
 		button.add_child(label)
 		button.pressed.connect(_pick_term.bind(months))
 		_juice(button)
 		terms.add_child(button)
 	var quote: Dictionary = game.prepay_quote(factory["id"], picked_term)
 	var prepay := CheckBox.new()
-	prepay.text = "İlk %d ayın kirasını peşin öde (%%%d indirim)" % [quote["half"], int(roundf(float(quote["discount"]) * 100.0))]
+	prepay.text = "%d aylık kirayı peşin öde (%%%d indirim)" % [quote["half"], int(roundf(float(quote["discount"]) * 100.0))]
 	prepay.add_theme_font_size_override("font_size", _fs(15))
 	prepay.custom_minimum_size = Vector2(0, 48)
 	prepay.button_pressed = picked_prepay
@@ -3384,6 +3406,57 @@ func _boost_controls(box: Control, machine: Dictionary) -> void:
 	box.add_child(_button("Tüm %s %s tezgahlara uygula" % [Data.LEVELS[int(machine["level"])], machine["kind"]], func() -> void:
 		game.set_boost_group(uid, int(machine["boost"]))
 		_render_keep_scroll()))
+
+# Photo with rounded corners (the panel's shape clips the picture).
+func _rounded_photo(texture: Texture2D, size: Vector2, radius := 14) -> Control:
+	var frame := PanelContainer.new()
+	frame.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
+	frame.custom_minimum_size = size
+	frame.add_theme_stylebox_override("panel", _box(PANEL_ALT, PANEL_ALT, radius, 0))
+	var rect := TextureRect.new()
+	rect.texture = texture
+	rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(rect)
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return frame
+
+# A small line-icon + value chip (cyan icon, white value) used on the plant rows.
+func _icon_value(icon_name: String, value: String) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var icon := _icon_rect(icon_name, 26)
+	if icon != null:
+		icon.modulate = CYAN
+		row.add_child(icon)
+	row.add_child(_label(value, 14, TEXT, false))
+	return row
+
+# Closed plant listing: photo, name and district, rent on the right, then floor, slots, height and contract in icons.
+func _factory_row(factory: Dictionary) -> Control:
+	var box := _card(content, "", BORDER)
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 12)
+	var texture: Texture2D = Art.find("res://art/factories/" + String(factory["id"]))
+	if texture != null:
+		top.add_child(_rounded_photo(texture, Vector2(112, 96)))
+	var names := VBoxContainer.new()
+	names.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	names.add_child(_label(String(factory["name"]), 18, TEXT, false))
+	names.add_child(_label(String(factory["region"]), 13, MUTED, false))
+	top.add_child(names)
+	top.add_child(_rich("[right][color=#2fd17b][b]%s[/b][/color] /ay[/right]" % Data.usd(float(factory["rent"])), 16))
+	box.add_child(top)
+	var chips := HBoxContainer.new()
+	chips.add_theme_constant_override("separation", 6)
+	chips.add_child(_icon_value("fabrika_zemin", "%d m²" % int(factory["m2"])))
+	chips.add_child(_icon_value("fabrika_slot", "%d slot" % Data.slot_count(factory["id"])))
+	chips.add_child(_icon_value("fabrika_cati", ("%.1f m" % float(factory["height"])).replace(".0 m", " m").replace(".", ",")))
+	chips.add_child(_icon_value("fabrika_sozlesme", "12 Ay"))
+	box.add_child(chips)
+	return box
 
 func _ask_sell(uid: int) -> void:
 	var machine: Dictionary = game.machine_by_uid(uid)
