@@ -32,6 +32,11 @@ static func _svg(path: String) -> Texture2D:
 		return _svg_cache[path]
 	var texture: Texture2D = null
 	var bytes := FileAccess.get_file_as_bytes(path)
+	if bytes.is_empty() and ResourceLoader.exists(path):
+		# an exported build (phone) packs the imported texture, not the raw .svg file
+		var imported = load(path)
+		if imported is Texture2D:
+			texture = imported
 	if not bytes.is_empty():
 		var probe := Image.new()
 		if probe.load_svg_from_buffer(bytes, 1.0) == OK and probe.get_width() > 0:
