@@ -3270,4 +3270,3 @@ func _detail_costs() -> void:
 	_row(box, "Toplam (nakit)", Data.usd(game.ordinary_expense()), GREEN, 17)
 	_row(box, "Amortisman (kâğıt üstü, nakit değil)", Data.usd(game.monthly_amortization()), MUTED, 13)
 	box.add_child(_label("Teslim alınmamış makineler gider yaratmaz; personel teslimde işe başlar.", 12, MUTED))
-
