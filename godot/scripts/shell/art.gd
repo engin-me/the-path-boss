@@ -2,6 +2,28 @@ extends RefCounted
 
 # Art lookup: tries png, jpg, jpeg, webp so art can be dropped in without renaming code.
 
+static var _font_cache := {}
+
+# IBM Plex Sans by weight name. Loaded straight from the file when the editor has not imported it yet, so a fresh
+# checkout never shows a blank screen because of a missing import.
+static func font(weight: String) -> Font:
+	if _font_cache.has(weight):
+		return _font_cache[weight]
+	var path := "res://art/fonts/IBMPlexSans-%s.ttf" % weight
+	var result: Font = null
+	if ResourceLoader.exists(path):
+		result = load(path)
+	elif FileAccess.file_exists(path):
+		var data := FileAccess.get_file_as_bytes(path)
+		if not data.is_empty():
+			var file := FontFile.new()
+			file.data = data
+			result = file
+	if result == null:
+		result = ThemeDB.fallback_font
+	_font_cache[weight] = result
+	return result
+
 static var _svg_cache := {}
 
 # An SVG icon is rasterised straight from the file at 96 px (sharp at the 38 px it is shown at, no import step needed).

@@ -32,10 +32,10 @@ const RED := Color("#e86f6f")         # risk, loss, delay
 const BLUE := Color("#62a8e5")        # info, neutral data
 
 # IBM Plex Sans: Regular for running text, Medium for values and buttons, SemiBold for titles, Bold for emphasis.
-const FONT_REGULAR := preload("res://art/fonts/IBMPlexSans-Regular.ttf")
-const FONT_MEDIUM := preload("res://art/fonts/IBMPlexSans-Medium.ttf")
-const FONT_SEMIBOLD := preload("res://art/fonts/IBMPlexSans-SemiBold.ttf")
-const FONT_BOLD := preload("res://art/fonts/IBMPlexSans-Bold.ttf")
+var FONT_REGULAR: Font = Art.font("Regular")
+var FONT_MEDIUM: Font = Art.font("Medium")
+var FONT_SEMIBOLD: Font = Art.font("SemiBold")
+var FONT_BOLD: Font = Art.font("Bold")
 
 const FONT_SCALE := 1.12   # the whole UI text is 12 percent larger than the base sizes
 
@@ -118,6 +118,9 @@ var area_used_bar: ProgressBar
 var area_preview_bar: ProgressBar
 
 func _ready() -> void:
+	var ui_theme := Theme.new()
+	ui_theme.default_font = FONT_REGULAR   # IBM Plex Sans everywhere unless a label picks another weight
+	theme = ui_theme
 	audio = AudioDirector.new()
 	add_child(audio)
 	_reset_state()
