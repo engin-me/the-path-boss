@@ -263,18 +263,18 @@ func _build_header() -> Control:
 	row.add_theme_constant_override("separation", 8)
 	bar.add_child(_margin(row, 14, 6))
 	header_money = _label("", 18, GREEN, false)
-	header_money.add_theme_font_size_override("font_size", int(YonetimView.S(18)))
+	header_money.add_theme_font_size_override("font_size", YonetimView.F(18))
 	header_money.add_theme_font_override("font", FONT_SEMIBOLD)
 	row.add_child(header_money)
 	header_date = _label("", 11, MUTED, false)
-	header_date.add_theme_font_size_override("font_size", int(YonetimView.S(11)))
+	header_date.add_theme_font_size_override("font_size", YonetimView.F(11))
 	header_date.add_theme_font_override("font", FONT_MEDIUM)
 	header_date.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header_date.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	row.add_child(header_date)
 	header_hours = _label("", 12, MUTED, false)
 	row.add_child(header_hours)
-	row.add_child(_top_icon("ust_gecmis", _open_detail.bind("history")))
+	row.add_child(_top_icon("ust_gecmis", _open_detail.bind("log")))
 	row.add_child(_top_icon("ust_ayarlar", _open_detail.bind("settings")))
 	return bar
 
@@ -283,9 +283,9 @@ func _build_clock() -> Control:
 	bar.add_theme_stylebox_override("panel", _box(BG, BG, 0, 0))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
-	bar.add_child(_margin(row, 14, 6))
+	bar.add_child(_margin(row, 14, 12))
 	clock_label = _label("", 11, TEXT, false)
-	clock_label.add_theme_font_size_override("font_size", int(YonetimView.S(11)))
+	clock_label.add_theme_font_size_override("font_size", YonetimView.F(11))
 	clock_label.custom_minimum_size = Vector2(YonetimView.S(72), 0)
 	row.add_child(clock_label)
 	clock_progress = ProgressBar.new()
@@ -501,7 +501,7 @@ func _build_tab_bar() -> Control:
 			holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			stack.add_child(holder)
 			var caption := _label(String(tab["title"]), 12, TEXT, false)
-			caption.add_theme_font_size_override("font_size", int(YonetimView.S(12)))
+			caption.add_theme_font_size_override("font_size", YonetimView.F(12))
 			caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			caption.add_theme_font_override("font", FONT_MEDIUM)
@@ -884,8 +884,8 @@ func _render_inner() -> void:
 	var rented: bool = page == "fabrika" and detail == "" and game.factory_id != ""
 	var show_floor: bool = rented and subtab["fabrika"] == "yerlesim"
 	scroll_view.visible = not show_floor
-	if OFFICE_PAGES.has(page) and detail == "":
-		_office_menu()
+	if page != "ozet" and OFFICE_PAGES.has(page) and detail == "":
+		_office_back()
 	if rented and ["yerlesim", "vardiya", "sozlesme", "kapasite"].has(subtab["fabrika"]):
 		_chips(sticky, [{"id": "yerlesim", "title": "Yerleşim (üstten)"}, {"id": "vardiya", "title": "Vardiya"}, {"id": "kapasite", "title": "Kapasite"}, {"id": "sozlesme", "title": "Sözleşme"}], subtab["fabrika"],
 			func(id: String) -> void:
@@ -950,19 +950,27 @@ func _page_ozet() -> void:
 	if game.phase == "end":
 		_page_end()
 		return
-	_chips(content, [{"id": "genel", "title": "Genel"}, {"id": "dep", "title": "Departmanlar"}, {"id": "rapor", "title": "Rapor"}],
-		subtab["ozet"], func(id: String) -> void:
-			subtab["ozet"] = id
-			_render())
 	if game.factory_id == "":
 		var empty := _card(content, "Henüz fabrikan yok", GOLD)
 		empty.add_child(_label("Önce bir yer kirala. Sonra ekipman, tezgah ve iş.", 14, MUTED))
 		empty.add_child(_button("Kiralık yerlere bak", _on_tab.bind("fabrika"), true))
 		return
 	match subtab["ozet"]:
-		"dep": _ozet_departments()
-		"rapor": _ozet_report()
+		"dep":
+			_office_back()
+			_ozet_departments()
+		"rapor":
+			_office_back()
+			_ozet_report()
 		_: _ozet_general()
+
+# Sub-screens of Yönetim have one way out: back to the management summary (the cockpit will replace the old chip rows).
+func _office_back() -> void:
+	var back := _button("‹ Yönetim", func() -> void:
+		subtab["ozet"] = "genel"
+		_on_tab("ozet"), false)
+	back.custom_minimum_size = Vector2(130, 40)
+	content.add_child(back)
 
 func _phase_button() -> void:
 	if flow_on:
@@ -1045,10 +1053,6 @@ func _ozet_general() -> void:
 	view.shift_toggled.connect(func(n: int, on: bool) -> void: _on_shift_tick(on, n))
 	view.overtime_toggled.connect(func(n: int, on: bool) -> void: _on_overtime_tick(on, n))
 	content.add_child(view)
-	if game.phase == "offers" and not game.last_lines.is_empty():
-		var last := _card(content, "Geçen ay")
-		for line in game.last_lines:
-			last.add_child(_label(str(line), 13, MUTED))
 
 func _yonetim_go(target: String) -> void:
 	match target:
@@ -1068,6 +1072,17 @@ func _yonetim_go(target: String) -> void:
 			subtab["fabrika"] = "sozlesme"
 			_on_tab("fabrika")
 		"mail": _on_tab("mail")
+		"fabrika":
+			subtab["fabrika"] = "yerlesim"
+			_on_tab("fabrika")
+		"supply":
+			subtab["fabrika"] = "tedarik"
+			_on_tab("fabrika")
+		"boss": _on_tab("profil")
+		"report":
+			subtab["ozet"] = "rapor"
+			_on_tab("ozet")
+		"log": _open_detail("log")
 
 func _ozet_general_old() -> void:
 	var factory: Dictionary = game.factory()
@@ -1745,9 +1760,9 @@ func _offer_card(offer: Dictionary, reason: String) -> void:
 		"[right][color=#2fd17b]%s Ad[/color] x %s[/right]" % [Data.usd(float(parts) / 1000.0).trim_prefix("$"), Data.mu_text(difficulty)]))
 	var tiles := HBoxContainer.new()
 	tiles.add_theme_constant_override("separation", 6)
-	tiles.add_child(_mini_tile("tezgah_tolerans", Data.tolerance_text(_offer_tolerance(offer))))
-	tiles.add_child(_mini_tile("tezgah_teslim", "%d Ay" % int(offer["months"])))
-	tiles.add_child(_mini_tile("is_ilani_malzeme", Data.STEEL_GRADE[int(offer["reqs"][0]["steel"])]))
+	tiles.add_child(_mini_tile("tezgah_tolerans", Data.tolerance_text(_offer_tolerance(offer)), false))
+	tiles.add_child(_mini_tile("tezgah_teslim", "%d Ay" % int(offer["months"]), false))
+	tiles.add_child(_mini_tile("is_ilani_malzeme", Data.STEEL_GRADE[int(offer["reqs"][0]["steel"])], false))
 	box.add_child(tiles)
 	box.add_child(_need_icons(offer, open))
 	if open and not doable:
@@ -2078,15 +2093,32 @@ func _page_mail() -> void:
 		if mail.is_empty():
 			mail_open = -1
 		else:
-			_mail_detail(mail)
+			_mail_detail(game.mail_thread(mail)[0])   # opening any message shows the whole chain, newest on top
 			return
 	if game.mails.is_empty():
 		content.add_child(_label("Mail kutun boş. Bir ilana teklif verince müşteri burada yanıt verir; sistem bildirimleri de buraya düşer.", 14, MUTED))
 		return
+	var shown_jobs := {}
 	for mail in game.mails:
-		_mail_row(mail)
+		var job_id: int = int(mail.get("offer_id", 0))
+		if job_id > 0:
+			if shown_jobs.has(job_id):
+				continue
+			shown_jobs[job_id] = true
+		_mail_row(game.mail_thread(mail)[0], game.mail_thread(mail))
 
-func _mail_row(mail: Dictionary) -> void:
+# Face of the person who wrote (art/contacts), the old envelope only for system mails.
+func _contact_face(mail: Dictionary, side: int) -> Control:
+	var photo_id: String = String(mail.get("contact_photo", ""))
+	if photo_id == "":
+		photo_id = Data.contact_photo_of(String(mail.get("contact", "")))
+	var texture: Texture2D = Art.find("res://art/contacts/" + photo_id) if photo_id != "" else null
+	if texture != null:
+		return _rounded_photo(texture, Vector2(side, side), int(side * 0.22))
+	var holder := _icon_rect("is_ilani_yetkili_kisi", side)
+	return holder if holder != null else Control.new()
+
+func _mail_row(mail: Dictionary, thread := []) -> void:
 	var unread: bool = not bool(mail.get("read", true))
 	var colors := {"accepted": GREEN, "counter": GOLD, "rejected": RED}
 	var panel := PanelContainer.new()
@@ -2094,25 +2126,26 @@ func _mail_row(mail: Dictionary) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
 	panel.add_child(_margin(row, 12, 10))
-	var envelope := Control.new()
-	envelope.custom_minimum_size = Vector2(52, 52)
-	var icon := _icon_rect("btn_mail", 48)
-	if icon != null:
-		envelope.add_child(icon)
+	var face_holder := Control.new()
+	face_holder.custom_minimum_size = Vector2(76, 76)
+	var face := _contact_face(mail, 72)
+	face.position = Vector2(0, 0)
+	face_holder.add_child(face)
 	if unread:
 		var dot := ColorRect.new()
-		dot.color = Color("#e84b3c")
+		dot.color = RED
 		dot.custom_minimum_size = Vector2(14, 14)
 		dot.size = Vector2(14, 14)
-		dot.position = Vector2(0, 0)
-		envelope.add_child(dot)
-	row.add_child(envelope)
+		dot.position = Vector2(-3, -3)
+		face_holder.add_child(dot)
+	row.add_child(face_holder)
 	var info := VBoxContainer.new()
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	info.add_theme_constant_override("separation", 2)
 	info.add_child(_label(mail["title"], 16, TEXT if unread else MUTED))
 	info.add_child(_label("%s · %s" % [mail["customer"], _mail_status_text(mail)], 12, colors.get(mail["status"], MUTED)))
-	info.add_child(_label("Ay %d" % mail["month"], 11, MUTED))
+	var thread_note: String = " · %d mesaj" % thread.size() if thread.size() > 1 else ""
+	info.add_child(_label("Ay %d%s" % [mail["month"], thread_note], 11, MUTED))
 	row.add_child(info)
 	if not mail.get("offer", {}).is_empty():
 		var photo := _offer_photo(mail["offer"], 64)
@@ -2137,19 +2170,14 @@ func _mail_detail(mail: Dictionary) -> void:
 	var box := _card(content, "", GOLD, true)
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 12)
-	var envelope := _icon_rect("btn_mail", 56)
-	if envelope != null:
-		head.add_child(envelope)
+	head.add_child(_contact_face(mail, 84))
 	var info := VBoxContainer.new()
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	info.add_child(_label(mail["title"], 20, TEXT))
-	var who := HBoxContainer.new()
-	who.add_theme_constant_override("separation", 8)
-	var avatar := _icon_rect("is_ilani_yetkili_kisi", 30)
-	if avatar != null:
-		who.add_child(avatar)
-	who.add_child(_label("%s%s" % [mail["customer"], (" · " + String(mail["contact"])) if String(mail.get("contact", "")) != "" else ""], 13, MUTED, false))
-	info.add_child(who)
+	var person: String = String(mail.get("contact", ""))
+	if person != "":
+		info.add_child(_label("%s · %s" % [person, String(mail.get("contact_role", ""))], 14, TEXT))
+	info.add_child(_label(String(mail["customer"]), 13, MUTED))
 	head.add_child(info)
 	box.add_child(head)
 	if not offer.is_empty():
@@ -2239,6 +2267,44 @@ func _mail_detail(mail: Dictionary) -> void:
 	box.add_child(buttons)
 	if mail_show_offer:
 		_mail_offer_snapshot(mail)
+	_mail_older_messages(mail)
+
+# The earlier mails of the same bargaining chain, newest first, each behind a thin separator.
+func _mail_older_messages(mail: Dictionary) -> void:
+	var thread: Array = game.mail_thread(mail)
+	for other in thread:
+		if int(other["id"]) >= int(mail["id"]):
+			continue
+		var separator := HBoxContainer.new()
+		separator.add_theme_constant_override("separation", 10)
+		var line_a := ColorRect.new()
+		line_a.color = BORDER
+		line_a.custom_minimum_size = Vector2(0, 1)
+		line_a.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		line_a.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		separator.add_child(line_a)
+		separator.add_child(_label("Önceki mesaj · Ay %d" % int(other["month"]), 11, FAINT, false))
+		var line_b := ColorRect.new()
+		line_b.color = BORDER
+		line_b.custom_minimum_size = Vector2(0, 1)
+		line_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		line_b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		separator.add_child(line_b)
+		content.add_child(separator)
+		var card := _card(content, "", BORDER)
+		var head := HBoxContainer.new()
+		head.add_theme_constant_override("separation", 10)
+		head.add_child(_contact_face(other, 48))
+		var who := VBoxContainer.new()
+		who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		who.add_child(_label("%s · %s" % [String(other.get("contact", "")), _mail_status_text(other)], 13, TEXT))
+		who.add_child(_label("Ay %d" % int(other["month"]), 11, MUTED))
+		head.add_child(who)
+		card.add_child(head)
+		for line in other["lines"]:
+			card.add_child(_label(str(line), 13, MUTED))
+		if other.has("my_price"):
+			card.add_child(_label("Teklifiniz: %s · peşinat %%%d · %d ay" % [Data.usd(float(other["my_price"])), int(other.get("my_advance", 0)), int(other.get("my_months", 0))], 12, GOLD))
 
 func _mail_offer_snapshot(mail: Dictionary) -> void:
 	var offer: Dictionary = mail["offer"]
@@ -2505,7 +2571,7 @@ func _spec_cell(icon_name: String, title: String, value: String, tint: Color, va
 func _feature_tile(icon_name: String, title: String, value: String) -> Control:
 	var tile := PanelContainer.new()
 	tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	tile.add_theme_stylebox_override("panel", _box(Color(0, 0, 0, 0), TEXT, 12, 1))
+	tile.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 3)
 	tile.add_child(_margin(column, 4, 8))
@@ -2549,6 +2615,7 @@ func _machine_row(listing: Dictionary) -> void:
 func _machine_card(listing: Dictionary) -> void:
 	var selected: bool = listing["uid"] == selected_listing
 	var box := _card(content, "", GOLD if selected else BORDER, true)
+	box.add_theme_constant_override("separation", 16)
 	var panel := _panel_of(box)
 	listing_cards[listing["uid"]] = panel
 	var level_name: String = Data.LEVELS[int(listing["level"])]
@@ -2580,7 +2647,7 @@ func _machine_card(listing: Dictionary) -> void:
 	var data_grid := GridContainer.new()
 	data_grid.columns = 2
 	data_grid.add_theme_constant_override("h_separation", 14)
-	data_grid.add_theme_constant_override("v_separation", 10)
+	data_grid.add_theme_constant_override("v_separation", 18)
 	for entry in [
 		["tezgah_guc", "Motor Gücü", ("%.1f kW" % float(listing["power"])).replace(".", ",")],
 		[_area_icon(), "Gerekli Alan", ("%d m² x %.1fm" % [int(listing["area"]), float(listing["height"])]).replace(".0m", "m").replace(".", ",")],
@@ -2596,7 +2663,7 @@ func _machine_card(listing: Dictionary) -> void:
 	var forecast_grid := GridContainer.new()
 	forecast_grid.columns = 2
 	forecast_grid.add_theme_constant_override("h_separation", 14)
-	forecast_grid.add_theme_constant_override("v_separation", 10)
+	forecast_grid.add_theme_constant_override("v_separation", 18)
 	for entry in [
 		["tezgah_ongoru_bakim", "Bakım Gideri", "-%s /ay" % Data.usd(maintenance), RED],
 		["tezgah_ongoru_kapasite", "Kapasite", "%s/ay" % _xfmt(float(listing["nameplate"])), GREEN],
@@ -3029,9 +3096,9 @@ func _render_detail() -> void:
 		"settings":
 			title.text = "  Ayarlar"
 			_detail_settings()
-		"history":
-			title.text = "  Geçmiş"
-			_detail_history()
+		"history", "log":
+			title.text = "  Log"
+			_detail_log()
 		"supplier_pick":
 			title.text = "  Tedarikçi seç"
 			_detail_supplier_pick()
@@ -3545,16 +3612,38 @@ func _factory_row(factory: Dictionary) -> Control:
 	box.add_child(chips)
 	return box
 
-func _detail_history() -> void:
-	var box := _card(content, "Olay geçmişi", BORDER, true)
-	if game.history.is_empty():
-		box.add_child(_label("Henüz kayıtlı olay yok.", 13, MUTED))
+var log_filter := "Tümü"
+
+# Every event of the game, newest first, with a category filter.
+func _detail_log() -> void:
+	var options: Array = [{"id": "Tümü", "title": "Tümü"}]
+	for category in ShellBoss.LOG_CATEGORIES:
+		options.append({"id": category, "title": category})
+	_chips(content, options, log_filter, func(id: String) -> void:
+		log_filter = id
+		_render())
+	var box := _card(content, "", BORDER, true)
 	var shown := 0
-	for i in range(game.history.size() - 1, -1, -1):
-		box.add_child(_label(String(game.history[i]), 12, TEXT))
+	for i in range(game.event_log.size() - 1, -1, -1):
+		var entry: Dictionary = game.event_log[i]
+		if log_filter != "Tümü" and entry["category"] != log_filter:
+			continue
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		var when := _label(Data.date_text(int(entry["month"]), int(entry["day"])).get_slice(" ", 0) + " " + Data.date_text(int(entry["month"]), int(entry["day"])).get_slice(" ", 1), 11, FAINT, false)
+		when.custom_minimum_size = Vector2(62, 0)
+		row.add_child(when)
+		var text := _label(String(entry["text"]), 13, TEXT)
+		text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(text)
+		if absf(float(entry["amount"])) > 0.0005:
+			row.add_child(_label(Data.usd(float(entry["amount"])), 13, GREEN if float(entry["amount"]) > 0.0 else RED, false))
+		box.add_child(row)
 		shown += 1
-		if shown >= 60:
+		if shown >= 150:
 			break
+	if shown == 0:
+		box.add_child(_label("Bu filtrede kayıt yok.", 13, MUTED))
 
 func _ask_sell(uid: int) -> void:
 	var machine: Dictionary = game.machine_by_uid(uid)

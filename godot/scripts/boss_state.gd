@@ -49,10 +49,10 @@ const SCALES := [
 
 # FRZ-001 §5: non-overlapping money bands, hour bands that do not decrease.
 const MONEY_BANDS := {1: [6.0, 10.0], 2: [12.0, 18.0], 3: [25.0, 35.0], 4: [50.0, 70.0], 5: [100.0, 140.0]}
-const HOUR_BANDS := {1: [2, 3], 2: [3, 5], 3: [5, 8], 4: [8, 12], 5: [12, 16]}
+const HOUR_BANDS := {1: [12, 19], 2: [19, 31], 3: [31, 50], 4: [50, 75], 5: [75, 100]}   # the old 40-hour month x 6.25
 const TIER_WEIGHTS := {1: 35, 2: 30, 3: 20, 4: 10, 5: 5}
 
-const MONTHLY_HOURS := 40
+const MONTHLY_HOURS := 250   # 10 hours a day x 25 working days
 const BASE_EXPENSE := 30.0
 const MACHINE_EXPENSE := 12.0
 const DEPRECIATION := 0.015
@@ -583,6 +583,8 @@ func fix(root_id: String) -> Dictionary:
 	else:
 		notice = "%s çözülemedi: %.0f para, %d saat. Bu kök bu ay kilitli; sorun sürüyor." % [root_name, paid, hours]
 	history.append("Ay %d: Düzelt %s → %s (%.0f para, %d sa)" % [month, root_name, "başarılı" if success else "başarısız", paid, hours])
+	if has_method("log_event"):
+		call("log_event", "Yönetim", "Düzelt %s → %s (%.0f para, %d sa)" % [root_name, "başarılı" if success else "başarısız", paid, hours], -paid)
 	return {"ok": true, "success": success, "paid": paid, "hours": hours}
 
 func active_rows(department: String) -> Array[Dictionary]:

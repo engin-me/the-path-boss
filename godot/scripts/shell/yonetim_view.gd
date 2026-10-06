@@ -34,6 +34,10 @@ var game
 static func S(points: float) -> float:
 	return points * K
 
+# Text size: the design's point sizes keep their proportions, but small captions never go below 12 px on the phone.
+static func F(points: float) -> int:
+	return int(roundf(maxf(points * K, 12.0 + (points - 9.0) * 0.6)))
+
 func _font(weight: String) -> Font:
 	return Art.font(weight)
 
@@ -48,7 +52,7 @@ func _style(fill: Color, radius: float, border := BORDER, width := 1) -> StyleBo
 func _text(text: String, pt: float, color := TEXT, weight := "Regular", align := HORIZONTAL_ALIGNMENT_LEFT) -> Label:
 	var label := Label.new()
 	label.text = text
-	label.add_theme_font_size_override("font_size", int(roundf(S(pt))))
+	label.add_theme_font_size_override("font_size", F(pt))
 	label.add_theme_color_override("font_color", color)
 	label.add_theme_font_override("font", _font(weight))
 	label.horizontal_alignment = align
@@ -114,6 +118,9 @@ func _padded(child: Control, h: float, v: float) -> MarginContainer:
 	margin.add_child(child)
 	return margin
 
+func _last(values: Array, count := 12) -> Array:
+	return values.slice(maxi(0, values.size() - count))
+
 func _usd(units: float) -> String:
 	return Data.usd(units).replace("$", "$ ")
 
@@ -132,6 +139,7 @@ func build(new_game) -> void:
 	_jobs()
 	_staff()
 	_overview()
+	_links()
 
 func _actions() -> void:
 	var column := _card("Aksiyon", "baslik_aksiyon")
@@ -203,16 +211,26 @@ func _finance() -> void:
 	panel.size_flags_stretch_ratio = 0.95
 	var charts := VBoxContainer.new()
 	charts.add_theme_constant_override("separation", int(S(8)))
-	var cash_values: Array = game.cash_history.duplicate()
-	cash_values.append(float(game.cash))
-	var cash_chart = MiniChart.new()
-	cash_chart.custom_minimum_size = Vector2(0, S(92))
-	cash_chart.set_data(cash_values.slice(maxi(0, cash_values.size() - 12)), "Nakit (aylık)", CYAN)
-	charts.add_child(cash_chart)
-	var revenue_chart = MiniChart.new()
-	revenue_chart.custom_minimum_size = Vector2(0, S(92))
-	revenue_chart.set_data(game.revenue_history.slice(maxi(0, game.revenue_history.size() - 12)), "Gelir (aylık)", GREEN)
-	charts.add_child(revenue_chart)
+	var top_chart = MiniChart.new()
+	top_chart.custom_minimum_size = Vector2(0, S(100))
+	top_chart.set_series([
+		{"name": "Nakit", "values": _last(game.cash_history), "color": CYAN},
+		{"name": "Ödemelere bağlı", "values": _last(game.committed_history), "color": AMBER},
+		{"name": "Serbest", "values": _last(game.free_history), "color": GREEN}])
+	charts.add_child(top_chart)
+	var bottom_chart = MiniChart.new()
+	bottom_chart.custom_minimum_size = Vector2(0, S(100))
+	var debts: Array = []
+	for v in _last(game.debt_history):
+		debts.append(-float(v))
+	var zeros: Array = []
+	for v in debts:
+		zeros.append(0.0)
+	bottom_chart.set_series([
+		{"name": "Yatırım", "values": _last(game.invest_history), "color": BLUE},
+		{"name": "Kredi (−)", "values": debts, "color": RED},
+		{"name": "Leasing (−)", "values": zeros, "color": AMBER}])
+	charts.add_child(bottom_chart)
 	panel.add_child(_padded(charts, 8, 6))
 	body.add_child(panel)
 	column.add_child(body)
@@ -221,11 +239,13 @@ func _check(label: String, on: bool, enabled: bool, callback: Callable) -> Contr
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", int(S(4)))
 	var box := Panel.new()
-	box.custom_minimum_size = Vector2(S(14.2), S(14.2))
+	box.custom_minimum_size = Vector2(S(16), S(16))
 	box.add_theme_stylebox_override("panel", _style(GREEN_HI if on else CARD, 3.0))
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var holder := Control.new()
-	holder.custom_minimum_size = Vector2(S(14.2), S(14.2))
+	holder.custom_minimum_size = Vector2(S(16), S(16))
+	holder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	holder.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	holder.add_child(box)
 	box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	row.add_child(holder)
@@ -314,7 +334,10 @@ func _machine_bar(row: Dictionary) -> Control:
 
 func _oee() -> void:
 	var column := _card("OEE (Overall Equipment Efficiency)", "baslik_oee", "oee")
-	var parts: Dictionary = game.oee_parts()
+	var parts: Dictionary = {"availability": 0.0, "performance": 0.0, "quality": 0.0, "oee": 0.0}
+	var has_history: bool = not game.oee_history.is_empty()
+	if has_history:
+		parts = game.oee_history[game.oee_history.size() - 1]   # what the closed months actually produced
 	var body := HBoxContainer.new()
 	body.add_theme_constant_override("separation", int(S(8)))
 	var left := VBoxContainer.new()
@@ -338,7 +361,7 @@ func _oee() -> void:
 		bar.add_theme_stylebox_override("background", _style(TRACK, 50.0, TRACK_BORDER))
 		bar.add_theme_stylebox_override("fill", _style(AMBER, 50.0, AMBER, 0))
 		row.add_child(bar)
-		var value := _text(("%.1f%%" % (float(entry[1]) * 100.0)).replace(".", ","), 10.5, MUTED, "Regular", HORIZONTAL_ALIGNMENT_RIGHT)
+		var value := _text(("%.1f%%" % (float(entry[1]) * 100.0)).replace(".", ",") if has_history else "—", 10.5, MUTED, "Regular", HORIZONTAL_ALIGNMENT_RIGHT)
 		value.custom_minimum_size = Vector2(S(46), 0)
 		row.add_child(value)
 		row.add_child(_chevron())
@@ -401,7 +424,7 @@ func _jobs() -> void:
 	grid.add_theme_constant_override("h_separation", int(S(10)))
 	grid.add_theme_constant_override("v_separation", int(S(10)))
 	grid.add_child(_job_tile("is_aktif", "Aktif İş", game.jobs.size(), AMBER, "jobs"))
-	grid.add_child(_job_tile("is_teklifte", "Teklifte", game.offers.size(), CYAN, "offers"))
+	grid.add_child(_job_tile("is_teklifte", "Teklifte", 0, CYAN, "offers"))   # quotes awaiting an answer: not modelled yet (answers are instant)
 	grid.add_child(_job_tile("is_uretimde", "Üretimde", producing, GREEN, "jobs"))
 	grid.add_child(_job_tile("is_risk", "Teslim Riski", game.risky_jobs(), RED, "jobs"))
 	column.add_child(grid)
@@ -500,3 +523,17 @@ func _date_text() -> String:
 	var parts: Array = Data.date_text(int(game.month), int(game.day)).split(" ")
 	var names := ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"]
 	return "%02d.%02d.%s" % [int(parts[0]), names.find(parts[1]) + 1, parts[2]]
+
+# Until the cockpit exists: plain links to the screens that used to sit in the top chip rows.
+func _links() -> void:
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", int(S(14)))
+	row.add_theme_constant_override("v_separation", int(S(6)))
+	for entry in [["Fabrika", "fabrika"], ["Tedarik", "supply"], ["Patron", "boss"], ["Departmanlar", "dep"], ["Rapor", "report"], ["Log", "log"]]:
+		var link := _text(String(entry[0]), 11, MUTED)
+		link.mouse_filter = Control.MOUSE_FILTER_STOP
+		link.gui_input.connect(func(event: InputEvent) -> void:
+			if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
+				go.emit(String(entry[1])))
+		row.add_child(link)
+	add_child(row)

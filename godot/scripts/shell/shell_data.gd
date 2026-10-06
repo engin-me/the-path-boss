@@ -364,7 +364,18 @@ static func benefit_bonus_of(levels: Array) -> float:
 		if level > 0:
 			total += float(BENEFITS[i]["bonus"]) * float(BENEFITS[i]["effect"][level - 1])
 	return minf(total, BENEFIT_BONUS_CAP)
-const CONTACTS := ["Mary Collins", "Tom Bennett", "Laura Finch", "Henry Walsh", "Nora Keane", "Paul Sterling"]
+# Customer contacts: every company has three people with a fixed face (art/contacts/<id>.png), name and role,
+# so the player learns to recognise who writes from the photo.
+const CONTACT_PEOPLE := {
+	"Ridgeway Motors": [{"id": "p04", "name": "Marco Bellini", "role": "Satın Alma Müdürü"}, {"id": "p13", "name": "Rosa Delgado", "role": "Kalite Müdürü"}, {"id": "p18", "name": "Richard Voss", "role": "Üretim Planlama"}],
+	"Northgate Hydraulics": [{"id": "p02", "name": "Gordon Hale", "role": "Genel Müdür"}, {"id": "p06", "name": "Amara Okafor", "role": "Satın Alma Uzmanı"}, {"id": "p21", "name": "Lucia Moreau", "role": "Kalite Müdürü"}],
+	"Bluewater Marine": [{"id": "p03", "name": "Sophie Lindqvist", "role": "Satın Alma Müdürü"}, {"id": "p12", "name": "Isaac Mensah", "role": "Üretim Planlama"}, {"id": "p15", "name": "Edmund Thorne", "role": "Genel Müdür"}],
+	"Ironbridge Rail": [{"id": "p05", "name": "Walter Kessler", "role": "Genel Müdür"}, {"id": "p09", "name": "Fiona McAllister", "role": "Satın Alma Müdürü"}, {"id": "p24", "name": "Samuel Boateng", "role": "Üretim Planlama"}],
+	"Summit Agri": [{"id": "p07", "name": "Ingrid Solberg", "role": "Satın Alma Müdürü"}, {"id": "p10", "name": "Daniel Wu", "role": "Satın Alma Uzmanı"}, {"id": "p22", "name": "Ben Carter", "role": "Üretim Planlama"}],
+	"Carlisle Pumps": [{"id": "p01", "name": "Elena Marlowe", "role": "Satın Alma Müdürü"}, {"id": "p14", "name": "Arjun Mehta", "role": "Kalite Uzmanı"}, {"id": "p20", "name": "Beatrice Okoye", "role": "Genel Müdür"}],
+	"Redfield Auto": [{"id": "p08", "name": "Karim Haddad", "role": "Satın Alma Müdürü"}, {"id": "p17", "name": "Hana Kobayashi", "role": "Kalite Müdürü"}, {"id": "p19", "name": "Alex Rowan", "role": "Üretim Planlama"}],
+	"Halvorsen Gear": [{"id": "p11", "name": "Margaret Doyle", "role": "Genel Müdür"}, {"id": "p16", "name": "Naomi Adeyemi", "role": "Satın Alma Müdürü"}, {"id": "p23", "name": "Hiroshi Nakamura", "role": "Üretim Planlama"}]
+}
 
 # Hidden urgency (1-10) leaks through one small signal only: how many reminders the customer has sent about the job.
 static func urgency_noisy(offer: Dictionary) -> int:
@@ -375,8 +386,22 @@ static func urgency_noisy(offer: Dictionary) -> int:
 static func mail_count(offer: Dictionary, round: int) -> int:
 	return 1 + int(floor(float(urgency_noisy(offer) - 1) / 3.0)) + (round - 1)
 
+static func contact_info(offer: Dictionary) -> Dictionary:
+	var people: Array = CONTACT_PEOPLE.get(String(offer.get("customer", "")), [])
+	if people.is_empty():
+		return {"id": "", "name": "", "role": ""}
+	return people[int(offer["id"]) % people.size()]
+
 static func contact_of(offer: Dictionary) -> String:
-	return CONTACTS[int(offer["id"]) % CONTACTS.size()]
+	return String(contact_info(offer)["name"])
+
+# Portrait id of a contact by name (mails saved before the portraits existed).
+static func contact_photo_of(name: String) -> String:
+	for company in CONTACT_PEOPLE:
+		for person in CONTACT_PEOPLE[company]:
+			if person["name"] == name:
+				return String(person["id"])
+	return ""
 
 const STEEL_GRADE := {1: "HR42", 2: "42CrMo4", 3: "42CrMo4"}
 

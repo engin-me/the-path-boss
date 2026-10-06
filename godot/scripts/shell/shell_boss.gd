@@ -79,6 +79,12 @@ func to_save() -> Dictionary:
 	data["month_late"] = month_late
 	data["lifetime_revenue"] = lifetime_revenue
 	data["cash_history"] = cash_history.duplicate()
+	data["committed_history"] = committed_history.duplicate()
+	data["free_history"] = free_history.duplicate()
+	data["invest_history"] = invest_history.duplicate()
+	data["debt_history"] = debt_history.duplicate()
+	data["oee_history"] = oee_history.duplicate(true)
+	data["event_log"] = event_log.duplicate(true)
 	data["revenue_history"] = revenue_history.duplicate()
 	data["quotes_sent"] = quotes_sent
 	data["quotes_won"] = quotes_won
@@ -121,6 +127,12 @@ func from_save(data: Dictionary) -> String:
 	month_late = int(copy.get("month_late", 0))
 	lifetime_revenue = float(copy.get("lifetime_revenue", 0.0))
 	cash_history = copy.get("cash_history", []).duplicate()
+	committed_history = copy.get("committed_history", []).duplicate()
+	free_history = copy.get("free_history", []).duplicate()
+	invest_history = copy.get("invest_history", []).duplicate()
+	debt_history = copy.get("debt_history", []).duplicate()
+	oee_history = copy.get("oee_history", []).duplicate(true)
+	event_log = copy.get("event_log", []).duplicate(true)
 	revenue_history = copy.get("revenue_history", []).duplicate()
 	quotes_sent = int(copy.get("quotes_sent", 0))
 	quotes_won = int(copy.get("quotes_won", 0))
@@ -176,7 +188,7 @@ func ordinary_expense() -> float:
 
 # What the cash on the table is not really yours for: advances held for unfinished jobs, material still to be paid,
 # and the month's running costs. `free` is the cash left after the known obligations.
-func commitments() -> Dictionary:
+func commitments(with_first := true) -> Dictionary:
 	var advances := 0.0
 	var material := 0.0
 	for job in jobs:
@@ -189,7 +201,7 @@ func commitments() -> Dictionary:
 			material += float(order["amount"])
 	var expense := ordinary_expense()
 	var first := {}
-	if not jobs.is_empty():
+	if with_first and not jobs.is_empty():
 		var finish := projection_days()
 		var best_m := 0
 		var best_d := 0
@@ -552,6 +564,7 @@ func set_plan(shifts: int, overtime: Array, patron: bool) -> String:
 	patron_overtime = ot[0] and not patron_machine().is_empty()
 	for machine in machines:
 		machine["shifts"] = shifts
+	log_event("Personel", "Vardiya planı: %d vardiya%s%s" % [shifts, ", mesai " + ", ".join(range(1, shifts + 1).filter(func(i): return ot[i - 1]).map(func(i): return "V%d" % i)) if ot.has(true) else "", ", patron operatör" if patron else ""])
 	return ""
 
 func set_shifts(uid: int, shifts: int) -> String:
@@ -959,7 +972,7 @@ func rent_factory(id: String, months: int, prepay: bool) -> String:
 	phase = "offers"
 	_generate_offers()
 	_generate_problems(2)
-	history.append("Ay %d: %s kiralandı (%d ay, kira %.0f)." % [month, factory()["name"], term, base_rent()])
+	_hist("Yönetim", "Ay %d: %s kiralandı (%d ay, kira %.0f)." % [month, factory()["name"], term, base_rent()])
 	notice = "%s kiralandı. Önce gerekli ekipmanı al, sonra tezgah ve iş." % factory()["name"]
 	return ""
 
@@ -1091,7 +1104,7 @@ func move_factory(id: String, months: int, prepay: bool, sell_uids: Array = []) 
 	if prepay:
 		cash -= float(quote["amount"])
 		prepaid_months = int(quote["half"])
-	history.append("Ay %d: %s → %s taşındı (%d ay üretim durur; çıkış %.0f, taşıma %.0f, ek ekipman %.0f, %d tezgah satıldı)." % [month, old_name, factory()["name"], move_months(), costs["exit"], costs["transport"], costs["extra_set"], sell_uids.size()])
+	_hist("Yönetim", "Ay %d: %s → %s taşındı (%d ay üretim durur; çıkış %.0f, taşıma %.0f, ek ekipman %.0f, %d tezgah satıldı)." % [month, old_name, factory()["name"], move_months(), costs["exit"], costs["transport"], costs["extra_set"], sell_uids.size()])
 	notice = "%s taşındın; tezgahlar %d ay sonra çalışır, personel ücretleri sürer." % [factory()["name"], arrive - month]
 	return ""
 
@@ -1130,7 +1143,7 @@ func leave_factory() -> String:
 	cash -= leave_fee() + float(jobs_cost["total"])
 	for job in jobs:
 		_score_event(0.0)
-	history.append("Ay %d: %s bırakıldı (çıkış bedeli %.0f; %d iş bırakıldı: ceza %.0f, peşinat iadesi %.0f, iptal edilemeyen hammadde %.0f)." % [month, factory()["name"], leave_fee(), jobs_cost["jobs"], jobs_cost["penalty"], jobs_cost["refund"], jobs_cost["orders"]])
+	_hist("Yönetim", "Ay %d: %s bırakıldı (çıkış bedeli %.0f; %d iş bırakıldı: ceza %.0f, peşinat iadesi %.0f, iptal edilemeyen hammadde %.0f)." % [month, factory()["name"], leave_fee(), jobs_cost["jobs"], jobs_cost["penalty"], jobs_cost["refund"], jobs_cost["orders"]])
 	factory_id = ""
 	rent_markup = 0.0
 	renewal_term = 0
@@ -1174,7 +1187,7 @@ func buy_package() -> String:
 	cash -= float(info["price"])
 	invested += float(info["price"])
 	package_bought = true
-	history.append("Ay %d: gerekli ekipman seti alındı (%.0f)." % [month, info["price"]])
+	_hist("Makine", "Ay %d: gerekli ekipman seti alındı (%.0f)." % [month, info["price"]])
 	notice = "Gerekli ekipman tamam; kapasite kullanılabilir."
 	return ""
 
@@ -1232,7 +1245,7 @@ func buy_listing(uid: int) -> String:
 	machines.append(machine)
 	if machines.size() == 1 and jobs.is_empty() and phase == "offers":
 		_generate_offers()   # the first machine is bought: this month already lists small orders it can make
-	history.append("Ay %d: %s sipariş edildi (%.0f, teslim %d ay)." % [month, listing["model"], listing["price"], listing["delivery"]])
+	_hist("Makine", "Ay %d: %s sipariş edildi (%.0f, teslim %d ay)." % [month, listing["model"], listing["price"], listing["delivery"]])
 	notice = "%s sipariş edildi; teslimde personel işe başlar." % listing["model"]
 	return ""
 
@@ -1394,7 +1407,7 @@ func _create_job(offer: Dictionary, price: float, advance_rate: float, due_month
 	offers.erase(offer)
 	if slack_of(job) >= Data.SLACK_MIN:
 		job["bonus_ask"] = true
-	history.append("Ay %d: iş kabul edildi: %s (fiyat %.0f, peşinat %.0f)." % [month, job["title"], price, advance])
+	_hist("İşler", "Ay %d: iş kabul edildi: %s (fiyat %.0f, peşinat %.0f)." % [month, job["title"], price, advance])
 	notice = "%s kabul edildi; %.0f peşinat kasaya girdi." % [job["title"], advance]
 	if auto_order and not bool(offer.get("fason", false)):
 		var result := order_material(job["id"], default_supplier)
@@ -1589,11 +1602,11 @@ func accept_probability(offer: Dictionary, price: float, advance_pct: int, month
 
 func _mail(offer: Dictionary, status: String, lines: Array, extra := {}) -> Dictionary:
 	var mail := {"id": next_mail, "month": month, "offer_id": offer["id"], "title": offer["title"], "customer": offer["customer"],
-		"contact": Data.contact_of(offer), "status": status, "lines": lines, "offer": offer.duplicate(true), "read": false, "kind": "quote", "round": 1}
+		"contact": Data.contact_of(offer), "contact_photo": String(Data.contact_info(offer)["id"]), "contact_role": String(Data.contact_info(offer)["role"]), "status": status, "lines": lines, "offer": offer.duplicate(true), "read": false, "kind": "quote", "round": 1}
 	mail.merge(extra, true)
 	next_mail += 1
 	mails.push_front(mail)
-	while mails.size() > 40:
+	while mails.size() > 90:
 		mails.pop_back()
 	return mail
 
@@ -1603,9 +1616,20 @@ func post_mail(title: String, lines: Array, sender := "Sistem") -> Dictionary:
 		"lines": lines, "offer": {}, "read": false, "kind": "system", "round": 1}
 	next_mail += 1
 	mails.push_front(mail)
-	while mails.size() > 40:
+	while mails.size() > 90:
 		mails.pop_back()
 	return mail
+
+# All mails about one job, newest first (the whole bargaining chain); system mails stand alone.
+func mail_thread(mail: Dictionary) -> Array:
+	if int(mail.get("offer_id", 0)) <= 0:
+		return [mail]
+	var thread: Array = []
+	for other in mails:
+		if int(other.get("offer_id", 0)) == int(mail["offer_id"]):
+			thread.append(other)
+	thread.sort_custom(func(a, b): return int(a["id"]) > int(b["id"]))
+	return thread
 
 func unread_mails() -> int:
 	var count := 0
@@ -1736,7 +1760,7 @@ func order_material(job_id: int, supplier_id: String) -> String:
 	if int(quote["terms"]) == 0:
 		cash -= float(quote["amount"])
 		order["paid"] = true
-	history.append("Ay %d: hammadde siparişi: %s ← %s (%.0f, gelir Ay %d)." % [month, job["title"], quote["supplier"]["name"], quote["amount"], order["arrive_month"]])
+	_hist("Tedarik", "Ay %d: hammadde siparişi: %s ← %s (%.0f, gelir Ay %d)." % [month, job["title"], quote["supplier"]["name"], quote["amount"], order["arrive_month"]])
 	return ""
 
 func abandon_penalty(job: Dictionary) -> float:
@@ -1769,7 +1793,7 @@ func abandon_job(id: int) -> String:
 	cash -= penalty + float(job["advance"])
 	jobs.erase(job)
 	_score_event(0.0)
-	history.append("Ay %d: iş bırakıldı: %s (ceza %.0f, peşinat iade %.0f, hammadde yandı)." % [month, job["title"], penalty, job["advance"]])
+	_hist("İşler", "Ay %d: iş bırakıldı: %s (ceza %.0f, peşinat iade %.0f, hammadde yandı)." % [month, job["title"], penalty, job["advance"]])
 	notice = "%s bırakıldı; ceza %.0f, peşinat iade edildi, ödenen hammadde kayıp, teslimat skoru düştü." % [job["title"], penalty]
 	return ""
 
@@ -1808,7 +1832,7 @@ func sell_machine_uid(uid: int) -> String:
 	var income := sale_income(machine)
 	cash += income
 	machines.erase(machine)
-	history.append("Ay %d: %s satıldı (+%.0f)." % [month, machine["model"], income])
+	_hist("Makine", "Ay %d: %s satıldı (+%.0f)." % [month, machine["model"], income])
 	notice = "%s satıldı; %.0f nakit girdi, etkin kapasite azaldı." % [machine["model"], income]
 	return ""
 
@@ -1819,6 +1843,12 @@ var days_run := 0               # days of this month already produced (0 = the m
 var month_events: Array = []    # this month's day events, printed in the closing report
 var month_material_used := 0.0  # material of jobs delivered earlier this month
 var month_revenue := 0.0        # revenue delivered earlier this month
+var committed_history: Array = []  # month-end money already owed (material + the month's costs)
+var free_history: Array = []
+var invest_history: Array = []
+var debt_history: Array = []
+var oee_history: Array = []        # [{availability, performance, quality, oee}] of every closed month
+var event_log: Array = []          # [{month, day, category, text, amount}]
 var cash_history: Array = []      # cash at the end of every month (for the management screen)
 var revenue_history: Array = []   # delivered revenue of every month
 var quotes_sent := 0
@@ -1921,6 +1951,7 @@ func advance_day() -> Dictionary:
 			running.append(job)
 	jobs = running
 	for event in events:
+		log_event(_event_category(String(event["text"])), String(event["text"]), float(event["amount"]))
 		month_events.append("Gün %d: %s%s" % [day, event["text"], (" (%s)" % Data.usd(float(event["amount"]))) if absf(float(event["amount"])) > 0.0005 else ""])
 	days_run += 1
 	if day < Data.MONTH_DAYS:
@@ -2291,6 +2322,21 @@ func close_month() -> String:
 	revenue_history.append(delivered_revenue)
 	cash -= finance
 	cash_history.append(cash)
+	var com_end := commitments(false)
+	committed_history.append(float(com_end["material"]) + float(com_end["expense"]))
+	free_history.append(float(com_end["free"]))
+	invest_history.append(float(investment_value()))
+	debt_history.append(float(debt) + (float(loan.get("balance", 0.0)) if not loan.is_empty() else 0.0))
+	var steps_now := report
+	if float(steps_now.get("theoretical", 0.0)) > 0.0 and float(steps_now.get("shift", 0.0)) > 0.0 and float(steps_now.get("perf", 0.0)) > 0.0:
+		var theo := float(steps_now["theoretical"])
+		var shift_v := float(steps_now["shift"])
+		var perf_v := float(steps_now["perf"])
+		var net_v := float(steps_now.get("net", 0.0))
+		var phys_v := float(steps_now.get("phys", 0.0))
+		oee_history.append({"availability": clampf(shift_v / theo * (net_v / maxf(0.0001, phys_v)), 0.0, 1.0), "performance": clampf(perf_v / shift_v, 0.0, 1.0), "quality": clampf(phys_v / perf_v, 0.0, 1.0), "oee": clampf(net_v / theo, 0.0, 1.0)})
+	else:
+		oee_history.append({"availability": 0.0, "performance": 0.0, "quality": 0.0, "oee": 0.0})
 	if finance > 0.0:
 		lines.append("Finansman gideri: %s" % Data.usd(finance))
 	for machine in machines:
@@ -2301,10 +2347,11 @@ func close_month() -> String:
 		if consultant["months_left"] > 0:
 			still_active.append(consultant)
 		else:
-			history.append("Ay %d: %s sözleşmesi bitti; bilgisi fabrikada kalmadı." % [month, consultant["name"]])
+			_hist("Personel", "Ay %d: %s sözleşmesi bitti; bilgisi fabrikada kalmadı." % [month, consultant["name"]])
 	consultants = still_active
 	_grow_problems()
 	var status := solvency()
+	log_event("Finans", "Ay %d kapandı: gelir %s, kasa %s" % [month, Data.usd(delivered_revenue), Data.usd(cash)], delivered_revenue)
 	history.append("Ay %d: OEE %%%d, gelir %.0f, kasa %.0f, borç açığı %.0f / eşik %.0f" % [month, int(roundf(float(report.get("oee", 0.0)) * 100.0)), delivered_revenue, cash, status["gap"], status["threshold"]])
 	_check_month()
 	notice = "%d. ay kapandı. Kasa %.0f. Borç açığı %.0f, kurtarma eşiği %.0f." % [month, cash, status["gap"], status["threshold"]]
@@ -2434,7 +2481,7 @@ func take_loan(uids: Array) -> String:
 			machine["mortgaged"] = true
 	cash += float(terms["amount"])
 	debt += float(terms["amount"])
-	history.append("Ay %d: %s kredisi %.0f alındı (%d makine ipotekli)." % [month, Data.CREDIT["bank"], terms["amount"], uids.size()])
+	_hist("Finans", "Ay %d: %s kredisi %.0f alındı (%d makine ipotekli)." % [month, Data.CREDIT["bank"], terms["amount"], uids.size()])
 	notice = "Kredi alındı; kasa ve borç aynı tutarda arttı."
 	return ""
 
@@ -2458,6 +2505,32 @@ func close_loan() -> String:
 func _release_collateral() -> void:
 	for machine in machines:
 		machine["mortgaged"] = false
+
+# ---------------------------------------------------------------- event log
+
+const LOG_CATEGORIES := ["İşler", "Finans", "Makine", "Tedarik", "Personel", "Yönetim"]
+
+func _event_category(text: String) -> String:
+	if text.begins_with("Teslim:") or text.begins_with("İptal:") or text.begins_with("İş "):
+		return "İşler"
+	if text.begins_with("Hammadde"):
+		return "Tedarik"
+	if text.contains("teslim alındı") or text.contains("kuruldu") or text.contains("tezgah"):
+		return "Makine"
+	if text.begins_with("Hurda") or text.begins_with("Kira") or text.begins_with("Finansman") or text.begins_with("Personel"):
+		return "Finans"
+	return "Yönetim"
+
+func _hist(category: String, text: String) -> void:
+	history.append(text)
+	var clean: String = text.get_slice(": ", 1) if text.begins_with("Ay ") and text.contains(": ") else text
+	var first := clean.substr(0, 1)
+	log_event(category, ("İ" if first == "i" else first.to_upper()) + clean.substr(1))
+
+func log_event(category: String, text: String, amount := 0.0) -> void:
+	event_log.append({"month": month, "day": day, "category": category, "text": text, "amount": amount})
+	if event_log.size() > 600:
+		event_log.pop_front()
 
 # ---------------------------------------------------------------- management screen data
 

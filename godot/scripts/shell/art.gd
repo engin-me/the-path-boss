@@ -40,9 +40,10 @@ static func _svg(path: String) -> Texture2D:
 	if not bytes.is_empty():
 		var probe := Image.new()
 		if probe.load_svg_from_buffer(bytes, 1.0) == OK and probe.get_width() > 0:
-			var scale := 96.0 / float(maxi(probe.get_width(), probe.get_height()))
+			var scale := 192.0 / float(maxi(probe.get_width(), probe.get_height()))
 			var image := Image.new()
 			if image.load_svg_from_buffer(bytes, scale) == OK:
+				image.generate_mipmaps()
 				texture = ImageTexture.create_from_image(image)
 	_svg_cache[path] = texture
 	return texture
