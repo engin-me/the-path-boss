@@ -12,9 +12,10 @@ const Art = preload("res://scripts/shell/art.gd")
 const FloorScript = preload("res://scripts/shell/factory_floor.gd")
 const AudioDirector = preload("res://scripts/shell/audio_director.gd")
 const GaugeScript = preload("res://scripts/shell/gauge.gd")
+const YonetimView = preload("res://scripts/shell/yonetim_view.gd")
 
 # Palette (art/ui/renk_paleti.png)
-const BG := Color("#0b141d")          # main screen background
+const BG := Color("#0f1720")          # main screen background (as drawn in the design deck)
 const BAR := Color("#101b26")         # header, time bar, bottom nav
 const PANEL := Color("#182431")       # cards, panels
 const PANEL_ALT := Color("#22303d")   # options, passive areas
@@ -40,10 +41,10 @@ var FONT_BOLD: Font = Art.font("Bold")
 const FONT_SCALE := 1.12   # the whole UI text is 12 percent larger than the base sizes
 
 const TABS := [
-	{"id": "ofis", "icon": "🏢", "title": "Yönetim", "file": "menu_yonetim_icon"},
-	{"id": "satin", "icon": "🛒", "title": "Satın Alma", "file": "menu_satin_al_icon"},
-	{"id": "teklif", "icon": "✎", "title": "Teklif Ver", "file": "menu_teklif_icon"},
-	{"id": "mail", "icon": "✉", "title": "Mail", "file": "menu_mail_icon"}
+	{"id": "ofis", "icon": "🏢", "title": "Yönetim", "file": "yonetim/nav_yonetim"},
+	{"id": "satin", "icon": "🛒", "title": "Satın Alma", "file": "yonetim/nav_satin_al"},
+	{"id": "teklif", "icon": "✎", "title": "Teklif Ver", "file": "yonetim/nav_teklif"},
+	{"id": "mail", "icon": "✉", "title": "Mail", "file": "yonetim/nav_mail"}
 ]
 const OFFICE_PAGES := ["ozet", "fabrika", "profil"]   # everything the Ofis tab holds
 
@@ -241,75 +242,77 @@ func _build() -> void:
 	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(overlay)
 
+func _top_icon(name: String, handler: Callable) -> Button:
+	var button := Button.new()
+	button.flat = true
+	button.custom_minimum_size = Vector2(YonetimView.S(34), YonetimView.S(34))
+	var texture := Art.find("res://art/ui/yonetim/" + name)
+	if texture != null:
+		button.icon = texture
+		button.expand_icon = true
+		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		button.add_theme_constant_override("icon_max_width", int(YonetimView.S(28.3)))
+	button.pressed.connect(handler)
+	_juice(button)
+	return button
+
 func _build_header() -> Control:
 	var bar := PanelContainer.new()
-	bar.add_theme_stylebox_override("panel", _box(BAR, BORDER, 0, 0))
+	bar.add_theme_stylebox_override("panel", _box(BAR, BAR, 0, 0))
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
-	bar.add_child(_margin(row, 14, 10))
-	header_money = _label("", 22, GREEN, false)
+	row.add_theme_constant_override("separation", 8)
+	bar.add_child(_margin(row, 14, 6))
+	header_money = _label("", 18, GREEN, false)
+	header_money.add_theme_font_size_override("font_size", int(YonetimView.S(18)))
+	header_money.add_theme_font_override("font", FONT_SEMIBOLD)
 	row.add_child(header_money)
-	header_date = _label("", 14, MUTED, false)
+	header_date = _label("", 11, MUTED, false)
+	header_date.add_theme_font_size_override("font_size", int(YonetimView.S(11)))
+	header_date.add_theme_font_override("font", FONT_MEDIUM)
 	header_date.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header_date.size_flags_vertical = Control.SIZE_SHRINK_END
+	header_date.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	row.add_child(header_date)
-	header_hours = _label("", 14, MUTED, false)
+	header_hours = _label("", 12, MUTED, false)
 	row.add_child(header_hours)
-	var gear := Button.new()
-	gear.flat = true
-	gear.custom_minimum_size = Vector2(44, 40)
-	var gear_texture := Art.find("res://art/ui/menu_ayarlar_icon")
-	if gear_texture == null:
-		gear_texture = Art.find("res://art/ui/btn_ayarlar")
-	if gear_texture != null:
-		gear.icon = gear_texture
-		gear.expand_icon = true
-		gear.add_theme_constant_override("icon_max_width", 30)
-	else:
-		gear.text = "⚙"
-		gear.add_theme_font_size_override("font_size", _fs(20))
-	gear.pressed.connect(_open_detail.bind("settings"))
-	_juice(gear)
-	row.add_child(gear)
+	row.add_child(_top_icon("ust_gecmis", _open_detail.bind("history")))
+	row.add_child(_top_icon("ust_ayarlar", _open_detail.bind("settings")))
 	return bar
 
 func _build_clock() -> Control:
 	var bar := PanelContainer.new()
-	bar.add_theme_stylebox_override("panel", _box(BAR, BORDER, 0, 0))
+	bar.add_theme_stylebox_override("panel", _box(BG, BG, 0, 0))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	bar.add_child(_margin(row, 14, 6))
-	clock_label = _label("", 13, TEXT, false)
-	clock_label.custom_minimum_size = Vector2(70, 0)
+	clock_label = _label("", 11, TEXT, false)
+	clock_label.add_theme_font_size_override("font_size", int(YonetimView.S(11)))
+	clock_label.custom_minimum_size = Vector2(YonetimView.S(72), 0)
 	row.add_child(clock_label)
 	clock_progress = ProgressBar.new()
 	clock_progress.show_percentage = false
 	clock_progress.max_value = float(MONTH_DAYS)
 	clock_progress.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	clock_progress.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	clock_progress.custom_minimum_size = Vector2(0, 10)
-	clock_progress.add_theme_stylebox_override("background", _box(BG, BORDER, 5, 1))
-	clock_progress.add_theme_stylebox_override("fill", _box(GOLD, GOLD, 5, 0))
+	clock_progress.custom_minimum_size = Vector2(0, YonetimView.S(14.2))
+	clock_progress.add_theme_stylebox_override("background", _box(Color("#0b1118"), Color("#222e3b"), 50, 1))
+	clock_progress.add_theme_stylebox_override("fill", _box(GOLD, GOLD, 50, 0))
 	row.add_child(clock_progress)
-	# pause, play, fast-forward (1st tap 2x, 2nd 4x, 3rd normal) and skip the month (amber, rest of the month runs at once)
-	for spec in [[0, "zaman_durdur", "Durdur"], [1, "zaman_basla", "Başlat"], [2, "zaman_ileri_sar", "Hızlandır"], [-1, "zaman_ay_atla", "Ayı atla"]]:
+	# play, pause, fast-forward (1st tap 2x, 2nd 4x, 3rd normal) and skip the month: round line icons, no frames
+	for spec in [[1, "saat_oynat", "Başlat"], [0, "saat_durdur", "Durdur"], [2, "saat_hizlandir", "Hızlandır"], [-1, "saat_ay_atla", "Ayı atla"]]:
 		var button := Button.new()
+		button.flat = true
 		button.tooltip_text = spec[2]
-		button.custom_minimum_size = Vector2(38, 30)
-		var icon := Art.find("res://art/ui/" + String(spec[1]))
+		button.custom_minimum_size = Vector2(YonetimView.S(36), YonetimView.S(36))
+		var icon := Art.find("res://art/ui/yonetim/" + String(spec[1]))
 		if icon != null:
 			button.icon = icon
 			button.expand_icon = true
 			button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			button.add_theme_constant_override("icon_max_width", 16)
+			button.add_theme_constant_override("icon_max_width", int(YonetimView.S(30)))
 		else:
 			button.text = {0: "⏸", 1: "▶", 2: "⏩", -1: "⏭"}[int(spec[0])]
 		if int(spec[0]) < 0:
 			button.pressed.connect(_skip_month)
-			for style_name in ["normal", "hover", "pressed"]:
-				button.add_theme_stylebox_override(style_name, _box(GOLD, GOLD, 8, 1))
-			for color_name in ["icon_normal_color", "icon_hover_color", "icon_pressed_color", "font_color"]:
-				button.add_theme_color_override(color_name, BG)
 		else:
 			if int(spec[0]) == 2:
 				button.pressed.connect(_fast_forward)
@@ -366,8 +369,6 @@ func _update_clock() -> void:
 		var button: Button = clock_buttons[speed]
 		if speed == 2 and button.icon == null:
 			button.text = "⏩4x" if flow_speed == 4 else ("⏩2x" if flow_speed == 2 else "⏩")
-		for style_name in ["normal", "hover", "pressed"]:
-			button.add_theme_stylebox_override(style_name, _box(GREEN_DIM if active else BG, GREEN if active else BORDER, 8, 1))
 		for color_name in ["icon_normal_color", "icon_hover_color", "icon_pressed_color", "font_color"]:
 			button.add_theme_color_override(color_name, GREEN_HI if active else TEXT)
 
@@ -480,8 +481,8 @@ func _build_tab_bar() -> Control:
 	var bar := PanelContainer.new()
 	bar.add_theme_stylebox_override("panel", _box(BAR, BORDER, 0, 0))
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	bar.add_child(_margin(row, 8, 8))
+	row.add_theme_constant_override("separation", int(YonetimView.S(5.6)))
+	bar.add_child(_margin(row, int(YonetimView.S(6.7)), int(YonetimView.S(4.4))))
 	for tab in TABS:
 		var button := Button.new()
 		var tab_icon := Art.find("res://art/ui/" + String(tab["file"]))
@@ -496,10 +497,11 @@ func _build_tab_bar() -> Control:
 			holder.texture = tab_icon
 			holder.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			holder.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			holder.custom_minimum_size = Vector2(0, 32)
+			holder.custom_minimum_size = Vector2(0, YonetimView.S(42.5))
 			holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			stack.add_child(holder)
-			var caption := _label(String(tab["title"]), 13, TEXT, false)
+			var caption := _label(String(tab["title"]), 12, TEXT, false)
+			caption.add_theme_font_size_override("font_size", int(YonetimView.S(12)))
 			caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			caption.add_theme_font_override("font", FONT_MEDIUM)
@@ -508,7 +510,7 @@ func _build_tab_bar() -> Control:
 			tab_captions[tab["id"]] = caption
 		else:
 			button.text = "%s\n%s" % [tab["icon"], tab["title"]]
-		button.custom_minimum_size = Vector2(0, 72)
+		button.custom_minimum_size = Vector2(0, YonetimView.S(68))
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.add_theme_font_size_override("font_size", _fs(13))
 		button.add_theme_font_override("font", FONT_MEDIUM)
@@ -860,9 +862,10 @@ func _render_inner() -> void:
 			var on_jobs: bool = subtab["ilanlar"] == "isler"
 			active = (id == "teklif" and on_jobs) or (id == "satin" and not on_jobs)
 		var button: Button = tab_buttons[id]
-		button.add_theme_stylebox_override("normal", _box(GREEN_DIM if active else BG, GREEN if active else BORDER, 10, 1))
-		button.add_theme_stylebox_override("hover", _box(GREEN_DIM if active else PANEL, GREEN_HI if active else BORDER, 10, 1))
-		button.add_theme_stylebox_override("pressed", _box(GREEN_DIM, GREEN, 10, 1))
+		var tab_radius := int(YonetimView.S(8.2))
+		button.add_theme_stylebox_override("normal", _box(Color("#0a2418") if active else Color("#080d13"), BORDER, tab_radius, 1))
+		button.add_theme_stylebox_override("hover", _box(Color("#0a2418") if active else Color("#0d141c"), BORDER, tab_radius, 1))
+		button.add_theme_stylebox_override("pressed", _box(Color("#0a2418"), BORDER, tab_radius, 1))
 		for color_name in ["font_color", "font_hover_color", "font_pressed_color", "icon_normal_color", "icon_hover_color", "icon_pressed_color"]:
 			button.add_theme_color_override(color_name, TEXT if not active else TEXT)
 	for child in content.get_children():
@@ -921,6 +924,7 @@ func _render_inner() -> void:
 		"profil": _page_profil()
 
 func _background_texture() -> Texture2D:
+	return null   # the design uses one flat background colour on every screen
 	if page != "ozet" or detail != "" or game.factory_id == "" or game.factory().is_empty():
 		return null
 	var gradient := Gradient.new()
@@ -1032,7 +1036,40 @@ func _month_animation(done: Callable) -> void:
 		layer.queue_free()
 		done.call())
 
+# The management summary, built to the design in docs/design/y_netim.pptx.
 func _ozet_general() -> void:
+	_phase_button()
+	var view = YonetimView.new()
+	view.build(game)
+	view.go.connect(_yonetim_go)
+	view.shift_toggled.connect(func(n: int, on: bool) -> void: _on_shift_tick(on, n))
+	view.overtime_toggled.connect(func(n: int, on: bool) -> void: _on_overtime_tick(on, n))
+	content.add_child(view)
+	if game.phase == "offers" and not game.last_lines.is_empty():
+		var last := _card(content, "Geçen ay")
+		for line in game.last_lines:
+			last.add_child(_label(str(line), 13, MUTED))
+
+func _yonetim_go(target: String) -> void:
+	match target:
+		"finance": _open_detail("credit" if game.debt > 0.0 else "costs")
+		"jobs":
+			subtab["fabrika"] = "isler"
+			_on_tab("fabrika")
+		"offers": _on_tab("teklif")
+		"capacity":
+			subtab["fabrika"] = "kapasite"
+			_on_tab("fabrika")
+		"oee": _open_detail("oee")
+		"dep":
+			subtab["ozet"] = "dep"
+			_render()
+		"contract":
+			subtab["fabrika"] = "sozlesme"
+			_on_tab("fabrika")
+		"mail": _on_tab("mail")
+
+func _ozet_general_old() -> void:
 	var factory: Dictionary = game.factory()
 	content.add_child(_label(factory["name"], 22, TEXT))
 	content.add_child(_label("%s · %d m² · %.1f m yükseklik" % [factory["region"], factory["m2"], factory["height"]], 13, MUTED))
@@ -2992,6 +3029,9 @@ func _render_detail() -> void:
 		"settings":
 			title.text = "  Ayarlar"
 			_detail_settings()
+		"history":
+			title.text = "  Geçmiş"
+			_detail_history()
 		"supplier_pick":
 			title.text = "  Tedarikçi seç"
 			_detail_supplier_pick()
@@ -3504,6 +3544,17 @@ func _factory_row(factory: Dictionary) -> Control:
 	chips.add_child(_icon_value("fabrika_sozlesme", "12 Ay"))
 	box.add_child(chips)
 	return box
+
+func _detail_history() -> void:
+	var box := _card(content, "Olay geçmişi", BORDER, true)
+	if game.history.is_empty():
+		box.add_child(_label("Henüz kayıtlı olay yok.", 13, MUTED))
+	var shown := 0
+	for i in range(game.history.size() - 1, -1, -1):
+		box.add_child(_label(String(game.history[i]), 12, TEXT))
+		shown += 1
+		if shown >= 60:
+			break
 
 func _ask_sell(uid: int) -> void:
 	var machine: Dictionary = game.machine_by_uid(uid)

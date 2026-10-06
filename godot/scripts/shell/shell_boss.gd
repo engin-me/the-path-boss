@@ -78,6 +78,10 @@ func to_save() -> Dictionary:
 	data["month_revenue"] = month_revenue
 	data["month_late"] = month_late
 	data["lifetime_revenue"] = lifetime_revenue
+	data["cash_history"] = cash_history.duplicate()
+	data["revenue_history"] = revenue_history.duplicate()
+	data["quotes_sent"] = quotes_sent
+	data["quotes_won"] = quotes_won
 	data["month_running"] = month_running
 	data["rent_markup"] = rent_markup
 	data["renewal_term"] = renewal_term
@@ -116,6 +120,10 @@ func from_save(data: Dictionary) -> String:
 	month_revenue = float(copy.get("month_revenue", 0.0))
 	month_late = int(copy.get("month_late", 0))
 	lifetime_revenue = float(copy.get("lifetime_revenue", 0.0))
+	cash_history = copy.get("cash_history", []).duplicate()
+	revenue_history = copy.get("revenue_history", []).duplicate()
+	quotes_sent = int(copy.get("quotes_sent", 0))
+	quotes_won = int(copy.get("quotes_won", 0))
 	month_running = float(copy.get("month_running", 0.0))
 	if days_run > 0 and not copy.has("month_running") and factory_id != "":
 		month_running = running_cost() * float(days_run) / float(Data.MONTH_DAYS)   # save from before the daily accrual: estimate the days already played
@@ -1618,6 +1626,8 @@ func submit_quote(offer_id: int, price: float, advance_pct: int, months_offered:
 	if reason != "":
 		return {"ok": false, "reason": reason}
 	var offer := offer_by_id(offer_id)
+	if round == 1:
+		quotes_sent += 1
 	var limit := customer_limit(offer, advance_pct, months_offered)
 	var wanted: int = int(offer["months"])
 	var cost_total := float(cost_estimate(offer)["total"])
@@ -1634,6 +1644,7 @@ func submit_quote(offer_id: int, price: float, advance_pct: int, months_offered:
 			var mail := _mail(offer, "counter", ["Teşekkürler, fiyatınız uygun. Ancak %d ayda teslim istiyoruz; bu süreyi kabul ederseniz anlaşalım." % wanted], extra)
 			offers.erase(offer)
 			return {"ok": true, "status": "counter", "mail": mail}
+		quotes_won += 1
 		var job := _create_job(offer, price, float(advance_pct) / 100.0, months_offered)
 		var accepted := _mail(offer, "accepted", ["Teklifiniz için teşekkürler, %s fiyatla %d ayda teslim şartıyla anlaştık." % [Data.usd(price), months_offered]], base)
 		accepted["read"] = false
@@ -1808,6 +1819,10 @@ var days_run := 0               # days of this month already produced (0 = the m
 var month_events: Array = []    # this month's day events, printed in the closing report
 var month_material_used := 0.0  # material of jobs delivered earlier this month
 var month_revenue := 0.0        # revenue delivered earlier this month
+var cash_history: Array = []      # cash at the end of every month (for the management screen)
+var revenue_history: Array = []   # delivered revenue of every month
+var quotes_sent := 0
+var quotes_won := 0
 var lifetime_revenue := 0.0     # all delivered revenue so far (for the closing letter)
 var month_late := 0             # late deliveries earlier this month
 var month_running := 0.0        # running costs accrued day by day (crews, energy, upkeep, plant) with the plan of each day
@@ -2273,7 +2288,9 @@ func close_month() -> String:
 	jobs = running_jobs
 	report["revenue"] = delivered_revenue
 	lifetime_revenue += delivered_revenue
+	revenue_history.append(delivered_revenue)
 	cash -= finance
+	cash_history.append(cash)
 	if finance > 0.0:
 		lines.append("Finansman gideri: %s" % Data.usd(finance))
 	for machine in machines:
@@ -2441,6 +2458,92 @@ func close_loan() -> String:
 func _release_collateral() -> void:
 	for machine in machines:
 		machine["mortgaged"] = false
+
+# ---------------------------------------------------------------- management screen data
+
+# Capacity and load of every machine kind this month: {kind: {cap, load, count}} (net, current plan).
+func production_line() -> Array:
+	var rows: Array = []
+	for kind in Data.TYPES:
+		var chart := capacity_chart(kind)
+		var cap := 0.0
+		var load := 0.0
+		for lv in chart["levels"]:
+			cap += float(lv["cap"])
+			load += float(lv["load"])
+		var count := 0
+		for machine in delivered():
+			if machine["kind"] == kind:
+				count += 1
+		rows.append({"kind": kind, "cap": cap, "load": minf(load, cap), "count": count})
+	return rows
+
+# OEE split: availability (shifts, stoppages), performance and quality of the delivered park, weighted by capacity.
+func oee_parts() -> Dictionary:
+	var mults := problem_mults(loss_fractions())
+	var weight := 0.0
+	var avail := 0.0
+	var perf := 0.0
+	var quality := 0.0
+	for machine in delivered():
+		var w := float(machine["nameplate"])
+		weight += w
+		avail += w * availability(machine) * float(mults["non"])
+		perf += w * float(machine["perf"]) * float(mults["phys"])
+		quality += w * (1.0 - machine_scrap(machine))
+	if weight <= 0.0:
+		return {"availability": 0.0, "performance": 0.0, "quality": 0.0, "oee": 0.0}
+	return {"availability": avail / weight, "performance": perf / weight, "quality": quality / weight, "oee": oee_now()}
+
+# Staff by group: blue collar (machine crews), white collar (indirect), managers (office roles), consultants.
+func staff_groups() -> Dictionary:
+	return {"blue": staff_count(), "white": indirect_count(), "managers": office_roles().size(), "consultants": consultants.size()}
+
+func quote_win_rate() -> float:
+	return 0.0 if quotes_sent <= 0 else float(quotes_won) / float(quotes_sent)
+
+# Jobs whose forecast finish is past their due date.
+func risky_jobs() -> int:
+	if jobs.is_empty():
+		return 0
+	var finish := projection_days()
+	var risky := 0
+	for job in jobs:
+		var when: Array = finish.get(job["id"], [])
+		if when.is_empty() or late_days(int(job["due_month"]), int(when[0]), int(when[1])) > 0:
+			risky += 1
+	return risky
+
+# Things worth a look, most urgent first: [{severity: "red"|"amber"|"blue", text, target}].
+func action_items() -> Array:
+	var items: Array = []
+	var com := commitments()
+	if float(com["free"]) < 0.0:
+		items.append({"severity": "red", "text": "Harcanabilir nakit negatif: ödemeler kasayı aşıyor", "target": "finance"})
+	var risky := risky_jobs()
+	if risky > 0:
+		items.append({"severity": "red", "text": "%d işte teslim riski var" % risky, "target": "jobs"})
+	for row in production_line():
+		if float(row["cap"]) > 0.0:
+			var share: float = float(row["load"]) / float(row["cap"])
+			if share >= 0.85:
+				items.append({"severity": "red" if share >= 0.95 else "amber", "text": "%s kapasitesi %%%d dolu" % [row["kind"], int(roundf(share * 100.0))], "target": "capacity"})
+	var unordered := 0
+	for job in jobs:
+		if job.get("order", {}).is_empty():
+			unordered += 1
+	if unordered > 0:
+		items.append({"severity": "amber", "text": "%d işin hammaddesi sipariş edilmedi" % unordered, "target": "jobs"})
+	if in_notice_window():
+		items.append({"severity": "amber", "text": "Kira sözleşmesi %d ay sonra bitiyor" % months_left, "target": "contract"})
+	var unread := unread_mails()
+	if unread > 0:
+		items.append({"severity": "blue", "text": "%d okunmamış mail" % unread, "target": "mail"})
+	if not offers.is_empty():
+		items.append({"severity": "blue", "text": "%d teklif bekleyen iş ilanı" % offers.size(), "target": "offers"})
+	var order := {"red": 0, "amber": 1, "blue": 2}
+	items.sort_custom(func(a, b): return int(order[a["severity"]]) < int(order[b["severity"]]))
+	return items
 
 # ---------------------------------------------------------------- closing letter
 
