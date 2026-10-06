@@ -1028,5 +1028,15 @@ func _run() -> void:
 		adv_sum += float(job["advance"])
 	if not _near(float(com["advances"]), adv_sum, 0.0001):
 		return _fail("Commitments list the advances held for unfinished jobs")
+	# ---- mail contacts: every customer has three people, each with a portrait file
+	var seen_faces := {}
+	for company in Data.CUSTOMERS:
+		var people: Array = Data.CONTACT_PEOPLE.get(company, [])
+		if people.size() != 3:
+			return _fail("Every customer has three contacts: " + company)
+		for person in people:
+			if not FileAccess.file_exists("res://art/contacts/%s.png" % person["id"]) or seen_faces.has(person["id"]):
+				return _fail("Every contact has its own portrait: " + String(person["id"]))
+			seen_faces[person["id"]] = true
 	print("Shell smoke passed")
 	quit(0)

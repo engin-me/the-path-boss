@@ -884,8 +884,8 @@ func _render_inner() -> void:
 	var rented: bool = page == "fabrika" and detail == "" and game.factory_id != ""
 	var show_floor: bool = rented and subtab["fabrika"] == "yerlesim"
 	scroll_view.visible = not show_floor
-	if page != "ozet" and OFFICE_PAGES.has(page) and detail == "":
-		_office_back()
+	if OFFICE_PAGES.has(page) and detail == "":
+		_office_menu()   # temporary: the cockpit will replace these chips
 	if rented and ["yerlesim", "vardiya", "sozlesme", "kapasite"].has(subtab["fabrika"]):
 		_chips(sticky, [{"id": "yerlesim", "title": "Yerleşim (üstten)"}, {"id": "vardiya", "title": "Vardiya"}, {"id": "kapasite", "title": "Kapasite"}, {"id": "sozlesme", "title": "Sözleşme"}], subtab["fabrika"],
 			func(id: String) -> void:
@@ -950,18 +950,18 @@ func _page_ozet() -> void:
 	if game.phase == "end":
 		_page_end()
 		return
+	_chips(content, [{"id": "genel", "title": "Genel"}, {"id": "dep", "title": "Departmanlar"}, {"id": "rapor", "title": "Rapor"}],
+		subtab["ozet"], func(id: String) -> void:
+			subtab["ozet"] = id
+			_render())   # temporary: the cockpit will replace these chips
 	if game.factory_id == "":
 		var empty := _card(content, "Henüz fabrikan yok", GOLD)
 		empty.add_child(_label("Önce bir yer kirala. Sonra ekipman, tezgah ve iş.", 14, MUTED))
 		empty.add_child(_button("Kiralık yerlere bak", _on_tab.bind("fabrika"), true))
 		return
 	match subtab["ozet"]:
-		"dep":
-			_office_back()
-			_ozet_departments()
-		"rapor":
-			_office_back()
-			_ozet_report()
+		"dep": _ozet_departments()
+		"rapor": _ozet_report()
 		_: _ozet_general()
 
 # Sub-screens of Yönetim have one way out: back to the management summary (the cockpit will replace the old chip rows).
@@ -2108,10 +2108,16 @@ func _page_mail() -> void:
 		_mail_row(game.mail_thread(mail)[0], game.mail_thread(mail))
 
 # Face of the person who wrote (art/contacts), the old envelope only for system mails.
+func _mail_person(mail: Dictionary) -> Dictionary:
+	if String(mail.get("contact_photo", "")) != "":
+		return {"id": String(mail["contact_photo"]), "name": String(mail.get("contact", "")), "role": String(mail.get("contact_role", ""))}
+	var offer: Dictionary = mail.get("offer", {})
+	if not offer.is_empty():
+		return Data.contact_info(offer)   # mails saved before the portraits existed get theirs from the job's customer
+	return {"id": "", "name": String(mail.get("contact", "")), "role": ""}
+
 func _contact_face(mail: Dictionary, side: int) -> Control:
-	var photo_id: String = String(mail.get("contact_photo", ""))
-	if photo_id == "":
-		photo_id = Data.contact_photo_of(String(mail.get("contact", "")))
+	var photo_id: String = String(_mail_person(mail)["id"])
 	var texture: Texture2D = Art.find("res://art/contacts/" + photo_id) if photo_id != "" else null
 	if texture != null:
 		return _rounded_photo(texture, Vector2(side, side), int(side * 0.22))
@@ -2174,9 +2180,9 @@ func _mail_detail(mail: Dictionary) -> void:
 	var info := VBoxContainer.new()
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	info.add_child(_label(mail["title"], 20, TEXT))
-	var person: String = String(mail.get("contact", ""))
-	if person != "":
-		info.add_child(_label("%s · %s" % [person, String(mail.get("contact_role", ""))], 14, TEXT))
+	var person: Dictionary = _mail_person(mail)
+	if String(person["name"]) != "":
+		info.add_child(_label("%s · %s" % [person["name"], person["role"]], 14, TEXT))
 	info.add_child(_label(String(mail["customer"]), 13, MUTED))
 	head.add_child(info)
 	box.add_child(head)
@@ -2297,7 +2303,7 @@ func _mail_older_messages(mail: Dictionary) -> void:
 		head.add_child(_contact_face(other, 48))
 		var who := VBoxContainer.new()
 		who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		who.add_child(_label("%s · %s" % [String(other.get("contact", "")), _mail_status_text(other)], 13, TEXT))
+		who.add_child(_label("%s · %s" % [String(_mail_person(other)["name"]), _mail_status_text(other)], 13, TEXT))
 		who.add_child(_label("Ay %d" % int(other["month"]), 11, MUTED))
 		head.add_child(who)
 		card.add_child(head)

@@ -139,7 +139,6 @@ func build(new_game) -> void:
 	_jobs()
 	_staff()
 	_overview()
-	_links()
 
 func _actions() -> void:
 	var column := _card("Aksiyon", "baslik_aksiyon")
