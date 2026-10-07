@@ -427,7 +427,7 @@ func _run() -> void:
 	shell.subtab["ilanlar"] = "isler"
 	shell._on_tab("ilanlar")
 	shell._open_detail("quote", str(quote_offer["id"]))
-	if shell.content.get_child_count() < 3:
+	if shell.content.get_child_count() < 1:
 		return _fail("Quote screen did not render")
 	shell._send_quote(quote_offer["id"])
 	if shell.game.mails.is_empty() or shell.game.mail_arrived(shell.game.mails[0]):

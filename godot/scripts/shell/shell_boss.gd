@@ -44,6 +44,7 @@ var next_mail := 1
 var plan_shifts := 1   # factory shift plan (applies to every machine; machines can still differ in tests)
 var plan_ot := [false, false, false]   # overtime per shift row
 var staff_policy := 1   # index into Data.STAFF_POLICIES
+var quote_progress := true   # payment form of the quote being built: monthly progress payments (true) or one payment at delivery
 var plan_contract := 0   # 0 = permanent crews on the extra shifts, else fixed-term months (3/6/9)
 var plan_contract_end := 0   # first month without the fixed-term crews
 var plan_patron := true   # the owner runs the first shift of one single-operator machine
@@ -1476,6 +1477,7 @@ func _create_job(offer: Dictionary, price: float, advance_rate: float, due_month
 	job["produced"] = 0.0
 	job["yield"] = 1.0
 	job["advance"] = advance
+	job["progress"] = quote_progress
 	job["order"] = {}
 	if bool(offer.get("fason", false)):
 		job["order"] = {"supplier": "customer", "order_month": month, "arrive_month": month, "arrive_day": day, "pay_month": month, "pay_day": day, "amount": 0.0, "paid": true, "delayed": false}
@@ -1641,6 +1643,8 @@ func customer_limit(offer: Dictionary, advance_pct: int, months_offered: int, ur
 	limit *= 1.0 - ADVANCE_EFFECT * float(advance_pct - 30)
 	if advance_pct > advance_comfort():
 		limit *= 1.0 - ADVANCE_OVER * float(advance_pct - advance_comfort())
+	if not quote_progress:
+		limit *= 1.0 + minf(0.10, 0.015 * float(months_offered))   # paying only at delivery suits the customer (IDEA-021)
 	var wanted: int = int(offer["months"])
 	if months_offered > wanted:
 		var late := float(months_offered - wanted)
@@ -1747,7 +1751,7 @@ func submit_quote(offer_id: int, price: float, advance_pct: int, months_offered:
 	var wanted: int = int(offer["months"])
 	var cost_total := float(cost_estimate(offer)["total"])
 	var base := {"my_price": price, "my_advance": advance_pct, "my_months": months_offered, "cost_total": cost_total, "round": round,
-		"mail_no": Data.mail_count(offer, round), "my_margin": price / maxf(0.001, cost_total) - 1.0}
+		"mail_no": Data.mail_count(offer, round), "my_progress": quote_progress, "my_margin": price / maxf(0.001, cost_total) - 1.0}
 	if price <= limit:
 		if months_offered > wanted and time_refused(int(offer["urgency"]), months_offered - wanted) and round >= MAX_QUOTE_ROUNDS:
 			var firm := _mail(offer, "rejected", ["Teslim süresi bizim için şart: %d ayda teslim edemeyeceğiniz için bu işte çalışamayacağız." % wanted], base)
@@ -1792,6 +1796,7 @@ func revise_quote(mail_id: int, price: float, months_offered := -1, advance_pct 
 		return {"ok": false, "reason": "Yanıt ay başında verilir."}
 	var offer: Dictionary = mail["offer"].duplicate(true)
 	offers.append(offer)
+	quote_progress = bool(mail.get("my_progress", true))
 	var result := submit_quote(int(offer["id"]), price, int(mail["my_advance"]) if advance_pct < 0 else advance_pct,
 		int(mail["my_months"]) if months_offered < 0 else months_offered, int(mail["round"]) + 1)
 	if not result["ok"]:
@@ -2238,6 +2243,8 @@ func job_received(job: Dictionary) -> float:
 # Progress payment (hakediş): at month end the customer pays 80 % of the work done so far, the advance counting
 # against it; the remaining 20 % and any rest come with the final delivery.
 func _progress_payment(job: Dictionary) -> float:
+	if not bool(job.get("progress", true)):
+		return 0.0
 	var workload := job_workload(job)
 	if workload <= 0.0:
 		return 0.0

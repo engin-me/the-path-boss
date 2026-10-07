@@ -410,6 +410,16 @@ static func contact_info(offer: Dictionary) -> Dictionary:
 		return {"id": "", "name": "", "role": ""}
 	return people[int(offer["id"]) % people.size()]
 
+# Business e-mail and phone of the contact, derived from the name and the company.
+static func contact_email(offer: Dictionary) -> String:
+	var name := contact_of(offer).to_lower().replace(" ", ".")
+	var company := String(offer.get("customer", "")).to_lower().split(" ")[0]
+	return "%s@%s.com" % [name, company]
+
+static func contact_phone(offer: Dictionary) -> String:
+	var seed_value := int(offer.get("id", 0)) * 7919 + String(offer.get("customer", "")).length() * 131
+	return "+0%d %d %d" % [50 + seed_value % 40, 400 + seed_value % 500, 1000 + (seed_value * 31) % 9000]
+
 static func contact_of(offer: Dictionary) -> String:
 	return String(contact_info(offer)["name"])
 
