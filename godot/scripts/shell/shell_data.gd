@@ -118,6 +118,11 @@ const TERMS := [
 # and a 70 % delivery score, the biggest tenth 4 jobs and 80 %.
 const JOB_TIERS := [{"load": 11000.0, "jobs": 4, "score": 0.80}, {"load": 7200.0, "jobs": 2, "score": 0.70}]
 # Pool classes (IDEA-021): small < 1500 ω, large >= 7200 ω; a month's pool holds 40 % small, 40 % medium, 20 % large listings.
+# Sürekli İş (IDEA-021): 12 months, a fixed share of one machine kind each month, low but steady margin.
+const CONTINUOUS_MONTHS := 12
+const CONTINUOUS_SHARE := 0.3
+const CONTINUOUS_MARGIN := 0.12
+const CONTINUOUS_GATE := {"jobs": 1, "score": 0.70}
 const CLASS_SMALL_MAX := 1500.0
 const CLASS_LARGE_MIN := 7200.0
 const CLASS_SHARE := {"small": 0.4, "medium": 0.4, "large": 0.2}
@@ -421,6 +426,8 @@ static func offer_load(offer: Dictionary) -> float:
 
 # The track record a listing asks for: {} when it is open to everyone.
 static func job_gate(offer: Dictionary) -> Dictionary:
+	if bool(offer.get("continuous", false)):
+		return CONTINUOUS_GATE
 	var load := offer_load(offer)
 	for tier in JOB_TIERS:
 		if load >= float(tier["load"]):
@@ -575,7 +582,7 @@ static func fill_offer(offer: Dictionary, specs: Array, rng: RandomNumberGenerat
 		var weight := snappedf(rng.randf_range(float(span[0]), float(span[1])), 0.5)
 		var tons := float(parts) * weight * float(RAW_FACTOR[kind]) / 1000.0
 		var material_part := 0.0 if bool(offer.get("fason", false)) else tons * float(STEEL_PRICE[level])   # toll work: the customer supplies the steel
-		var months := float(spec["n"]) * float(offer["duration"])
+		var months := float(spec["n"]) * float(offer["duration"]) * float(offer.get("capacity_share", 1.0))   # a standing contract binds only a share of the machine
 		var machine := typical_machine_month(kind, level)
 		var running := months * (float(machine["labor"]) + float(machine["energy"]) + float(machine["amort"]) + float(machine["overhead"]))
 		var consumables := CONSUMABLE_SHARE * (material_part + months * (float(machine["labor"]) + float(machine["energy"])))

@@ -1866,12 +1866,14 @@ func _offer_card(offer: Dictionary, reason: String) -> void:
 	tiles.add_child(_mini_tile("is_ilani_malzeme", Data.STEEL_GRADE[int(offer["reqs"][0]["steel"])], false))
 	box.add_child(tiles)
 	box.add_child(_need_icons(offer, open))
+	if bool(offer.get("continuous", false)):
+		box.add_child(_label("SÜREKLİ İŞ · %d ay · %s kapasitesinin %%%d'i · düşük ama garantili marj · her ay hakediş" % [Data.CONTINUOUS_MONTHS, offer["reqs"][0]["kind"], int(Data.CONTINUOUS_SHARE * 100.0)], 12, GOLD, false))
 	var urgency_color: Color = RED if Data.urgency_label(offer) == "Acil" else (GREEN if Data.urgency_label(offer) == "Esnek" else MUTED)
 	box.add_child(_label("%s müşteri" % Data.urgency_label(offer), 12, urgency_color, false))
 	var gate: Dictionary = Data.job_gate(offer)
 	if not gate.is_empty():
 		var met: bool = game.gate_block_reason(int(offer["id"])) == ""
-		box.add_child(_label("Büyük iş · en az %d iş bitirmiş ve %%%d teslim skoru gerekir" % [int(gate["jobs"]), int(roundf(float(gate["score"]) * 100.0))], 12, GREEN if met else RED))
+		box.add_child(_label(("Sürekli İş" if bool(offer.get("continuous", false)) else "Büyük iş") + " · en az %d iş bitirmiş ve %%%d teslim skoru gerekir" % [int(gate["jobs"]), int(roundf(float(gate["score"]) * 100.0))], 12, GREEN if met else RED))
 	if open and not doable:
 		box.add_child(_label(game.fit_block_reason(offer["id"]), 12, RED))
 	if open:
@@ -2057,6 +2059,8 @@ func _detail_quote() -> void:
 	who.add_child(who_right)
 	box.add_child(who)
 	box.add_child(_label(offer["title"], 22, TEXT))
+	if bool(offer.get("continuous", false)):
+		box.add_child(_label("Sürekli İş: her ay kapasitenin %%%d'i bu işe ayrılır; teslimat bozulursa sözleşme biter." % int(Data.CONTINUOUS_SHARE * 100.0), 12, GOLD, false))
 	box.add_child(_label("%s müşteri · %s" % [Data.urgency_label(offer), {"Acil": "fiyata toleranslı, gecikmeye hiç toleranslı değil", "Normal": "dengeli", "Esnek": "fiyata hassas, süre konusunda esnek"}[Data.urgency_label(offer)]], 12, MUTED, false))
 	box.add_child(_quote_line())
 	_quote_pair(box, ["Parça Sayısı", parts_text], ["Hammadde", "müşteri verir" if fason else grade])

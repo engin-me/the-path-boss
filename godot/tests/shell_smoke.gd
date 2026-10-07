@@ -1145,6 +1145,36 @@ func _run() -> void:
 		return _fail("Small jobs accept higher top prices; the base margin is unchanged")
 	if Data.urgency_label({"urgency": 9}) != "Acil" or Data.urgency_label({"urgency": 2}) != "Esnek" or Data.urgency_label({"urgency": 5}) != "Normal":
 		return _fail("Urgency labels")
+	# ---- Sürekli İş: 12 months, a share of one machine kind, low margin, throttled per day
+	var sj = Boss.new()
+	sj.from_save(snapshot_day)
+	sj.delivery_score = 0.9
+	sj.offers.clear()
+	for _try in 30:
+		sj._add_continuous_offer()
+		if not sj.offers.is_empty():
+			break
+	if sj.offers.is_empty():
+		return _fail("A standing contract must appear for a reliable supplier")
+	var standing: Dictionary = sj.offers[0]
+	if not bool(standing["continuous"]) or int(standing["months"]) != 12 or not bool(standing["fason"]):
+		return _fail("A standing contract runs 12 months with customer material")
+	var standing_limit: float = sj.customer_limit(standing, 30, 12)
+	var standing_cost: float = float(sj.cost_estimate(standing)["total"])
+	if standing_limit / standing_cost > 1.30 or standing_limit / standing_cost < 1.05:
+		return _fail("A standing contract pays a low steady margin: %f" % (standing_limit / standing_cost))
+	var standing_job: Dictionary = sj._create_job(standing, standing_limit, 0.3, 12)
+	var daily_cap: float = float(standing_job["reqs"][0]["daily_cap"])
+	var cap_left := {}
+	for machine in sj.machines:
+		cap_left[machine["uid"]] = 1.0e9
+	var before: float = float(standing_job["reqs"][0]["remaining"])
+	sj._allocate_at([standing_job], cap_left, sj.month, sj.day, false)
+	if before - float(standing_job["reqs"][0]["remaining"]) > daily_cap + 0.001:
+		return _fail("A standing contract takes only its daily share of the machine")
+	sj.jobs.append(standing_job)
+	if sj.continuous_block_reason(standing) == "":
+		return _fail("Only one standing contract per machine kind")
 	var pool_game = Boss.new()
 	pool_game.from_save(snapshot_day)
 	pool_game._generate_offers()

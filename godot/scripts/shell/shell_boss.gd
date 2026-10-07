@@ -1343,6 +1343,7 @@ func _generate_offers() -> void:
 	_apply_pool_floor()
 	_add_local_orders()
 	Data.balance_pool(offers, rng)
+	_add_continuous_offer()
 
 func _feasible(reqs: Array) -> bool:
 	for req in reqs:
@@ -1401,12 +1402,39 @@ func _add_local_orders() -> void:
 		taken += 1
 		index += 1
 
+# Once the delivery record allows it, a standing contract appears in some months: 12 months, 30 percent of one owned machine
+# kind, material supplied by the customer, a low steady margin.
+func _add_continuous_offer() -> void:
+	if machines.is_empty() or delivery_score < float(Data.CONTINUOUS_GATE["score"]) or rng.randf() > 0.5:
+		return
+	var machine: Dictionary = machines[rng.randi_range(0, machines.size() - 1)]
+	var offer := {"id": month * 100 + 90, "customer": Data.CUSTOMERS[rng.randi_range(0, Data.CUSTOMERS.size() - 1)], "duration": Data.CONTINUOUS_MONTHS,
+		"start_delay": 0, "months": Data.CONTINUOUS_MONTHS, "urgency": rng.randi_range(1, 5), "fason": true, "continuous": true, "capacity_share": Data.CONTINUOUS_SHARE}
+	var month_output := float(machine_steps(machine, {"phys": 1.0, "non": 1.0})["net"])
+	Data.fill_offer(offer, [{"kind": machine["kind"], "level": int(machine["level"]), "n": 1, "load": month_output * Data.CONTINUOUS_SHARE * float(Data.CONTINUOUS_MONTHS)}], rng)
+	offer["mid"] = Data.CONTINUOUS_MARGIN
+	offer["revenue"] = snappedf(float(offer["cost_ref"]) * (1.0 + Data.CONTINUOUS_MARGIN), 0.001)
+	for req in offer["reqs"]:
+		req["daily_cap"] = float(req["workload"]) / float(Data.CONTINUOUS_MONTHS * Data.MONTH_DAYS) * 1.15
+	offers.append(offer)
+
+func continuous_block_reason(offer: Dictionary) -> String:
+	if not bool(offer.get("continuous", false)):
+		return ""
+	for job in jobs:
+		if bool(job.get("continuous", false)) and job["reqs"][0]["kind"] == offer["reqs"][0]["kind"]:
+			return "Bu tezgah türünde zaten bir Sürekli İşin var."
+	return ""
+
 func accept_block_reason(id: int) -> String:
 	if phase != "offers":
 		return "İş, ay başında (rapordan önce) kabul edilir."
 	var gate := gate_block_reason(id)
 	if gate != "":
 		return gate
+	var standing := continuous_block_reason(offer_by_id(id))
+	if standing != "":
+		return standing
 	return fit_block_reason(id)
 
 # Big jobs need a record: finished jobs and a delivery score (see Data.JOB_TIERS).
@@ -1489,7 +1517,7 @@ func _create_job(offer: Dictionary, price: float, advance_rate: float, due_month
 	job["produced"] = 0.0
 	job["yield"] = 1.0
 	job["advance"] = advance
-	job["progress"] = quote_progress
+	job["progress"] = quote_progress or bool(offer.get("continuous", false))
 	job["order"] = {}
 	if bool(offer.get("fason", false)):
 		job["order"] = {"supplier": "customer", "order_month": month, "arrive_month": month, "arrive_day": day, "pay_month": month, "pay_day": day, "amount": 0.0, "paid": true, "delayed": false}
@@ -1565,7 +1593,7 @@ func cost_estimate(offer: Dictionary, edits := {}) -> Dictionary:
 		var req: Dictionary = offer["reqs"][i]
 		var edit: Dictionary = edits.get(i, {})
 		var material_part := float(req.get("material_part", 0.0)) * supplier_price
-		var months := float(req["count"]) * float(offer["duration"])
+		var months := float(req["count"]) * float(offer["duration"]) * float(offer.get("capacity_share", 1.0))
 		var rate := Data.scrap_rate(req["kind"], int(req["level"]), quality)
 		var rate_used := maxf(0.0, rate + float(edit.get("scrap_pt", 0.0)) / 100.0)
 		var basis := serving_basis(req["kind"], int(req["level"]))
@@ -1651,12 +1679,14 @@ func customer_limit(offer: Dictionary, advance_pct: int, months_offered: int, ur
 	var urgent := float(offer["urgency"]) if urgency < 0.0 else urgency
 	var top_margin := mid + 0.25 + Data.SMALL_PREMIUM * Data.small_factor(Data.offer_load(offer))   # small jobs: wider top (IDEA-021)
 	var margin := lerpf(maxf(0.05, mid - 0.20), top_margin, (urgent - 1.0) / 9.0)
+	if bool(offer.get("continuous", false)):
+		margin = Data.CONTINUOUS_MARGIN + 0.08 * (urgent - 1.0) / 9.0   # a framework contract: 12 to 20 percent over cost
 	var limit := customer_cost(offer) * (1.0 + margin)
 	limit *= 0.90 + 0.15 * delivery_score
 	limit *= 1.0 - ADVANCE_EFFECT * float(advance_pct - 30)
 	if advance_pct > advance_comfort():
 		limit *= 1.0 - ADVANCE_OVER * float(advance_pct - advance_comfort())
-	if not quote_progress:
+	if not quote_progress and not bool(offer.get("continuous", false)):
 		limit *= 1.0 + minf(0.10, 0.015 * float(months_offered))   # paying only at delivery suits the customer (IDEA-021)
 	var wanted: int = int(offer["months"])
 	if months_offered > wanted:
@@ -2094,7 +2124,7 @@ func _allocate_at(job_list: Array, cap_left: Dictionary, m: int, d: int, record:
 			continue
 		var job_yield := float(job.get("yield", 1.0))
 		for req in job["reqs"]:
-			var need := float(req["remaining"])
+			var need := minf(float(req["remaining"]), float(req.get("daily_cap", INF)))   # a standing contract takes only its share each day
 			if need <= 0.0001:
 				continue
 			var eligible: Array = []
@@ -2114,7 +2144,7 @@ func _allocate_at(job_list: Array, cap_left: Dictionary, m: int, d: int, record:
 				cap_left[machine["uid"]] = available - use
 				var got := use * rate_mult
 				need -= got
-				req["remaining"] = maxf(0.0, need)
+				req["remaining"] = maxf(0.0, float(req["remaining"]) - got)
 				job["produced"] = float(job.get("produced", 0.0)) + got
 				if record:
 					machine["used_last"] = float(machine.get("used_last", 0.0)) + use
@@ -2196,7 +2226,7 @@ func _allocate(job_list: Array, cap_left: Dictionary, t: int, record: bool) -> v
 			continue
 		var job_yield := float(job.get("yield", 1.0))
 		for req in job["reqs"]:
-			var need := float(req["remaining"])
+			var need := minf(float(req["remaining"]), float(req.get("daily_cap", INF)) * float(Data.MONTH_DAYS))
 			if need <= 0.0001:
 				continue
 			for machine in _eligible(req["kind"], int(req["level"]), t):
@@ -2211,7 +2241,7 @@ func _allocate(job_list: Array, cap_left: Dictionary, t: int, record: bool) -> v
 				cap_left[machine["uid"]] = available - use
 				var got := use * rate_mult
 				need -= got
-				req["remaining"] = maxf(0.0, need)
+				req["remaining"] = maxf(0.0, float(req["remaining"]) - got)
 				job["produced"] = float(job.get("produced", 0.0)) + got
 				if record:
 					machine["used_last"] = float(machine.get("used_last", 0.0)) + use
