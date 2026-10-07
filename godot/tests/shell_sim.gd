@@ -24,7 +24,7 @@ const PERSONAS := [
 	{"name": "Tek makine", "factory": "factory_1", "term": 12, "prepay": false, "buys": [[1, 12]], "expand": [], "grow": false, "supplier": "nord", "margin": 0.70},
 	{"name": "Küçük temkinli", "factory": "factory_1", "term": 12, "prepay": false, "buys": [[1, 12]], "expand": [13], "grow": false, "supplier": "pacific", "margin": 0.50},
 	{"name": "Küçük vardiyacı", "factory": "factory_1", "term": 12, "prepay": false, "buys": [[1, 12]], "expand": [13, 14], "grow": true, "supplier": "nord", "margin": 0.90},
-	{"name": "Orta ikinci el", "factory": "factory_3", "term": 12, "prepay": false, "buys": [[1, 12]], "expand": [13, 14, 17], "grow": true, "supplier": "midland", "margin": 0.70},
+	{"name": "Orta ikinci el", "factory": "factory_3", "term": 12, "prepay": false, "buys": [[1, 12], [1, 13], [1, 14]], "expand": [17], "grow": true, "supplier": "midland", "margin": 0.70, "cash": 220.0},
 	{"name": "Sermayeli yeni makine", "factory": "factory_3", "term": 12, "prepay": false, "buys": [[1, 1], [1, 4]], "expand": [], "grow": true, "supplier": "atlas", "margin": 0.90, "cash": 220.0},
 	{"name": "Sermayeli büyük", "factory": "factory_4", "term": 24, "prepay": false, "buys": [[1, 13], [1, 14], [1, 16], [2, 12]], "expand": [], "grow": true, "supplier": "nord", "margin": 0.80, "cash": 300.0}
 ]

@@ -2839,6 +2839,8 @@ func action_items() -> Array:
 		var first_step := "İlk adım: ekipman paketini satın al" if not package_bought else "Sıradaki adım: tezgah satın al, sonra uygun işe teklif ver"
 		items.append({"severity": "blue", "text": first_step, "target": "satin"})
 		return items
+	if finance_due() > 0.0:
+		items.append({"severity": "red", "text": "Nakit borcun altında: ay sonunda %s finansman gideri düşer" % Data.usd(finance_due()), "target": "cash"})
 	var risky := risky_jobs()
 	if risky > 0:
 		items.append({"severity": "red", "text": "%d işte teslim riski var" % risky, "target": "jobs"})

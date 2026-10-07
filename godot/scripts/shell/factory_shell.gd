@@ -3942,6 +3942,10 @@ func _detail_cash() -> void:
 	_row(box, "Ödenecek hammadde", Data.usd(material), GOLD, 15)
 	_row(box, "Bu ayın gideri", Data.usd(float(com["expense"])), GOLD, 15)
 	_row(box, "Serbest nakit", Data.usd(float(com["free"])), GREEN if float(com["free"]) >= 0.0 else RED, 17)
+	var finance_now: float = game.finance_due()
+	if finance_now > 0.0:
+		_row(box, "Finansman gideri (ay sonu)", Data.usd(finance_now), RED, 14)
+	box.add_child(_label("Nakit borcun altına inerse açığın aylık %%%d'si finansman gideri olarak ay sonunda düşer." % int(game.FINANCE_RATE * 100.0), 12, MUTED))
 	var first: Dictionary = com["first"]
 	if not first.is_empty():
 		var soonest := {}
