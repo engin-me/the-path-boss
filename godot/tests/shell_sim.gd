@@ -52,6 +52,8 @@ func _run() -> void:
 			only = arg.trim_prefix("only=")
 		elif arg.begins_with("pm="):
 			pm = float(arg.trim_prefix("pm="))
+		elif arg.begins_with("continuous="):
+			Data.continuous_enabled = int(arg.trim_prefix("continuous=")) == 1
 		elif arg.begins_with("adaptive="):
 			adaptive = float(arg.trim_prefix("adaptive="))
 		elif arg.begins_with("days="):

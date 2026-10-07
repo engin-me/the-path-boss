@@ -1416,7 +1416,8 @@ func _add_continuous_offer() -> void:
 	offer["revenue"] = snappedf(float(offer["cost_ref"]) * (1.0 + Data.CONTINUOUS_MARGIN), 0.001)
 	for req in offer["reqs"]:
 		req["daily_cap"] = float(req["workload"]) / float(Data.CONTINUOUS_MONTHS * Data.MONTH_DAYS) * 1.15
-	offers.append(offer)
+	if Data.continuous_enabled:
+		offers.append(offer)
 
 func continuous_block_reason(offer: Dictionary) -> String:
 	if not bool(offer.get("continuous", false)):

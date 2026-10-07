@@ -119,6 +119,7 @@ const TERMS := [
 const JOB_TIERS := [{"load": 11000.0, "jobs": 4, "score": 0.80}, {"load": 7200.0, "jobs": 2, "score": 0.70}]
 # Pool classes (IDEA-021): small < 1500 ω, large >= 7200 ω; a month's pool holds 40 % small, 40 % medium, 20 % large listings.
 # Sürekli İş (IDEA-021): 12 months, a fixed share of one machine kind each month, low but steady margin.
+static var continuous_enabled := true   # test switch: false keeps the random stream but leaves the standing contracts out of the pool
 const CONTINUOUS_MONTHS := 12
 const CONTINUOUS_SHARE := 0.3
 const CONTINUOUS_MARGIN := 0.12
