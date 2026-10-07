@@ -73,6 +73,7 @@ var job_filters: Array = []
 var job_sort := "yeni"
 var mail_open := -1
 var mail_show_offer := false
+var mail_reply_open := false
 var quote_details := false
 var quote_progress := true
 var type_filter := "Tümü"
@@ -2220,6 +2221,7 @@ func _send_quote(offer_id: int) -> void:
 func _open_mail(id: int) -> void:
 	mail_open = id
 	mail_show_offer = false
+	mail_reply_open = false
 	page = "mail"
 	detail = ""
 	_render()
@@ -2314,82 +2316,59 @@ func _mail_detail(mail: Dictionary) -> void:
 	var top := HBoxContainer.new()
 	var back := _button("‹ Mail kutusu", func() -> void:
 		mail_open = -1
+		mail_reply_open = false
 		_render())
 	back.custom_minimum_size = Vector2(150, 44)
 	top.add_child(back)
 	content.add_child(top)
 	var offer: Dictionary = mail.get("offer", {})
+	var is_quote: bool = mail.get("kind", "quote") == "quote" and not offer.is_empty()
 	var box := _card(content, "", GOLD, true)
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 12)
-	head.add_child(_contact_face(mail, 84))
+	head.add_child(_contact_face(mail, 70))
 	var info := VBoxContainer.new()
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	info.add_child(_label(mail["title"], 20, TEXT))
 	var person: Dictionary = _mail_person(mail)
-	if String(person["name"]) != "":
-		info.add_child(_label("%s · %s" % [person["name"], person["role"]], 14, TEXT))
-	info.add_child(_label(String(mail["customer"]), 13, MUTED))
+	info.add_child(_label(Data.month_label(int(mail["month"])).get_slice(" · ", 0), 13, MUTED, false))
+	if is_quote:
+		info.add_child(_label("Konu: İş No: %d teklifiniz hk." % _job_no(offer), 14, TEXT))
+		info.add_child(_label("Kimden: %s <%s>" % [person["name"], Data.contact_email(offer)], 12, MUTED))
+	else:
+		info.add_child(_label(mail["title"], 17, TEXT))
+		info.add_child(_label("Kimden: %s" % String(mail["customer"]), 12, MUTED))
 	head.add_child(info)
 	box.add_child(head)
-	if not offer.is_empty():
-		var photo := _offer_photo(offer, 170)
-		if photo != null:
-			box.add_child(photo)
-		box.add_child(_label("Konu: %d nolu işe verdiğiniz teklif hk." % _job_no(offer), 14, TEXT))
-	if mail.get("kind", "quote") == "quote":
-		box.add_child(_label("Bu işle ilgili %d. mesaj" % int(mail.get("mail_no", 1)), 11, MUTED))
+	box.add_child(_quote_line())
 	var status: String = mail["status"]
-	if status == "counter" and mail.get("kind_counter", "") == "price":
-		var body := RichTextLabel.new()
-		body.bbcode_enabled = true
-		body.fit_content = true
-		body.scroll_active = false
-		body.add_theme_font_size_override("normal_font_size", _fs(15))
-		body.text = "Merhaba, Teklifinizi [color=#2fd17b]%s[/color] olarak güncelleyebilir misiniz?" % Data.usd(float(mail["price"]))
-		box.add_child(body)
+	if not is_quote:
+		for line in mail["lines"]:
+			box.add_child(_label(str(line), 14, TEXT))
+		return
+	var wanted_price: float = float(mail.get("price", 0.0))
+	box.add_child(_label("Merhaba,", 14, TEXT))
+	box.add_child(_label("Teklifiniz için teşekkür ederiz.", 14, TEXT))
+	var kind_counter: String = String(mail.get("kind_counter", ""))
+	if status == "accepted":
+		box.add_child(_label("Belirttiğiniz koşulların bizler için uygun olduğunu bildirmek isteriz. Ürünlerimizi aşağıdaki şartlarda teslim almayı hedefliyoruz;", 14, TEXT))
+		var price: float = float(mail["my_price"])
+		var advance: float = price * float(mail["my_advance"]) / 100.0
+		var due_month: int = int(mail["month"]) + int(mail["my_months"]) - 1
+		box.add_child(_label("Proje Bedeli: %s" % Data.usd(price), 14, TEXT))
+		box.add_child(_label("Teslimat: %s (%d Ay)" % [Data.date_text(due_month, Data.MONTH_DAYS), int(mail["my_months"])], 14, TEXT))
+		box.add_child(_label("Peşinat: %s (Hesabınıza aktarıldı)" % Data.usd(advance), 14, TEXT))
+		var rest := "Her ay yapılan işin %%%d'i ödenir, kalanı son teslimatta" % int(Data.PROGRESS_SHARE * 100.0) if bool(mail.get("my_progress", true)) else "Teslimde tek seferde"
+		box.add_child(_label("Kalan Ödeme: %s (%s)" % [Data.usd(price - advance), rest], 14, TEXT))
+	elif status == "counter" and kind_counter == "price":
+		box.add_child(_label("Hedef fiyatımız bu fiyatın (%s) biraz üzerinde kalıyor. Teklifinizi revize etmeniz mümkün mü? Beklediğimiz teklif tutarı: %s (− %s, − %%%s)" % [
+			Data.usd(float(mail["my_price"])), Data.usd(wanted_price), Data.usd(float(mail["my_price"]) - wanted_price), ("%.1f" % (float(mail["request_pct"]) * 100.0)).replace(".", ",")], 14, TEXT))
+	elif status == "rejected" and not String(mail["lines"][0]).begins_with("Teslim süresi"):
+		box.add_child(_label("Ancak, hedef fiyatımızın üzerinde kaldığınız için sizinle çalışamayacağımızı üzülerek bildirmek isteriz.", 14, TEXT))
 	else:
 		for line in mail["lines"]:
 			box.add_child(_label(str(line), 14, TEXT))
-	if mail.get("kind", "quote") != "quote":
-		return
-	var wanted_price: float = float(mail.get("price", 0.0))
-	var prob_label := _label("", 14, GOLD, false)
-	_quote_row(box, "Teklif Tutarı", Data.usd(float(mail["my_price"])))
-	if status == "counter" and mail.get("kind_counter", "") == "price":
-		_quote_row(box, "Talep Edilen İndirim", "%%%d – %s" % [int(roundf(float(mail["request_pct"]) * 100.0)), Data.usd(float(mail["my_price"]) - wanted_price)])
-	elif status == "counter":
-		_quote_row(box, "Talep Edilen Teslimat", "%d Ay (sizin teklifiniz %d Ay)" % [int(mail["months"]), int(mail["my_months"])])
-	_quote_row(box, "Proje Maliyeti (Öngörü)", Data.usd(float(mail["cost_total"])))
-	var prob_row := HBoxContainer.new()
-	var prob_name := _gold_italic("İşi Alma İhtimali", 14)
-	prob_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	prob_row.add_child(prob_name)
-	prob_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	prob_row.add_child(prob_label)
-	box.add_child(prob_row)
+	box.add_child(_label("Saygılar\n%s" % person["name"], 14, TEXT))
 	var editable: bool = status == "counter" and game.phase == "offers"
-	var update_prob := func(price: float) -> void:
-		var months_now: int = int(mail["months"]) if mail.get("kind_counter", "") == "time" else int(mail["my_months"])
-		prob_label.text = "%%%d" % int(roundf(float(game.accept_probability(offer, price, int(mail["my_advance"]), months_now, true)["accept"]) * 100.0))
-	update_prob.call(wanted_price if status == "counter" and mail.get("kind_counter", "") == "price" else float(mail["my_price"]))
-	if editable:
-		var price_edit := LineEdit.new()
-		price_edit.text = str(int(roundf((wanted_price if mail.get("kind_counter", "") == "price" else float(mail["my_price"])) * Data.MONEY_UNIT_USD)))
-		price_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
-		price_edit.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_NUMBER
-		price_edit.custom_minimum_size = Vector2(0, 54)
-		price_edit.add_theme_font_size_override("font_size", _fs(20))
-		price_edit.text_changed.connect(func(text: String) -> void:
-			if text.is_valid_float():
-				update_prob.call(float(text) / float(Data.MONEY_UNIT_USD)))
-		box.add_child(_label("Yeni teklif tutarı ($)", 12, MUTED))
-		box.add_child(price_edit)
-		box.add_child(_button("TEKLİFİ GÜNCELLE", func() -> void:
-			var value: float = float(price_edit.text) / float(Data.MONEY_UNIT_USD) if price_edit.text.is_valid_float() else 0.0
-			_revise_mail(mail["id"], value), true, false, true))
-	elif status == "counter":
-		box.add_child(_label("Yanıt ay başında (rapordan önce) verilir.", 12, GOLD))
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 10)
 	var show := _button("TEKLİFİ GÖSTER" if not mail_show_offer else "TEKLİFİ GİZLE", func() -> void:
@@ -2398,10 +2377,11 @@ func _mail_detail(mail: Dictionary) -> void:
 	show.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	buttons.add_child(show)
 	if status == "counter":
-		var no := _button("Vazgeç", func() -> void:
-			_answer_counter(mail["id"], false))
-		no.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		buttons.add_child(no)
+		var reply := _button("Yanıtla", func() -> void:
+			mail_reply_open = not mail_reply_open
+			_render(), true)
+		reply.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		buttons.add_child(reply)
 	var trash := Button.new()
 	trash.custom_minimum_size = Vector2(52, 44)
 	var trash_icon: Texture2D = Art.find("res://art/ui/btn_delete")
@@ -2417,6 +2397,41 @@ func _mail_detail(mail: Dictionary) -> void:
 	_juice(trash)
 	buttons.add_child(trash)
 	box.add_child(buttons)
+	if status == "counter" and mail_reply_open:
+		box.add_child(_quote_line())
+		if not editable:
+			box.add_child(_label("Yanıt ay başında (rapordan önce) verilir.", 12, GOLD))
+		else:
+			var prob_label := _label("", 14, GOLD, false)
+			var prob_row := HBoxContainer.new()
+			var prob_name := _label("İşi Alma İhtimali", 14, MUTED, false)
+			prob_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			prob_row.add_child(prob_name)
+			prob_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+			prob_row.add_child(prob_label)
+			box.add_child(prob_row)
+			var update_prob := func(price: float) -> void:
+				var months_now: int = int(mail["months"]) if kind_counter == "time" else int(mail["my_months"])
+				game.quote_progress = bool(mail.get("my_progress", true))
+				prob_label.text = "%%%d" % int(roundf(float(game.accept_probability(offer, price, int(mail["my_advance"]), months_now, true)["accept"]) * 100.0))
+			var start_price: float = wanted_price if kind_counter == "price" else float(mail["my_price"])
+			update_prob.call(start_price)
+			var price_edit := LineEdit.new()
+			price_edit.text = str(int(roundf(start_price * Data.MONEY_UNIT_USD)))
+			price_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
+			price_edit.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_NUMBER
+			price_edit.custom_minimum_size = Vector2(0, 54)
+			price_edit.add_theme_font_size_override("font_size", _fs(20))
+			price_edit.text_changed.connect(func(text: String) -> void:
+				if text.is_valid_float():
+					update_prob.call(float(text) / float(Data.MONEY_UNIT_USD)))
+			box.add_child(_label("Yeni teklif tutarı ($)", 12, MUTED))
+			box.add_child(price_edit)
+			box.add_child(_button("TEKLİFİ GÜNCELLE", func() -> void:
+				var value: float = float(price_edit.text) / float(Data.MONEY_UNIT_USD) if price_edit.text.is_valid_float() else 0.0
+				_revise_mail(mail["id"], value), true, false, true))
+			box.add_child(_button("Vazgeç", func() -> void:
+				_answer_counter(mail["id"], false)))
 	if mail_show_offer:
 		_mail_offer_snapshot(mail)
 	_mail_older_messages(mail)
