@@ -72,4 +72,6 @@ Bağımlılıklar: FRZ-008 v2, FRZ-005 v2, IDEA-014, IDEA-018, IDEA-019, IDEA-02
 - Ay başlatırken kısa bilgi penceresi (açık vardiya, mesai, boşa düşecek tezgah ve tarihi, sözleşmeli personel durumu).
 - Personel yönetim ekranı ve sözleşmeler altında personel bölümü park edildi.
 - 2026-10-07 kullanıcı onayı: patron/vardiya/mesai/yeni personel kurgusu ve vardiya verim çarpanları uygundur; sözleşmeli personel (maaş +%30, tazminat −%60) kurgusu da uygundur. Tazminat süresi, sözleşmeli süresi ve mesai verimi sayıları prototipte denenerek ayarlanır.
+- 2026-10-07 kullanıcı kararları: **tazminat = 2 aylık maaş**; **sözleşmeli süre seçenekleri 3 / 6 / 9 ay ve yüzdeler süreye göre değişir**; **mesai verimi = 3. vardiya ile aynı** (Manuel %75, CNC %90, Hassas %100).
+- Önerilen sözleşmeli tablo (kullanıcı onayına açık; prototipte ayarlanır): 3 ay → maaş +%40, tazminat −%80 (0,4 maaş); 6 ay → +%30, −%60 (0,8 maaş); 9 ay → +%20, −%40 (1,2 maaş). Kısa sözleşme pahalı ama neredeyse tazminatsız; uzun sözleşme kadroluya yaklaşır. Kadrolu tazminat 2 maaş.
 - Onaylı FREEZE yoktur.
