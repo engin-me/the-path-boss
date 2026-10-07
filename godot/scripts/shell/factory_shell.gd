@@ -1148,6 +1148,8 @@ func _ozet_general() -> void:
 func _yonetim_go(target: String) -> void:
 	match target:
 		"finance": _open_detail("credit" if game.debt > 0.0 else "costs")
+		"cash": _open_detail("cash")
+		"satin": _on_tab("satin")
 		"jobs":
 			subtab["fabrika"] = "isler"
 			_on_tab("fabrika")
@@ -1369,7 +1371,7 @@ func _page_end() -> void:
 			paper.add_child(_label(String(line), 13, TEXT))
 	for lesson in game.lessons():
 		box.add_child(_label("• " + lesson, 13, TEXT))
-	box.add_child(_button("Operatör olarak yeniden başla" if not letter.is_empty() else "Yeniden başla", _restart, true, false, true))
+	box.add_child(_button("Yeniden başla", _restart, true, false, true))
 
 func _ask_wipe() -> void:
 	_confirm("Kaydı sil", ["Kayıtlı oyun kalıcı olarak silinir ve yeni oyun başlar.", "Bu işlem geri alınamaz."], "Sil ve yeni oyun", _wipe_save)
@@ -2154,11 +2156,15 @@ func _ask_send_quote(offer_id: int) -> void:
 	var offer: Dictionary = game.offer_by_id(offer_id)
 	if offer.is_empty():
 		return
+	var late_text := ""
+	var projection: Dictionary = game.quote_projection(offer, quote_months)
+	if int(projection["late_days"]) > 0 or int(projection["finish"]) == 0:
+		late_text = "Dikkat: bu planla işi %s geç teslim edersin (teslim skoru düşer). Kabul yüzdesi yalnız müşterinin fiyatı kabul etme ihtimalidir, zamanında teslim garantisi değildir." % ("çok" if int(projection["finish"]) == 0 else "%d gün" % int(projection["late_days"]))
 	_confirm("Teklifi gönder", [
 		"%s · %s" % [offer["title"], offer["customer"]],
 		"Teklif tutarı: %s (maliyet %s, marj %%%d)" % [Data.usd(quote_price), Data.usd(float(game.cost_estimate(offer, quote_edit)["total"])), int(roundf(quote_margin * 100.0))],
 		"Peşinat %%%d · Teslimat %d ay" % [quote_adv, quote_months]], "Teklif ver", _send_quote.bind(offer_id),
-		"Müşteri yanıtı hemen Mail kutuna düşer. Anlaşırsan iş fabrikana eklenir.")
+		late_text if late_text != "" else "Müşteri yanıtı birkaç saniye içinde Mail kutuna düşer. Anlaşırsan iş fabrikana eklenir.")
 
 func _send_quote(offer_id: int) -> void:
 	var result: Dictionary = game.submit_quote(offer_id, quote_price, quote_adv, quote_months)
@@ -3224,6 +3230,9 @@ func _render_detail() -> void:
 		"costs":
 			title.text = "  Aylık gider"
 			_detail_costs()
+		"cash":
+			title.text = "  Serbest nakit"
+			_detail_cash()
 		"order":
 			title.text = "  Hammadde"
 			_detail_order()
@@ -3809,6 +3818,46 @@ func _detail_oee() -> void:
 		_row(cap, machine["model"], "%s/ay · %d vardiya" % [_xfmt(game.machine_output(machine, mults)), machine["shifts"]], TEXT, 14)
 	var how := _card(content, "OEE nasıl hesaplanır?")
 	how.add_child(_label("OEE (24 saat) = vardiya/3 × performans × (1 − hurda) × sorun çarpanı. Tek vardiya = 1/3; bir vardiyaya mesai (+4 sa) 0,5 vardiya ekler; üç vardiya = 1. Sorunlar: Bakım/Planlama/Depo → kullanılabilirlik, Üretim → performans, Kalite → hurda. Finans gibi alanlar OEE dışı net çıktıyı düşürür.", 12, MUTED))
+
+# Free cash: what the cash is already promised to (material with its due month, the month's expenses) and what comes in.
+func _detail_cash() -> void:
+	var com: Dictionary = game.commitments()
+	var box := _card(content, "Serbest nakit nereden gelir?", BORDER, true)
+	_row(box, "Nakit", Data.usd(float(com["cash"])), TEXT, 15)
+	var material := 0.0
+	for job in game.jobs:
+		var order: Dictionary = job.get("order", {})
+		var amount := 0.0
+		var when := ""
+		if order.is_empty():
+			if bool(job.get("fason", false)):
+				continue
+			amount = float(job["material"]) * float(Data.supplier_by_id(game.default_supplier)["price"])
+			when = "sipariş edilmedi (tahmini)"
+		elif not bool(order["paid"]):
+			amount = float(order["amount"])
+			when = "vade: %s" % Data.month_label(int(order["pay_month"])).get_slice(" · ", 0)
+		else:
+			continue
+		material += amount
+		_row(box, "Hammadde · %s" % job["title"], "%s · %s" % [Data.usd(amount), when], GOLD, 13)
+	_row(box, "Ödenecek hammadde", Data.usd(material), GOLD, 15)
+	_row(box, "Bu ayın gideri", Data.usd(float(com["expense"])), GOLD, 15)
+	_row(box, "Serbest nakit", Data.usd(float(com["free"])), GREEN if float(com["free"]) >= 0.0 else RED, 17)
+	var first: Dictionary = com["first"]
+	if not first.is_empty():
+		var soonest := {}
+		var finish: Dictionary = game.projection_days()
+		for job in game.jobs:
+			var due_when: Array = finish.get(job["id"], [])
+			if not due_when.is_empty() and int(due_when[0]) == int(first["month"]) and int(due_when[1]) == int(first["day"]):
+				soonest = job
+				break
+		if not soonest.is_empty():
+			_row(box, "Beklenen ilk tahsilat", "%s · %s · %s" % [soonest["title"], Data.usd(float(soonest["revenue"]) - game.job_received(soonest)), Data.month_label(int(first["month"])).get_slice(" · ", 0)], GREEN, 13)
+	else:
+		box.add_child(_label("Henüz tahsilat bekleyen iş yok.", 12, MUTED))
+	box.add_child(_label("Serbest nakit = nakit − ödenecek hammadde − bu ayın gideri. Peşinat ve hakediş zaten nakde girdi veya teslimde gelir; serbest nakde sayılmaz.", 12, MUTED))
 
 func _detail_costs() -> void:
 	var box := _card(content, "Aylık gider dökümü", BORDER, true)

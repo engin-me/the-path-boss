@@ -1048,10 +1048,10 @@ func _run() -> void:
 	var letter_lines: Array = cl.closure["letter"]["lines"]
 	var has_hook := false
 	for line in letter_lines:
-		if str(line).contains("%95"):
+		if str(line).contains("önündeydi"):
 			has_hook = true
 	if letter_lines.size() < 4 or not has_hook or cl.mails.is_empty() or cl.mails[0]["title"] != cl.closure["letter"]["title"]:
-		return _fail("The letter says it was foreseeable, lists the mistakes and also arrives as mail")
+		return _fail("The letter says the signs were visible, lists the mistakes and also arrives as mail")
 	# ---- cash and commitments: the free cash is the cash minus material still to be paid minus the month's costs
 	var cm = Boss.new()
 	cm.from_save(snapshot_day)

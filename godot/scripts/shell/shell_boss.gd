@@ -2505,15 +2505,20 @@ func close_month() -> String:
 	committed_history.append(float(com_end["material"]) + float(com_end["expense"]))
 	free_history.append(float(com_end["free"]))
 	invest_history.append(float(investment_value()))
-	debt_history.append(float(debt) + (float(loan.get("balance", 0.0)) if not loan.is_empty() else 0.0))
+	debt_history.append(float(debt))   # debt already includes the loan balance
 	var steps_now := report
 	if float(steps_now.get("theoretical", 0.0)) > 0.0 and float(steps_now.get("shift", 0.0)) > 0.0 and float(steps_now.get("perf", 0.0)) > 0.0:
 		var theo := float(steps_now["theoretical"])
 		var shift_v := float(steps_now["shift"])
 		var perf_v := float(steps_now["perf"])
-		var net_v := float(steps_now.get("net", 0.0))
 		var phys_v := float(steps_now.get("phys", 0.0))
-		oee_history.append({"availability": clampf(shift_v / theo * (net_v / maxf(0.0001, phys_v)), 0.0, 1.0), "performance": clampf(perf_v / shift_v, 0.0, 1.0), "quality": clampf(phys_v / perf_v, 0.0, 1.0), "oee": clampf(net_v / theo, 0.0, 1.0)})
+		var scrap_v := float(steps_now.get("scrap", 0.0))
+		var rm: Dictionary = steps_now.get("mults", {"a": 1.0, "p": 1.0, "q": 1.0})
+		# physical OEE (FRZ-008 v2: finance/non-physical losses stay outside); the three parts multiply to it
+		var a_part := clampf(shift_v / theo * float(rm["a"]), 0.0, 1.0)
+		var p_part := clampf(perf_v / shift_v * float(rm["p"]), 0.0, 1.0)
+		var q_part := clampf(scrap_v / perf_v * float(rm["q"]), 0.0, 1.0)
+		oee_history.append({"availability": a_part, "performance": p_part, "quality": q_part, "oee": clampf(phys_v / theo, 0.0, 1.0)})
 	else:
 		oee_history.append({"availability": 0.0, "performance": 0.0, "quality": 0.0, "oee": 0.0})
 	if finance > 0.0:
@@ -2772,6 +2777,10 @@ func action_items() -> Array:
 	var com := commitments()
 	if float(com["free"]) < 0.0:
 		items.append({"severity": "red", "text": "Harcanabilir nakit negatif: ödemeler kasayı aşıyor", "target": "finance"})
+	if factory_id != "" and (machines.is_empty() or not package_bought):
+		var first_step := "İlk adım: ekipman paketini satın al" if not package_bought else "Sıradaki adım: tezgah satın al, sonra uygun işe teklif ver"
+		items.append({"severity": "blue", "text": first_step, "target": "satin"})
+		return items
 	var risky := risky_jobs()
 	if risky > 0:
 		items.append({"severity": "red", "text": "%d işte teslim riski var" % risky, "target": "jobs"})
@@ -2839,11 +2848,18 @@ func closing_letter() -> Dictionary:
 		lines.append("Faaliyetin Ay %d itibarıyla sonlandırılmıştır. Tasfiye sonrası %s açık kaldı." % [month, Data.usd(float(closure.get("shortfall", 0.0)))])
 	else:
 		lines.append("Faaliyetin Ay %d itibarıyla sonlandırılmıştır. Tasfiye borcu kapattı; kayıtlara iflas olarak geçmeyecek." % month)
-	lines.append("Bunun olacağı %95 ihtimalle belliydi. Rakamlar her ay önündeydi; sen büyümeye bakıyordun.")
+	var negative_months := 0
+	for value in free_history:
+		if float(value) < 0.0:
+			negative_months += 1
+	if negative_months > 0:
+		lines.append("Serbest nakit son %d ayın %d tanesinde negatifti. İşaret ekranındaydı; her ay önündeydi." % [free_history.size(), negative_months])
+	else:
+		lines.append("Rakamlar her ay önündeydi; sorun tek bir ayda değil, birikerek büyüdü.")
 	for i in mini(3, findings.size()):
 		lines.append("• " + String(findings[i][1]))
 	if findings.is_empty():
 		lines.append("• Tek tek bakınca büyük bir hata yok; küçük hatalar üst üste bindi. Bazen bir fabrikayı bitiren şey tek bir karar değil, hiç bakılmayan bir aydır.")
 	lines.append("Ama şunu da söyleyelim: bu fabrikayı kuran da, batıran da sendin. Bu seni yarı yolda bırakacak bir şey değil; çoğu yönetici ilk fabrikasını böyle öğrenir. Neyi bilmediğini artık biliyorsun.")
-	lines.append("Yeniden operatör olarak başlıyorsun. Önce küçük kur, işin nasıl geldiğini gör, sonra büyü. Kolay gelsin.")
+	lines.append("Yeniden başlayabilirsin. Önce küçük kur, işin nasıl geldiğini gör, sonra büyü. Kolay gelsin.")
 	return {"title": "Faaliyet sonlandırma bildirimi", "lines": lines}
