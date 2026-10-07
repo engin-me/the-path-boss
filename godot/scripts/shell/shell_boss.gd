@@ -2003,6 +2003,34 @@ func job_by_id(id: int) -> Dictionary:
 			return job
 	return {}
 
+# Priority (IDEA-021): the order of `jobs` is the order capacity is handed out. Moving a job up or suspending it frees capacity
+# for the next one; the clock keeps running, so the lateness is the price. Material and advance payments are not touched.
+func move_job(id: int, delta: int) -> String:
+	var index := -1
+	for i in jobs.size():
+		if int(jobs[i]["id"]) == id:
+			index = i
+	if index < 0:
+		return "İş bulunamadı."
+	var target := clampi(index + delta, 0, jobs.size() - 1)
+	if target == index:
+		return ""
+	var moved: Dictionary = jobs[index]
+	jobs.remove_at(index)
+	jobs.insert(target, moved)
+	log_event("İşler", "Öncelik değişti: %s artık %d. sırada" % [moved["title"], target + 1])
+	return ""
+
+func set_job_suspended(id: int, on: bool) -> String:
+	var job := job_by_id(id)
+	if job.is_empty():
+		return "İş bulunamadı."
+	if bool(job.get("continuous", false)) and on:
+		return "Sürekli İş askıya alınamaz."
+	job["suspended"] = on
+	log_event("İşler", "%s: %s" % ["Askıya alındı" if on else "Devam ettirildi", job["title"]])
+	return ""
+
 func abandon_block_reason(id: int) -> String:
 	var job := job_by_id(id)
 	if job.is_empty():
@@ -2212,7 +2240,7 @@ func _allocate_day(cap_left: Dictionary) -> void:
 
 func _allocate_at(job_list: Array, cap_left: Dictionary, m: int, d: int, record: bool) -> void:
 	for job in job_list:
-		if not _job_started_day(job, d, m) or not _material_ready_day(job, d, m):
+		if bool(job.get("suspended", false)) or not _job_started_day(job, d, m) or not _material_ready_day(job, d, m):
 			continue
 		var job_yield := float(job.get("yield", 1.0))
 		for req in job["reqs"]:
@@ -2314,7 +2342,7 @@ func _eligible(kind: String, level: int, t: int) -> Array:
 # eligible machines of its kind, lowest sufficient level first.
 func _allocate(job_list: Array, cap_left: Dictionary, t: int, record: bool) -> void:
 	for job in job_list:
-		if int(job["start_month"]) > t or not material_ready(job, t):
+		if bool(job.get("suspended", false)) or int(job["start_month"]) > t or not material_ready(job, t):
 			continue
 		var job_yield := float(job.get("yield", 1.0))
 		for req in job["reqs"]:
@@ -2342,6 +2370,8 @@ func _allocate(job_list: Array, cap_left: Dictionary, t: int, record: bool) -> v
 
 # Why an accepted job is not being produced (empty when it is, or will be, loaded this month).
 func job_wait_reason(job: Dictionary) -> String:
+	if bool(job.get("suspended", false)):
+		return "Askıya alındı; kapasitesi sıradaki işe gidiyor"
 	var order: Dictionary = job.get("order", {})
 	if order.is_empty():
 		return "Hammadde siparişi verilmedi"

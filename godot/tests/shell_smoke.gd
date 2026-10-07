@@ -1240,6 +1240,24 @@ func _run() -> void:
 			return _fail("A postponement request answers by delayed mail")
 		if bool(answer["accepted"]) != (int(pjob["due_month"]) == due_before + 1):
 			return _fail("An accepted postponement moves the delivery month, a refused one does not")
+	# ---- job priority and suspension
+	var pr = Boss.new()
+	pr.from_save(snapshot_day)
+	var second: Dictionary = pr.jobs[0].duplicate(true)
+	second["id"] = 987001
+	second["title"] = "İkinci iş"
+	pr.jobs.append(second)
+	pr.move_job(987001, -1)
+	if int(pr.jobs[0]["id"]) != 987001:
+		return _fail("A job moved up takes the first place in the queue")
+	pr.set_job_suspended(987001, true)
+	var cap_pr := {}
+	for machine in pr.machines:
+		cap_pr[machine["uid"]] = 1.0e9
+	var before_susp: float = float(pr.jobs[0]["reqs"][0]["remaining"])
+	pr._allocate_at(pr.jobs, cap_pr, pr.month, pr.day, false)
+	if not _near(float(pr.jobs[0]["reqs"][0]["remaining"]), before_susp, 0.0001):
+		return _fail("A suspended job produces nothing")
 	var pool_game = Boss.new()
 	pool_game.from_save(snapshot_day)
 	pool_game._generate_offers()

@@ -1445,6 +1445,27 @@ func _job_card(job: Dictionary, finish_month: int) -> void:
 		card.add_child(_button("Tolerans payını değiştir", _bonus_popup.bind(job["id"])))
 	_row(card, "Peşinat alındı", Data.usd(float(job["advance"])), MUTED, 13)
 	_row(card, "Gelir (tesliminde)", Data.usd(float(job["revenue"])), GREEN, 14)
+	var order_index := 0
+	for i in game.jobs.size():
+		if int(game.jobs[i]["id"]) == int(job["id"]):
+			order_index = i + 1
+	_row(card, "Öncelik sırası", "%d / %d%s" % [order_index, game.jobs.size(), " · askıda" if bool(job.get("suspended", false)) else ""], RED if bool(job.get("suspended", false)) else MUTED, 13)
+	var priority_row := HBoxContainer.new()
+	priority_row.add_theme_constant_override("separation", 8)
+	var up_button := _button("▲ Öne al", func() -> void:
+		game.move_job(int(job["id"]), -1)
+		_render_keep_scroll())
+	up_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	up_button.disabled = order_index <= 1
+	priority_row.add_child(up_button)
+	var suspend_button := _button("▶ Devam ettir" if bool(job.get("suspended", false)) else "⏸ Askıya al", func() -> void:
+		var result: String = game.set_job_suspended(int(job["id"]), not bool(job.get("suspended", false)))
+		if result != "":
+			_say(result)
+		_render_keep_scroll())
+	suspend_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	priority_row.add_child(suspend_button)
+	card.add_child(priority_row)
 	var postpone_reason: String = game.postpone_block_reason(job["id"])
 	if postpone_reason == "":
 		card.add_child(_button("Mail at: teslimi ötele", _postpone_popup.bind(job["id"])))
