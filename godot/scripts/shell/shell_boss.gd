@@ -1681,7 +1681,7 @@ func customer_limit(offer: Dictionary, advance_pct: int, months_offered: int, ur
 	var top_margin := mid + 0.25 + Data.SMALL_PREMIUM * Data.small_factor(Data.offer_load(offer))   # small jobs: wider top (IDEA-021)
 	var margin := lerpf(maxf(0.05, mid - 0.20), top_margin, (urgent - 1.0) / 9.0)
 	if bool(offer.get("continuous", false)):
-		margin = Data.CONTINUOUS_MARGIN + 0.08 * (urgent - 1.0) / 9.0   # a framework contract: 12 to 20 percent over cost
+		margin = Data.CONTINUOUS_MARGIN + 0.08 * (urgent - 1.0) / 9.0   # a framework contract: 14 to 22 percent over cost
 	var limit := customer_cost(offer) * (1.0 + margin)
 	limit *= 0.90 + 0.15 * delivery_score
 	limit *= 1.0 - ADVANCE_EFFECT * float(advance_pct - 30)

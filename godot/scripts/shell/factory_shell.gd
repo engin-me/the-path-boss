@@ -1867,7 +1867,7 @@ func _offer_card(offer: Dictionary, reason: String) -> void:
 	box.add_child(tiles)
 	box.add_child(_need_icons(offer, open))
 	if bool(offer.get("continuous", false)):
-		box.add_child(_label("SÜREKLİ İŞ · %d ay · %s kapasitesinin %%%d'i · düşük ama garantili marj · her ay hakediş" % [Data.CONTINUOUS_MONTHS, offer["reqs"][0]["kind"], int(Data.CONTINUOUS_SHARE * 100.0)], 12, GOLD, false))
+		box.add_child(_label("SÜREKLİ İŞ · %d ay · %s kapasitesinin %%%d'i · %14–22 garantili marj · her ay hakediş" % [Data.CONTINUOUS_MONTHS, offer["reqs"][0]["kind"], int(Data.CONTINUOUS_SHARE * 100.0)], 12, GOLD, false))
 	var urgency_color: Color = RED if Data.urgency_label(offer) == "Acil" else (GREEN if Data.urgency_label(offer) == "Esnek" else MUTED)
 	box.add_child(_label("%s müşteri" % Data.urgency_label(offer), 12, urgency_color, false))
 	var gate: Dictionary = Data.job_gate(offer)
