@@ -79,6 +79,7 @@ func to_save() -> Dictionary:
 	data["month_late"] = month_late
 	data["lifetime_revenue"] = lifetime_revenue
 	data["cash_history"] = cash_history.duplicate()
+	data["jobs_done"] = jobs_done
 	data["committed_history"] = committed_history.duplicate()
 	data["free_history"] = free_history.duplicate()
 	data["invest_history"] = invest_history.duplicate()
@@ -127,6 +128,7 @@ func from_save(data: Dictionary) -> String:
 	month_late = int(copy.get("month_late", 0))
 	lifetime_revenue = float(copy.get("lifetime_revenue", 0.0))
 	cash_history = copy.get("cash_history", []).duplicate()
+	jobs_done = int(copy.get("jobs_done", 0))
 	committed_history = copy.get("committed_history", []).duplicate()
 	free_history = copy.get("free_history", []).duplicate()
 	invest_history = copy.get("invest_history", []).duplicate()
@@ -1317,7 +1319,17 @@ func _add_local_orders() -> void:
 func accept_block_reason(id: int) -> String:
 	if phase != "offers":
 		return "İş, ay başında (rapordan önce) kabul edilir."
+	var gate := gate_block_reason(id)
+	if gate != "":
+		return gate
 	return fit_block_reason(id)
+
+# Big jobs need a record: finished jobs and a delivery score (see Data.JOB_TIERS).
+func gate_block_reason(id: int) -> String:
+	var gate := Data.job_gate(offer_by_id(id))
+	if gate.is_empty() or (jobs_done >= int(gate["jobs"]) and delivery_score >= float(gate["score"])):
+		return ""
+	return "Bu işe teklif verebilmek için en az %d iş bitirmiş olmalı ve %%%d teslim skorun olmalı (şu an %d iş, %%%d)." % [int(gate["jobs"]), int(roundf(float(gate["score"]) * 100.0)), jobs_done, int(roundf(delivery_score * 100.0))]
 
 # Whether the offer suits the plant (equipment, machines, cash), whatever the phase of the month.
 func fit_block_reason(id: int) -> String:
@@ -1843,6 +1855,7 @@ var days_run := 0               # days of this month already produced (0 = the m
 var month_events: Array = []    # this month's day events, printed in the closing report
 var month_material_used := 0.0  # material of jobs delivered earlier this month
 var month_revenue := 0.0        # revenue delivered earlier this month
+var jobs_done := 0                 # finished (delivered) jobs: the track record big listings ask for
 var committed_history: Array = []  # month-end money already owed (material + the month's costs)
 var free_history: Array = []
 var invest_history: Array = []
@@ -2052,6 +2065,7 @@ func _deliver_job(job: Dictionary) -> Array:
 	cash += remainder
 	month_revenue += float(job["revenue"])
 	_score_event(late_target(days_late))
+	jobs_done += 1
 	if not on_time:
 		month_late += 1
 	events.append({"text": "Teslim: %s%s" % [job["title"], "" if on_time else " · %d GÜN GEÇ (skor düştü)" % days_late], "amount": remainder})
@@ -2325,6 +2339,7 @@ func close_month() -> String:
 			cash += remainder
 			delivered_revenue += float(job["revenue"])
 			_score_event(late_target(days_late))
+			jobs_done += 1
 			lines.append("Teslim: %s (+%s kalan bakiye)%s" % [job["title"], Data.usd(remainder), "" if on_time else " · GEÇ TESLİM (skor düştü)"])
 			if not on_time:
 				report["undelivered"] = int(report.get("undelivered", 0)) + 1

@@ -114,6 +114,9 @@ const TERMS := [
 	{"months": 12, "factor": 1.00, "prepay_discount": 0.08},
 	{"months": 24, "factor": 0.90, "prepay_discount": 0.12}
 ]
+# Big jobs ask for a track record (measured on the job's load, ω): the biggest quarter of the listings needs 2 finished jobs
+# and a 70 % delivery score, the biggest tenth 4 jobs and 80 %.
+const JOB_TIERS := [{"load": 11000.0, "jobs": 4, "score": 0.80}, {"load": 6000.0, "jobs": 2, "score": 0.70}]
 const PROGRESS_SHARE := 0.8   # progress payment: at every month end 80 % of the work done so far is paid; the rest comes with the final delivery
 const MONTH_DAYS := 30   # a month is 30 days in the day-by-day engine
 const IDLE_WAGE_FLOOR := 0.5   # share of a crew's wage still paid on a day the machine has no work (short-time work)
@@ -386,6 +389,20 @@ static func urgency_noisy(offer: Dictionary) -> int:
 # revision round adds one.
 static func mail_count(offer: Dictionary, round: int) -> int:
 	return 1 + int(floor(float(urgency_noisy(offer) - 1) / 3.0)) + (round - 1)
+
+static func offer_load(offer: Dictionary) -> float:
+	var total := 0.0
+	for req in offer.get("reqs", []):
+		total += float(req["workload"])
+	return total
+
+# The track record a listing asks for: {} when it is open to everyone.
+static func job_gate(offer: Dictionary) -> Dictionary:
+	var load := offer_load(offer)
+	for tier in JOB_TIERS:
+		if load >= float(tier["load"]):
+			return tier
+	return {}
 
 static func contact_info(offer: Dictionary) -> Dictionary:
 	var people: Array = CONTACT_PEOPLE.get(String(offer.get("customer", "")), [])

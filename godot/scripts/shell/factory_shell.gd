@@ -1796,7 +1796,7 @@ func _offer_tolerance(offer: Dictionary) -> float:
 
 func _offer_card(offer: Dictionary, reason: String) -> void:
 	var open: bool = open_offer == int(offer["id"])
-	var doable: bool = game.fit_block_reason(offer["id"]) == ""
+	var doable: bool = game.fit_block_reason(offer["id"]) == "" and game.gate_block_reason(int(offer["id"])) == ""
 	var box := _card(content, "", GREEN if doable else BORDER)
 	var parts := 0
 	var difficulty := 0.0
@@ -1812,6 +1812,10 @@ func _offer_card(offer: Dictionary, reason: String) -> void:
 	tiles.add_child(_mini_tile("is_ilani_malzeme", Data.STEEL_GRADE[int(offer["reqs"][0]["steel"])], false))
 	box.add_child(tiles)
 	box.add_child(_need_icons(offer, open))
+	var gate: Dictionary = Data.job_gate(offer)
+	if not gate.is_empty():
+		var met: bool = game.gate_block_reason(int(offer["id"])) == ""
+		box.add_child(_label("Büyük iş · en az %d iş bitirmiş ve %%%d teslim skoru gerekir" % [int(gate["jobs"]), int(roundf(float(gate["score"]) * 100.0))], 12, GREEN if met else RED))
 	if open and not doable:
 		box.add_child(_label(game.fit_block_reason(offer["id"]), 12, RED))
 	if open:

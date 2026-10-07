@@ -1058,5 +1058,24 @@ func _run() -> void:
 	pp._deliver_job(pp_job)
 	if not _near(pp.cash - cash_before_delivery, 10.0 - 3.0 - expected_pp, 0.001):
 		return _fail("The final delivery pays the rest: revenue - advance - progress payments")
+	# ---- big listings ask for a track record
+	var gt = Boss.new()
+	gt.from_save(snapshot_day)
+	var big_offer: Dictionary = fason_offer.duplicate(true)
+	big_offer["id"] = 987654
+	for req in big_offer["reqs"]:
+		req["workload"] = 12000.0
+	gt.offers.append(big_offer)
+	gt.jobs_done = 0
+	gt.delivery_score = 0.9
+	if gt.gate_block_reason(987654) == "":
+		return _fail("A huge listing needs finished jobs first")
+	gt.jobs_done = 4
+	gt.delivery_score = 0.7
+	if gt.gate_block_reason(987654) == "":
+		return _fail("The biggest listings also need a high delivery score")
+	gt.delivery_score = 0.85
+	if gt.gate_block_reason(987654) != "":
+		return _fail("With the record the listing opens")
 	print("Shell smoke passed")
 	quit(0)

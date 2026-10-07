@@ -76,4 +76,6 @@ Bağımlılıklar: FRZ-004 v2, IDEA-017, IDEA-019 (akan zaman, gün bazlı gecik
 - Çalışan işi askıya alma / öncelik fikri kullanıcıdan geldi.
 - Küçük işler iş yükü ile tanımlanır, kural yazılmaz; oyuncu keşfeder; marj yükseldikçe kabul ihtimali küçük işte yavaş düşer. Büyük/sürekli iş: 12 ay, düşük garantili marj, "Sürekli İş" etiketi.
 - Fason için ek ceza kurgu yeterliyse gerekmez (kullanıcı pas geçti).
+- 2026-10-07 kullanıcı onayı: küçük iş/büyük iş/Sürekli İş kurgusu ve marj eğrisi uygundur. Büyük ilanlar listede görünür, ama **işin hacmine göre** bir iş geçmişi ve teslim skoru ister; ilan üzerinde "bu işe teklif verebilmek için en az X iş bitirmiş olmalı ve %Y teslim skorun olmalı" yazar. Prototip: iş yükü ≥ 6.000 ω → 2 iş ve %70; ≥ 11.000 ω → 4 iş ve %80 (ilanların en büyük %25 ve %10'u).
+- 2026-10-07 prototip: hakediş (parçalı tahsilat) etkin; ay sonunda yapılan işin %80'i tahsil edilir, peşinat mahsup edilir, kalan teslimde gelir. Teslimde tek seferde seçeneği ve fiyat farkı henüz karara bağlanmadı.
 - Onaylı FREEZE yoktur.

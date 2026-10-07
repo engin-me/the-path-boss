@@ -71,4 +71,5 @@ Bağımlılıklar: FRZ-008 v2, FRZ-005 v2, IDEA-014, IDEA-018, IDEA-019, IDEA-02
 - Kullanıcı vardiya verimini istedi: Manuel %100/85/75, CNC %100/95/90, Hassas kayıpsız.
 - Ay başlatırken kısa bilgi penceresi (açık vardiya, mesai, boşa düşecek tezgah ve tarihi, sözleşmeli personel durumu).
 - Personel yönetim ekranı ve sözleşmeler altında personel bölümü park edildi.
+- 2026-10-07 kullanıcı onayı: patron/vardiya/mesai/yeni personel kurgusu ve vardiya verim çarpanları uygundur; sözleşmeli personel (maaş +%30, tazminat −%60) kurgusu da uygundur. Tazminat süresi, sözleşmeli süresi ve mesai verimi sayıları prototipte denenerek ayarlanır.
 - Onaylı FREEZE yoktur.
