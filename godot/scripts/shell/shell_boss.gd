@@ -1342,6 +1342,7 @@ func _generate_offers() -> void:
 	offers.assign(Data.generate_offers(month, offer_salt))
 	_apply_pool_floor()
 	_add_local_orders()
+	Data.balance_pool(offers, rng)
 
 func _feasible(reqs: Array) -> bool:
 	for req in reqs:
@@ -1382,10 +1383,12 @@ func _add_local_orders() -> void:
 		return
 	var mults := {"phys": 1.0, "non": 1.0}
 	var taken := 0
-	var index := offers.size() - 1
-	while taken < LOCAL_ORDERS and index >= 0:
+	var smallest: Array = offers.duplicate()   # the local orders replace the smallest listings, so the pool's mix of sizes stays
+	smallest.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return Data.offer_load(a) < Data.offer_load(b))
+	var index := 0
+	while taken < LOCAL_ORDERS and index < smallest.size():
 		var machine: Dictionary = machines[(month + taken) % machines.size()]
-		var offer: Dictionary = offers[index]
+		var offer: Dictionary = smallest[index]
 		var duration := 1 + (taken % 2)
 		var month_output := float(machine_steps(machine, mults)["net"])
 		var level := rng.randi_range(1, int(machine["level"]))
@@ -1396,7 +1399,7 @@ func _add_local_orders() -> void:
 		Data.fill_offer(offer, [{"kind": machine["kind"], "level": level, "n": 1, "load": month_output * duration * rng.randf_range(0.35, 0.6)}], rng)
 		offer["local"] = true
 		taken += 1
-		index -= 1
+		index += 1
 
 func accept_block_reason(id: int) -> String:
 	if phase != "offers":

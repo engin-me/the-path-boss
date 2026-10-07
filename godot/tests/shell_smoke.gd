@@ -1118,6 +1118,23 @@ func _run() -> void:
 	gt.delivery_score = 0.85
 	if gt.gate_block_reason(987654) != "":
 		return _fail("With the record the listing opens")
+	# ---- the monthly pool is 40 % small, 40 % medium, 20 % large
+	var pool_rng := RandomNumberGenerator.new()
+	pool_rng.seed = 11
+	var pool_counts := {"small": 0, "medium": 0, "large": 0}
+	for pool_month in range(3, 27):
+		var pool_offers: Array = Data.generate_offers(pool_month, pool_month)
+		Data.balance_pool(pool_offers, pool_rng)
+		for offer in pool_offers:
+			pool_counts[Data.job_class(Data.offer_load(offer))] += 1
+	var pool_total := float(pool_counts["small"] + pool_counts["medium"] + pool_counts["large"])
+	if absf(float(pool_counts["small"]) / pool_total - 0.4) > 0.05 or absf(float(pool_counts["medium"]) / pool_total - 0.4) > 0.05 or absf(float(pool_counts["large"]) / pool_total - 0.2) > 0.05:
+		return _fail("The pool must follow 40/40/20: %s" % str(pool_counts))
+	var pool_game = Boss.new()
+	pool_game.from_save(snapshot_day)
+	pool_game._generate_offers()
+	if pool_game.offers.size() < 10:
+		return _fail("The shell still generates a full pool")
 	# ---- quote calendar and delayed mail
 	var pl = Boss.new()
 	pl.from_save(snapshot_day)

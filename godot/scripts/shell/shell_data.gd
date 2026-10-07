@@ -116,7 +116,11 @@ const TERMS := [
 ]
 # Big jobs ask for a track record (measured on the job's load, ω): the biggest quarter of the listings needs 2 finished jobs
 # and a 70 % delivery score, the biggest tenth 4 jobs and 80 %.
-const JOB_TIERS := [{"load": 11000.0, "jobs": 4, "score": 0.80}, {"load": 6000.0, "jobs": 2, "score": 0.70}]
+const JOB_TIERS := [{"load": 11000.0, "jobs": 4, "score": 0.80}, {"load": 7200.0, "jobs": 2, "score": 0.70}]
+# Pool classes (IDEA-021): small < 1500 ω, large >= 7200 ω; a month's pool holds 40 % small, 40 % medium, 20 % large listings.
+const CLASS_SMALL_MAX := 1500.0
+const CLASS_LARGE_MIN := 7200.0
+const CLASS_SHARE := {"small": 0.4, "medium": 0.4, "large": 0.2}
 const PROGRESS_SHARE := 0.8   # progress payment: at every month end 80 % of the work done so far is paid; the rest comes with the final delivery
 const MONTH_DAYS := 30   # a month is 30 days in the day-by-day engine
 const IDLE_WAGE_FLOOR := 0.5   # share of a crew's wage still paid on a day the machine has no work (short-time work)
@@ -583,6 +587,64 @@ static func fill_offer(offer: Dictionary, specs: Array, rng: RandomNumberGenerat
 	offer["material"] = snappedf(material, 0.001)
 	offer["share"] = material / maxf(0.001, revenue)
 	offer["title"] = TITLES[specs[0]["kind"]][rng.randi_range(0, 2)]
+
+static func job_class(load: float) -> String:
+	return "small" if load < CLASS_SMALL_MAX else ("large" if load >= CLASS_LARGE_MIN else "medium")
+
+# Moves the pool towards 40/40/20 small/medium/large: an offer of an overfull class is re-sized (same machines and
+# duration, workload within what those machines can plausibly do) into an underfull class. Local orders stay as they are.
+static func balance_pool(offers: Array, rng: RandomNumberGenerator) -> void:
+	var total := offers.size()
+	if total < 10:
+		return
+	var target := {"small": roundi(total * 0.4), "medium": roundi(total * 0.4)}
+	target["large"] = total - int(target["small"]) - int(target["medium"])
+	var ranges := {"small": [400.0, CLASS_SMALL_MAX - 50.0], "medium": [CLASS_SMALL_MAX + 100.0, CLASS_LARGE_MIN - 200.0], "large": [CLASS_LARGE_MIN + 200.0, 16000.0]}
+	for _round in 30:
+		var counts := {"small": 0, "medium": 0, "large": 0}
+		for offer in offers:
+			counts[job_class(offer_load(offer))] += 1
+		var under := ""
+		var deficit := 0
+		for name in counts:
+			if int(target[name]) - int(counts[name]) > deficit:
+				deficit = int(target[name]) - int(counts[name])
+				under = name
+		if under == "":
+			return
+		var done := false
+		for strict in [true, false]:   # first from an overfull class, else from any other class (a later round refills it)
+			if done:
+				break
+			for offer in offers:
+				var from := job_class(offer_load(offer))
+				if bool(offer.get("local", false)) or from == under:
+					continue
+				if strict and int(counts[from]) <= int(target[from]):
+					continue
+				if _resize_offer(offer, under, ranges, rng):
+					done = true
+					break
+		if not done:
+			return
+
+static func _resize_offer(offer: Dictionary, under: String, ranges: Dictionary, rng: RandomNumberGenerator) -> bool:
+	var base := 0.0
+	for req in offer["reqs"]:
+		base += float(req["count"]) * ref_output(String(req["kind"])) * float(offer["duration"])
+	var low := maxf(float(ranges[under][0]), 0.55 * base)
+	var high := minf(float(ranges[under][1]), 1.15 * base)
+	if low > high:
+		return false
+	var wanted := rng.randf_range(low, high)
+	var current := maxf(1.0, offer_load(offer))
+	var specs: Array = []
+	for req in offer["reqs"]:
+		specs.append({"kind": req["kind"], "level": req["level"], "n": req["count"], "load": wanted * float(req["workload"]) / current})
+	var keep_title: String = offer["title"]
+	fill_offer(offer, specs, rng)
+	offer["title"] = keep_title
+	return true
 
 static func generate_offers(month: int, salt := 0) -> Array:
 	var rng := RandomNumberGenerator.new()
