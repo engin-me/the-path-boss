@@ -55,8 +55,8 @@ func _run() -> void:
 	if not _near(float(probe["nameplate"]), full, 0.01) or not _near(steps["net"], full / 3.0 * (1.0 - float(probe["scrap"])), 0.01):
 		return _fail("One-shift new Manuel Torna must give power x 1500 / 3 x (1 - scrap): %s" % str(steps))
 	probe["shifts"] = 3
-	if not _near(game.machine_steps(probe, clean)["net"], full * (1.0 - float(probe["scrap"])), 0.01):
-		return _fail("Three shifts must triple the one-shift output")
+	if not _near(game.machine_steps(probe, clean)["net"], full / 3.0 * (Data.shift_efficiency(int(probe["level"]), 1) + Data.shift_efficiency(int(probe["level"]), 2) + Data.shift_efficiency(int(probe["level"]), 3)) * (1.0 - float(probe["scrap"])), 0.01):
+		return _fail("Three shifts must add the shift efficiencies of the one-shift output")
 	# ---- condition: every missing 10 points costs 5 percent capacity, more energy, maintenance and scrap
 	var worn: Dictionary = Data.machine_listings()[12].duplicate()
 	worn["shifts"] = 1
@@ -119,8 +119,16 @@ func _run() -> void:
 	var one_shift: float = game.effective_capacity()
 	for machine in game.delivered():
 		game.set_shifts(machine["uid"], 3)
-	if not _near(game.effective_capacity() / one_shift, 3.0, 0.01):
-		return _fail("Three shifts must triple the output")
+	var shift_gain := 0.0
+	var shift_base := 0.0
+	for machine in game.delivered():
+		var lvl := int(machine["level"])
+		shift_gain += game.shift_yield(machine) * float(machine["nameplate"])
+		shift_base += float(machine["nameplate"])
+		if not _near(game.shift_yield(machine), Data.shift_efficiency(lvl, 1) + Data.shift_efficiency(lvl, 2) + Data.shift_efficiency(lvl, 3), 0.001):
+			return _fail("Three shifts add the shift efficiencies")
+	if game.effective_capacity() / one_shift < 1.9 or game.effective_capacity() / one_shift > 3.01:
+		return _fail("Three shifts must raise the output by the shift efficiencies")
 	for machine in game.delivered():
 		game.set_shifts(machine["uid"], 1)
 	if game.set_overtime(true) == "":
@@ -137,7 +145,7 @@ func _run() -> void:
 	plan_game.problems.clear()
 	var plan_machine: Dictionary = plan_game.delivered()[0]
 	var plan_base: float = plan_game.effective_capacity()
-	if plan_game.set_plan(2, [false, false, false], false) != "" or int(plan_machine["shifts"]) != 2 or not _near(plan_game.effective_capacity() / plan_base, 2.0, 0.01):
+	if plan_game.set_plan(2, [false, false, false], false) != "" or int(plan_machine["shifts"]) != 2 or not _near(plan_game.effective_capacity() / plan_base, 1.0 + Data.shift_efficiency(int(plan_machine["level"]), 2), 0.01):
 		return _fail("A two-shift plan must run every machine on two shifts")
 	if plan_game.set_plan(3, [true, true, true], false) != "" or plan_game.plan_ot.has(true) or int(plan_machine["shifts"]) != 3:
 		return _fail("Three shifts must clear every overtime tick")
@@ -147,6 +155,29 @@ func _run() -> void:
 	var crews := float(plan_machine["personnel"])
 	if not _near(plan_game.machine_wages(plan_machine), (Data.wage_for(plan_machine["kind"]) * (1.0 + Data.OT_HOURS_SHARE * Data.OT_WAGE_MULT) + plan_game.staff_cost_per_head()) * crews * 2.0, 0.001):
 		return _fail("Overtime hours must cost 1.5x the wage")
+	# ---- IDEA-022: fixed-term crews, severance, expiry
+	plan_game.set_plan(1, [false, false, false], false)
+	var wage_one: float = plan_game.machine_wages(plan_machine)
+	plan_game.set_plan(2, [false, false, false], false, 6)
+	var wage_fixed: float = plan_game.machine_wages(plan_machine)
+	plan_game.set_plan(1, [false, false, false], false)
+	plan_game.set_plan(2, [false, false, false], false, 0)
+	var wage_perm: float = plan_game.machine_wages(plan_machine)
+	if not wage_fixed > wage_perm or wage_perm <= wage_one:
+		return _fail("A fixed-term second crew costs more than a permanent one")
+	var sev: float = plan_game.severance_for(1)
+	var cash_before: float = plan_game.cash
+	plan_game.set_plan(1, [false, false, false], false)
+	if sev <= 0.0 or not _near(cash_before - plan_game.cash, sev, 0.001):
+		return _fail("Closing a permanent shift pays severance")
+	plan_game.set_plan(2, [false, false, false], false, 3)
+	if plan_game.severance_for(1) >= sev:
+		return _fail("Fixed-term severance is lower than permanent severance")
+	plan_game.month = plan_game.plan_contract_end
+	plan_game._contract_expiry()
+	if plan_game.plan_shifts != 1 or plan_game.plan_contract != 0:
+		return _fail("A fixed-term contract closes the extra shift when it ends")
+	plan_game.set_plan(2, [true, true, false], false)
 	var plan_copy = Boss.new()
 	if plan_copy.from_save(plan_game.to_save()) != "" or plan_copy.plan_shifts != 2 or not bool(plan_copy.plan_ot[1]):
 		return _fail("The shift plan must survive the save round trip")

@@ -44,6 +44,8 @@ var next_mail := 1
 var plan_shifts := 1   # factory shift plan (applies to every machine; machines can still differ in tests)
 var plan_ot := [false, false, false]   # overtime per shift row
 var staff_policy := 1   # index into Data.STAFF_POLICIES
+var plan_contract := 0   # 0 = permanent crews on the extra shifts, else fixed-term months (3/6/9)
+var plan_contract_end := 0   # first month without the fixed-term crews
 var plan_patron := true   # the owner runs the first shift of one single-operator machine
 var layout := {}   # factory_id -> item key -> {x, y, rot}: cosmetic floor arrangement (IDEA-013)
 
@@ -65,6 +67,8 @@ func to_save() -> Dictionary:
 	data["machines"] = machines.duplicate(true)
 	data["layout"] = layout.duplicate(true)
 	data["plan_shifts"] = plan_shifts
+	data["plan_contract"] = plan_contract
+	data["plan_contract_end"] = plan_contract_end
 	data["plan_ot"] = plan_ot.duplicate()
 	data["plan_patron"] = plan_patron
 	data["staff_policy"] = staff_policy
@@ -116,6 +120,8 @@ func from_save(data: Dictionary) -> String:
 			machine["slot"] = free_slot()
 	layout = copy.get("layout", {})
 	plan_shifts = int(copy.get("plan_shifts", 1))
+	plan_contract = int(copy.get("plan_contract", 0))
+	plan_contract_end = int(copy.get("plan_contract_end", 0))
 	plan_ot = copy.get("plan_ot", [false, false, false]).duplicate()
 	plan_patron = bool(copy.get("plan_patron", true))
 	staff_policy = clampi(int(copy.get("staff_policy", 1)), 0, Data.STAFF_POLICIES.size() - 1)
@@ -365,8 +371,62 @@ func shift_equiv(machine: Dictionary) -> float:
 		equiv += 1.0 + (Data.OT_HOURS_SHARE if plan_ot[i] else 0.0)
 	return minf(equiv, 3.0)
 
+# Productive shift-equivalents: later shifts and overtime run at the machine level's shift efficiency (IDEA-022).
+func shift_yield(machine: Dictionary) -> float:
+	var level := int(machine.get("level", 1))
+	var total := 0.0
+	for i in clampi(int(machine["shifts"]), 1, 3):
+		total += Data.shift_efficiency(level, i + 1)
+		if plan_ot[i]:
+			total += Data.OT_HOURS_SHARE * Data.shift_efficiency(level, 3)
+	return minf(total, 3.0)
+
 func availability(machine: Dictionary) -> float:
-	return shift_equiv(machine) / 3.0
+	return shift_yield(machine) / 3.0
+
+func _crew_wage_mult(shift: int) -> float:
+	return 1.0 + (Data.contract_premium(plan_contract) if shift >= 2 and plan_contract > 0 else 0.0)
+
+# Severance if the plan drops from the current number of shifts to `new_shifts` (permanent crews 2 months of wages,
+# fixed-term crews less). Expiry of a fixed-term contract costs nothing.
+func severance_for(new_shifts: int) -> float:
+	var total := 0.0
+	for machine in delivered():
+		for shift in range(maxi(2, new_shifts + 1), int(machine["shifts"]) + 1):
+			var cut := Data.contract_severance_cut(plan_contract) if plan_contract > 0 else 0.0
+			total += Data.wage_for(machine["kind"]) * _crew_wage_mult(shift) * int(machine["personnel"]) * Data.SEVERANCE_MONTHS * (1.0 - cut)
+	return total
+
+# Month start: fixed-term crews whose contract ended leave; those shifts close without severance.
+func _contract_expiry() -> void:
+	if plan_contract <= 0 or month < plan_contract_end:
+		return
+	if plan_shifts > 1:
+		_find("Ay %d: %d aylık sözleşmeli ekip ayrıldı; ikinci/üçüncü vardiya kapandı (tazminat yok)." % [month, plan_contract])
+		log_event("Personel", "Sözleşmeli ekip sözleşmesi bitti; vardiya sayısı 1'e indi.")
+		last_lines.append("Sözleşmeli ekip ayrıldı: vardiyalar kapandı.")
+		plan_shifts = 1
+		for i in range(1, 3):
+			plan_ot[i] = false
+		for machine in machines:
+			machine["shifts"] = 1
+	plan_contract = 0
+	plan_contract_end = 0
+
+# Short month-start brief on the shift plan (shown once per month by the shell).
+func plan_brief() -> Array:
+	var lines := []
+	if plan_shifts <= 1 and not plan_ot.has(true):
+		return lines
+	var wages := 0.0
+	for machine in delivered():
+		wages += machine_wages(machine)
+	lines.append("Açık vardiya: %d%s · aylık personel gideri %s" % [plan_shifts, " (+mesai)" if plan_ot.has(true) else "", Data.usd(wages)])
+	if plan_contract > 0 and plan_shifts > 1:
+		lines.append("Sözleşmeli ekip %s ayında ayrılır; o gün vardiyalar kapanır, o tezgahlar boşa düşer." % Data.month_label(plan_contract_end).get_slice(" · ", 0))
+	elif plan_shifts > 1:
+		lines.append("Kadrolu ekip: vardiyayı kapatırsan %s tazminat çıkar." % Data.usd(severance_for(1)))
+	return lines
 
 # Staff of one machine: one crew per shift (the owner covers the first shift of his own machine);
 # overtime hours cost 1.5x, so a shift with overtime costs 1 + 0.5 x 1.5 = 1.75 crews.
@@ -375,7 +435,7 @@ func machine_wages(machine: Dictionary) -> float:
 	for shift in range(1, int(machine["shifts"]) + 1):
 		if shift == 1 and machine.get("patron", false):
 			continue
-		wages += Data.wage_for(machine["kind"]) * int(machine["personnel"]) * (1.0 + (Data.OT_HOURS_SHARE * Data.OT_WAGE_MULT if plan_ot[shift - 1] else 0.0))
+		wages += Data.wage_for(machine["kind"]) * _crew_wage_mult(shift) * int(machine["personnel"]) * (1.0 + (Data.OT_HOURS_SHARE * Data.OT_WAGE_MULT if plan_ot[shift - 1] else 0.0))
 		wages += staff_cost_per_head() * int(machine["personnel"])
 	return wages
 
@@ -538,7 +598,7 @@ func set_overtime(on: bool) -> String:
 
 # Factory shift plan: `shifts` crews run every machine, `overtime[i]` adds 4 hours to shift i+1
 # (never with three shifts) and `patron` lets the owner run the first shift of one single-operator machine.
-func set_plan(shifts: int, overtime: Array, patron: bool) -> String:
+func set_plan(shifts: int, overtime: Array, patron: bool, contract := -1) -> String:
 	if phase != "offers":
 		return "Vardiya ve mesai ay başında (rapordan önce) ayarlanır."
 	shifts = clampi(shifts, 1, 3)
@@ -563,6 +623,16 @@ func set_plan(shifts: int, overtime: Array, patron: bool) -> String:
 		for other in machines:
 			other["patron"] = false
 	plan_patron = patron
+	var severance := severance_for(shifts) if shifts < plan_shifts else 0.0
+	if severance > 0.0:
+		cash -= severance
+		log_event("Personel", "Tazminat ödendi: %s" % Data.usd(severance))
+	if shifts > 1 and plan_shifts == 1:
+		plan_contract = contract if contract >= 0 and Data.CONTRACTS.has(contract) else 0
+		plan_contract_end = month + plan_contract if plan_contract > 0 else 0
+	elif shifts <= 1:
+		plan_contract = 0
+		plan_contract_end = 0
 	plan_shifts = shifts
 	plan_ot = ot
 	patron_overtime = ot[0] and not patron_machine().is_empty()

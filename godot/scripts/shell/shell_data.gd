@@ -462,6 +462,21 @@ const MACHINE_AREA_SHARE := 0.51   # machines (listing area) may cover at most t
 const AMORT_MONTHS := 240   # straight-line machine write-off over 20 years; accounting cost, not cash
 const OT_HOURS_SHARE := 0.5   # overtime adds 4 h to an 8 h shift
 const OT_WAGE_MULT := 1.5     # overtime hours cost 1.5x the hourly wage
+# IDEA-022: efficiency of the 1st/2nd/3rd shift per machine level (1 Manuel, 2 CNC, 3 Hassas); overtime hours
+# run at the efficiency of the 3rd shift.
+const SHIFT_EFFICIENCY := {1: [1.0, 0.85, 0.75], 2: [1.0, 0.95, 0.90], 3: [1.0, 1.0, 1.0]}
+const SEVERANCE_MONTHS := 2.0   # monthly wages paid per closed crew (permanent staff)
+# Fixed-term crews of an extra shift: months -> [wage premium, severance cut]
+const CONTRACTS := {3: [0.40, 0.80], 6: [0.30, 0.60], 9: [0.20, 0.40]}
+
+static func shift_efficiency(level: int, shift: int) -> float:
+	return float(SHIFT_EFFICIENCY[clampi(level, 1, 3)][clampi(shift, 1, 3) - 1])
+
+static func contract_premium(months: int) -> float:
+	return float(CONTRACTS[months][0]) if CONTRACTS.has(months) else 0.0
+
+static func contract_severance_cut(months: int) -> float:
+	return float(CONTRACTS[months][1]) if CONTRACTS.has(months) else 0.0
 
 static func mu_text(value: float) -> String:
 	return "%s %s" % [DIFFICULTY_SYMBOL, str(value).trim_suffix(".0")]

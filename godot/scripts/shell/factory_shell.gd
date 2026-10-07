@@ -515,6 +515,9 @@ func _flow_after_month() -> void:
 	_update_clock()
 	if flow_on:
 		_month_banner()
+	var brief: Array = game.plan_brief() if game.phase == "offers" else []
+	if not brief.is_empty():
+		_confirm("Ay başı: vardiya özeti", brief, "Tamam", Callable())
 
 # Big month number that fades away (the small date stays in the header).
 func _month_banner() -> void:
@@ -801,7 +804,7 @@ func _image_slot(kind: String, id: String, tint: Color, height := 250) -> Contro
 
 # ------------------------------------------------------------------ confirm dialog
 
-func _confirm(title: String, lines: Array, ok_text: String, on_ok: Callable, warn := "") -> void:
+func _confirm(title: String, lines: Array, ok_text: String, on_ok: Callable, warn := "", extras := []) -> void:
 	_close_overlay()
 	_auto_pause()   # a decision dialog stops the clock
 	pending = on_ok
@@ -826,6 +829,12 @@ func _confirm(title: String, lines: Array, ok_text: String, on_ok: Callable, war
 	if warn != "":
 		box.add_child(_label(warn, 15, GOLD))
 	box.add_child(_button(ok_text, _confirm_yes, true))
+	for extra in extras:
+		var action: Callable = extra[1]
+		box.add_child(_button(str(extra[0]), func() -> void:
+			audio.play("confirm")
+			_close_overlay()
+			action.call()))
 	box.add_child(_button("Vazgeç", _confirm_no))
 
 func _confirm_yes() -> void:
@@ -3116,7 +3125,34 @@ func _benefit_text(index: int, level: int) -> String:
 	return "V%d · %s/kişi · +%%%.1f" % [level, Data.usd(float(item["cost"]) * float(item["mult"][level - 1])), float(item["bonus"]) * float(item["effect"][level - 1]) * 100.0]
 
 func _on_shift_tick(on: bool, n: int) -> void:
-	_apply_plan(n if on else n - 1, game.plan_ot.duplicate(), game.plan_patron)
+	var target := n if on else n - 1
+	if target > game.plan_shifts and game.plan_shifts == 1 and game.phase == "offers":
+		_ask_open_shift(target)
+		return
+	var severance: float = game.severance_for(target) if target < game.plan_shifts else 0.0
+	if severance > 0.0:
+		_confirm("Vardiyayı kapat", ["Ekip işten çıkarılır; tazminat: %s." % Data.usd(severance)], "Kapat ve öde",
+			func() -> void: _apply_plan(target, game.plan_ot.duplicate(), game.plan_patron), "Sözleşmeli ekipte süre bitince tazminat çıkmaz.")
+		_render()
+		return
+	_apply_plan(target, game.plan_ot.duplicate(), game.plan_patron)
+
+# Opening the second shift hires a new crew per machine: permanent or fixed-term (IDEA-022).
+func _ask_open_shift(target: int) -> void:
+	var wage := 0.0
+	for machine in game.delivered():
+		wage += Data.wage_for(machine["kind"]) * int(machine["personnel"])
+	var extras := []
+	for months in Data.CONTRACTS:
+		var premium: float = Data.contract_premium(months)
+		var cut: float = Data.contract_severance_cut(months)
+		extras.append(["%d ay sözleşmeli · maaş +%%%d · tazminat −%%%d" % [months, int(premium * 100.0), int(cut * 100.0)],
+			func() -> void: _apply_plan(target, game.plan_ot.duplicate(), game.plan_patron, months)])
+	_confirm("%d. vardiyayı aç" % target, ["Tezgah başına yeni personel işe alınır (ekip maaşı yaklaşık %s/ay)." % Data.usd(wage),
+		"Kadrolu: normal maaş, kapatınca 2 aylık tazminat. Sözleşmeli: süre bitince vardiya kendiliğinden kapanır, tazminat yok/az."],
+		"Kadrolu aç", func() -> void: _apply_plan(target, game.plan_ot.duplicate(), game.plan_patron, 0),
+		"Gece ve ek vardiyalar daha verimsizdir (Manuel %85/75, CNC %95/90, Hassas kayıpsız).", extras)
+	_render()
 
 func _on_overtime_tick(on: bool, n: int) -> void:
 	var overtime: Array = game.plan_ot.duplicate()
@@ -3126,8 +3162,8 @@ func _on_overtime_tick(on: bool, n: int) -> void:
 func _on_patron_tick(on: bool) -> void:
 	_apply_plan(game.plan_shifts, game.plan_ot.duplicate(), on)
 
-func _apply_plan(shifts: int, overtime: Array, patron: bool) -> void:
-	var result: String = game.set_plan(shifts, overtime, patron)
+func _apply_plan(shifts: int, overtime: Array, patron: bool, contract := -1) -> void:
+	var result: String = game.set_plan(shifts, overtime, patron, contract)
 	if result != "":
 		_say(result)
 	_render()
