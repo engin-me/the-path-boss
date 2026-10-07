@@ -400,6 +400,19 @@ static func urgency_noisy(offer: Dictionary) -> int:
 static func mail_count(offer: Dictionary, round: int) -> int:
 	return 1 + int(floor(float(urgency_noisy(offer) - 1) / 3.0)) + (round - 1)
 
+# Customer urgency as a label: "Acil" (8-10), "Normal" (4-7), "Esnek" (1-3). Urgent customers tolerate a higher price but no delay.
+static func urgency_label(offer: Dictionary) -> String:
+	var u := int(offer.get("urgency", 5))
+	return "Acil" if u >= 8 else ("Esnek" if u <= 3 else "Normal")
+
+# Small-job premium (IDEA-021): the smaller the job, the wider the price range customers accept at the top; the base margin
+# does not change. 0 at the small-class limit, 1 at 300 ω and below (log scale, no jump).
+const SMALL_PREMIUM := 0.35
+static func small_factor(load: float) -> float:
+	if load >= CLASS_SMALL_MAX:
+		return 0.0
+	return clampf(log(CLASS_SMALL_MAX / maxf(load, 1.0)) / log(CLASS_SMALL_MAX / 300.0), 0.0, 1.0)
+
 static func offer_load(offer: Dictionary) -> float:
 	var total := 0.0
 	for req in offer.get("reqs", []):

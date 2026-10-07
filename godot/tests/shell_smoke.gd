@@ -1130,6 +1130,21 @@ func _run() -> void:
 	var pool_total := float(pool_counts["small"] + pool_counts["medium"] + pool_counts["large"])
 	if absf(float(pool_counts["small"]) / pool_total - 0.4) > 0.05 or absf(float(pool_counts["medium"]) / pool_total - 0.4) > 0.05 or absf(float(pool_counts["large"]) / pool_total - 0.2) > 0.05:
 		return _fail("The pool must follow 40/40/20: %s" % str(pool_counts))
+	if Data.small_factor(2000.0) != 0.0 or Data.small_factor(300.0) < 0.99 or not Data.small_factor(600.0) > Data.small_factor(1200.0):
+		return _fail("The small-job premium grows smoothly as the job shrinks")
+	var small_game = Boss.new()
+	small_game.from_save(snapshot_day)
+	var premium_offer: Dictionary = fason_offer.duplicate(true)
+	for req in premium_offer["reqs"]:
+		req["workload"] = 3000.0
+	var plain_top: float = small_game.customer_limit(premium_offer, 30, int(premium_offer["months"]), 10.0)
+	var plain_low: float = small_game.customer_limit(premium_offer, 30, int(premium_offer["months"]), 1.0)
+	for req in premium_offer["reqs"]:
+		req["workload"] = 400.0
+	if not small_game.customer_limit(premium_offer, 30, int(premium_offer["months"]), 10.0) > plain_top * 1.05 or not _near(small_game.customer_limit(premium_offer, 30, int(premium_offer["months"]), 1.0), plain_low, 0.0001):
+		return _fail("Small jobs accept higher top prices; the base margin is unchanged")
+	if Data.urgency_label({"urgency": 9}) != "Acil" or Data.urgency_label({"urgency": 2}) != "Esnek" or Data.urgency_label({"urgency": 5}) != "Normal":
+		return _fail("Urgency labels")
 	var pool_game = Boss.new()
 	pool_game.from_save(snapshot_day)
 	pool_game._generate_offers()

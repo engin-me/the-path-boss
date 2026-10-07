@@ -1866,6 +1866,8 @@ func _offer_card(offer: Dictionary, reason: String) -> void:
 	tiles.add_child(_mini_tile("is_ilani_malzeme", Data.STEEL_GRADE[int(offer["reqs"][0]["steel"])], false))
 	box.add_child(tiles)
 	box.add_child(_need_icons(offer, open))
+	var urgency_color: Color = RED if Data.urgency_label(offer) == "Acil" else (GREEN if Data.urgency_label(offer) == "Esnek" else MUTED)
+	box.add_child(_label("%s müşteri" % Data.urgency_label(offer), 12, urgency_color, false))
 	var gate: Dictionary = Data.job_gate(offer)
 	if not gate.is_empty():
 		var met: bool = game.gate_block_reason(int(offer["id"])) == ""
@@ -2055,6 +2057,7 @@ func _detail_quote() -> void:
 	who.add_child(who_right)
 	box.add_child(who)
 	box.add_child(_label(offer["title"], 22, TEXT))
+	box.add_child(_label("%s müşteri · %s" % [Data.urgency_label(offer), {"Acil": "fiyata toleranslı, gecikmeye hiç toleranslı değil", "Normal": "dengeli", "Esnek": "fiyata hassas, süre konusunda esnek"}[Data.urgency_label(offer)]], 12, MUTED, false))
 	box.add_child(_quote_line())
 	_quote_pair(box, ["Parça Sayısı", parts_text], ["Hammadde", "müşteri verir" if fason else grade])
 	_quote_pair(box, ["Parça İş Gücü (ω)", str(difficulty).trim_suffix(".0").replace(".", ",")], ["Tolerans (mm)", Data.tolerance_text(tol)])
