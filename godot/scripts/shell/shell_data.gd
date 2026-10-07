@@ -277,10 +277,16 @@ const EQUIPMENT := {
 	"el_aleti": {"name": "El aletleri seti", "price": 0.5, "area": 1.0, "required": true, "note": "Bakım ve ayar"},
 	"takim": {"name": "Takım ve fikstür seti", "price": 0.3, "area": 1.0, "required": true, "note": "Tezgah bağlama takımları"},
 	"forklift": {"name": "Forklift", "price": 15.0, "area": 0.0, "required": false, "note": "Depo & Sevkiyat sorun ihtimalini azaltır; OEE'ye yansır (test)"},
+	"forklift_70": {"name": "Forklift", "kind": "forklift", "condition": 70, "price": 10.5, "area": 0.0, "required": false, "note": "İkinci el; yeni forkliftle aynı işi görür, zamanla faydası azalacak (test)"},
+	"forklift_40": {"name": "Forklift", "kind": "forklift", "condition": 40, "price": 6.0, "area": 0.0, "required": false, "note": "İkinci el; yeni forkliftle aynı işi görür, zamanla faydası azalacak (test)"},
 	"olcum": {"name": "Kalite ölçüm seti", "price": 8.0, "area": 1.5, "required": false, "note": "Kalite sorun ihtimalini azaltır (test)"},
 	"vinc": {"name": "Köprü vinç", "price": 40.0, "area": 0.0, "required": false, "min_height": 5.0, "note": "Ağır parçalar; en az 5,0 m tavan gerekir (test)"}
 }
-const OPTIONAL_ORDER := ["forklift", "olcum", "vinc", "transpalet", "kasa", "raf"]
+const OPTIONAL_ORDER := ["forklift", "forklift_70", "forklift_40", "olcum", "vinc", "transpalet", "kasa", "raf"]
+
+# Equipment type of an id (used variants share the type of the new one).
+static func equipment_kind(id: String) -> String:
+	return String(EQUIPMENT[id].get("kind", id))
 
 static func size_class(m2: int) -> String:
 	if m2 >= 1500:

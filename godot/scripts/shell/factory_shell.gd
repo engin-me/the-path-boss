@@ -2081,10 +2081,12 @@ func _detail_quote() -> void:
 	_quote_row(box, "Genel Gider & Amortisman", Data.usd(_sum_lines(lines, "overhead") + _sum_lines(lines, "amortization")), TEXT, 14)
 	_quote_row(box, "Toplam Gider", Data.usd(total), TEXT, 16)
 	box.add_child(_quote_line())
+	var shifts_row := HBoxContainer.new()
+	shifts_row.add_theme_constant_override("separation", 10)
 	var shifts := GridContainer.new()
 	shifts.columns = 3
+	shifts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	shifts.add_theme_constant_override("h_separation", 10)
-	var plan_editable: bool = game.phase == "offers"
 	for n in [1, 2, 3]:
 		var cell := VBoxContainer.new()
 		cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -2092,18 +2094,24 @@ func _detail_quote() -> void:
 		tick.text = "Vardiya %d" % n
 		tick.add_theme_font_size_override("font_size", _fs(13))
 		tick.button_pressed = game.plan_shifts >= n
-		tick.disabled = n == 1 or not plan_editable
-		tick.toggled.connect(_on_shift_tick.bind(n))
+		tick.disabled = true   # information only; the plan is changed on the factory's shift page
+		tick.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		cell.add_child(tick)
 		var overtime := CheckBox.new()
 		overtime.text = "Mesai + 4 sa"
 		overtime.add_theme_font_size_override("font_size", _fs(12))
 		overtime.button_pressed = bool(game.plan_ot[n - 1])
-		overtime.disabled = not plan_editable or n > game.plan_shifts or game.plan_shifts >= 3
-		overtime.toggled.connect(_on_overtime_tick.bind(n))
+		overtime.disabled = true
+		overtime.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		cell.add_child(overtime)
 		shifts.add_child(cell)
-	box.add_child(shifts)
+	shifts_row.add_child(shifts)
+	var to_shifts := _button("›", func() -> void:
+		subtab["fabrika"] = "vardiya"
+		_on_tab("fabrika"))
+	to_shifts.custom_minimum_size = Vector2(52, 52)
+	shifts_row.add_child(to_shifts)
+	box.add_child(shifts_row)
 	var gantt = PlanGantt.new()
 	gantt.lane_tapped.connect(func(_kind: String) -> void: _say("Plan penceresi (süre hesabı) yakında."))
 	box.add_child(gantt)
@@ -2892,7 +2900,7 @@ func _buy(uid: int) -> void:
 
 # ------------------------------------------------------------------ Ekipman
 
-const EQUIPMENT_PHOTO := {"transpalet": "transpalet", "kasa": "malzeme_kasası", "raf": "depo_rafi", "forklift": "forklift_100", "olcum": "kalite_olcum_100", "vinc": "kopru_vinc"}
+const EQUIPMENT_PHOTO := {"transpalet": "transpalet", "kasa": "malzeme_kasası", "raf": "depo_rafi", "forklift": "forklift_100", "forklift_70": "forklift_70", "forklift_40": "forklift_40", "olcum": "kalite_olcum_100", "vinc": "kopru_vinc"}
 
 # Photo (left) and title/price (right) of an equipment card, the same layout as the machine cards.
 func _equipment_head(box: VBoxContainer, photo_name: String, title: String, subtitle: String, price: float) -> void:
@@ -2940,7 +2948,7 @@ func _equipment_card(id: String) -> void:
 	var box := _card(content, "", BORDER, true)
 	box.add_theme_constant_override("separation", 12)
 	_equipment_head(box, String(EQUIPMENT_PHOTO.get(id, "ekipman_resim")), String(item["name"]), "", float(item["price"]))
-	_row(box, "Durum", "Yeni", TEXT, 14)
+	_row(box, "Durum", "Yeni" if not item.has("condition") else "İkinci El - %%%d" % int(item["condition"]), TEXT, 14)
 	_row(box, "Gerekli Alan", "%s m²" % str(item["area"]).replace(".", ",") if float(item["area"]) > 0.0 else "alan tüketmez", TEXT, 14)
 	_row(box, "Mevcut", "%d ad" % game.equipment_owned(id), TEXT, 14)
 	box.add_child(_label(item["note"], 12, MUTED))

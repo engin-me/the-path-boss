@@ -112,7 +112,8 @@ func _equipment_counts() -> Dictionary:
 		for id in package["items"]:
 			counts[id] = int(package["items"][id])
 	for id in game.equip:
-		counts[id] = int(counts.get(id, 0)) + int(game.equip[id])
+		var kind: String = Data.equipment_kind(id)
+		counts[kind] = int(counts.get(kind, 0)) + int(game.equip[id])
 	return counts
 
 # Equipment goes to the free floor nearest the walls, away from the slots and the ramp aprons.

@@ -893,6 +893,14 @@ func equipment_owned(id: String) -> int:
 		count += int(package_info()["items"].get(id, 0))
 	return count
 
+# Pieces of an equipment type, new and second-hand together.
+func equipment_kind_owned(kind: String) -> int:
+	var count := 0
+	for id in Data.EQUIPMENT:
+		if Data.equipment_kind(id) == kind:
+			count += equipment_owned(id)
+	return count
+
 func machines_owned(kind: String, level: int) -> int:
 	var count := 0
 	for machine in machines:

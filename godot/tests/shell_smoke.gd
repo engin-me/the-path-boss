@@ -459,6 +459,9 @@ func _run() -> void:
 	for uid in [13, 14, 17, 16]:
 		shell.game.buy_listing(uid)
 	shell.game.buy_equipment("forklift", 1)
+	shell.game.buy_equipment("forklift_70", 1)
+	if shell.game.equipment_kind_owned("forklift") != 2 or not float(Data.EQUIPMENT["forklift_70"]["price"]) < float(Data.EQUIPMENT["forklift"]["price"]):
+		return _fail("A second-hand forklift is cheaper and counts as a forklift")
 	shell.subtab["fabrika"] = "yerlesim"
 	shell._on_tab("fabrika")
 	var plan_view = shell.floor_view
