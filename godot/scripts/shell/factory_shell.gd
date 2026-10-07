@@ -2892,16 +2892,43 @@ func _buy(uid: int) -> void:
 
 # ------------------------------------------------------------------ Ekipman
 
+const EQUIPMENT_PHOTO := {"transpalet": "transpalet", "kasa": "malzeme_kasası", "raf": "depo_rafi", "forklift": "forklift_100", "olcum": "kalite_olcum_100", "vinc": "kopru_vinc"}
+
+# Photo (left) and title/price (right) of an equipment card, the same layout as the machine cards.
+func _equipment_head(box: VBoxContainer, photo_name: String, title: String, subtitle: String, price: float) -> void:
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 12)
+	var photo := Art.find("res://art/" + photo_name)
+	if photo != null:
+		var frame := _rounded_photo(photo, Vector2(0, 150), 16)
+		frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		frame.size_flags_stretch_ratio = 3.0
+		top.add_child(frame)
+	var side := VBoxContainer.new()
+	side.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	side.size_flags_stretch_ratio = 2.0
+	side.add_child(_label(title, 18, TEXT))
+	if subtitle != "":
+		side.add_child(_label(subtitle, 12, MUTED))
+	var spacer := Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	side.add_child(spacer)
+	side.add_child(_label("Fiyat", 12, MUTED, false))
+	side.add_child(_label(Data.usd(price), 22, GREEN, false))
+	top.add_child(side)
+	box.add_child(top)
+
 func _page_equipment() -> void:
 	var package: Dictionary = game.package_info()
-	var box := _card(content, "Gerekli ekipman seti" + (" ✔" if game.package_bought else ""), GREEN if game.package_bought else GOLD, true)
-	box.add_child(_label("Üretim yapabilmek için şart. Eksikse kapasite kullanılamaz.", 14, MUTED))
+	var box := _card(content, "", GREEN if game.package_bought else GOLD, true)
+	box.add_theme_constant_override("separation", 12)
+	_equipment_head(box, "ekipman_resim", "Gerekli Ekipman Seti" + (" ✔" if game.package_bought else ""), "Üretim için şart; eksikse kapasite kullanılamaz.", float(package["price"]))
 	for id in package["items"]:
 		var item: Dictionary = Data.EQUIPMENT[id]
-		_row(box, "%s × %d" % [item["name"], package["items"][id]], Data.usd(float(item["price"]) * int(package["items"][id])), TEXT, 15)
-	_row(box, "Set fiyatı", Data.usd(float(package["price"])), GREEN, 17)
+		_row(box, "%s x %d" % [item["name"], package["items"][id]], Data.usd(float(item["price"]) * int(package["items"][id])), TEXT, 14)
+	_row(box, "Set Fiyatı", Data.usd(float(package["price"])), GREEN, 16)
 	var reason: String = game.package_block_reason()
-	box.add_child(_button("Seti satın al" if reason == "" else reason, _ask_package, reason == "", reason != "", true))
+	box.add_child(_button("Satın Al" if reason == "" else reason, _ask_package, reason == "", reason != "", true))
 	content.add_child(_label("İsteğe bağlı ekipman", 20, TEXT))
 	content.add_child(_label("Kesici uç ve takım sarfı tezgahın aylık işletme giderine dahildir.", 12, MUTED))
 	for id in Data.OPTIONAL_ORDER:
@@ -2910,9 +2937,13 @@ func _page_equipment() -> void:
 func _equipment_card(id: String) -> void:
 	var item: Dictionary = Data.EQUIPMENT[id]
 	var qty: int = equip_qty.get(id, 1)
-	var box := _card(content, "%s  (Mevcut: %d ad)" % [item["name"], game.equipment_owned(id)], BORDER, true)
-	box.add_child(_label(item["note"], 13, MUTED))
-	_row(box, "Birim fiyat", Data.usd(float(item["price"])), TEXT, 16)
+	var box := _card(content, "", BORDER, true)
+	box.add_theme_constant_override("separation", 12)
+	_equipment_head(box, String(EQUIPMENT_PHOTO.get(id, "ekipman_resim")), String(item["name"]), "", float(item["price"]))
+	_row(box, "Durum", "Yeni", TEXT, 14)
+	_row(box, "Gerekli Alan", "%s m²" % str(item["area"]).replace(".", ",") if float(item["area"]) > 0.0 else "alan tüketmez", TEXT, 14)
+	_row(box, "Mevcut", "%d ad" % game.equipment_owned(id), TEXT, 14)
+	box.add_child(_label(item["note"], 12, MUTED))
 	var stepper := HBoxContainer.new()
 	stepper.add_theme_constant_override("separation", 10)
 	stepper.add_child(_button("−", _change_qty.bind(id, -1)))
@@ -2923,7 +2954,7 @@ func _equipment_card(id: String) -> void:
 	stepper.add_child(_button("+", _change_qty.bind(id, 1)))
 	box.add_child(stepper)
 	var reason: String = game.equipment_block_reason(id, qty)
-	box.add_child(_button("Satın al · %s" % Data.usd(float(item["price"]) * qty) if reason == "" else reason, _ask_equipment.bind(id), reason == "", reason != "", true))
+	box.add_child(_button("Satın Al · %s" % Data.usd(float(item["price"]) * qty) if reason == "" else reason, _ask_equipment.bind(id), reason == "", reason != "", true))
 
 func _change_qty(id: String, delta: int) -> void:
 	equip_qty[id] = maxi(1, int(equip_qty.get(id, 1)) + delta)
