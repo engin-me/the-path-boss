@@ -1204,6 +1204,42 @@ func _run() -> void:
 		var date_check: Array = bp._date_after(40)
 		if int(planned_job["start_month"]) != int(date_check[0]) or int(planned_job["start_day"]) != int(date_check[1]):
 			return _fail("The created job keeps the planned start date")
+	# ---- plan slip warning: the first forecast is the plan, a later one that is 3+ days worse warns
+	var ps = Boss.new()
+	ps.from_save(snapshot_day)
+	if not ps.jobs.is_empty():
+		ps.plan_slips()
+		var first_job: Dictionary = ps.jobs[0]
+		if first_job.has("plan_finish"):
+			var worse: Array = [int(first_job["plan_finish"][0]) + 1, int(first_job["plan_finish"][1])]
+			first_job["plan_finish"] = [int(worse[0]) - 2 if int(worse[0]) > 2 else 1, int(worse[1])]
+			var slips: Array = ps.plan_slips()
+			if slips.is_empty() and ps.projection_days().has(first_job["id"]):
+				return _fail("A job that finishes later than its plan must be reported")
+	# ---- postponement request: odds follow urgency, months, closeness, history and discount; the answer is a delayed mail
+	var pp2 = Boss.new()
+	pp2.from_save(snapshot_day)
+	if pp2.jobs.is_empty():
+		return _fail("The snapshot must hold a running job for the postponement test")
+	if not pp2.jobs.is_empty():
+		var pjob: Dictionary = pp2.jobs[0]
+		pjob["urgency"] = 9
+		var urgent_odds: float = pp2.postpone_chance(pjob, 1, 0)
+		pjob["urgency"] = 2
+		var relaxed_odds: float = pp2.postpone_chance(pjob, 1, 0)
+		if not relaxed_odds > urgent_odds * 5.0 or not pp2.postpone_chance(pjob, 3, 0) < relaxed_odds or not pp2.postpone_chance(pjob, 1, 8) > relaxed_odds:
+			return _fail("Postponement odds: urgent customers refuse, more months hurt, a discount helps")
+		pjob["postponed"] = 2
+		if not pp2.postpone_chance(pjob, 1, 0) < relaxed_odds:
+			return _fail("Earlier requests lower the odds")
+		pjob["postponed"] = 0
+		var mails_before: int = pp2.mails.size()
+		var due_before: int = int(pjob["due_month"])
+		var answer: Dictionary = pp2.request_postpone(pjob["id"], 1, 0)
+		if not bool(answer["ok"]) or pp2.mails.size() != mails_before + 1 or pp2.mail_arrived(answer["mail"]):
+			return _fail("A postponement request answers by delayed mail")
+		if bool(answer["accepted"]) != (int(pjob["due_month"]) == due_before + 1):
+			return _fail("An accepted postponement moves the delivery month, a refused one does not")
 	var pool_game = Boss.new()
 	pool_game.from_save(snapshot_day)
 	pool_game._generate_offers()

@@ -417,8 +417,32 @@ func _contract_expiry() -> void:
 	plan_contract_end = 0
 
 # Short month-start brief on the shift plan (shown once per month by the shell).
+func _abs_day(date: Array) -> int:
+	return (int(date[0]) - 1) * Data.MONTH_DAYS + int(date[1])
+
+# Jobs that now finish later than the plan they were accepted with (a shift was cut, a machine broke down, ...):
+# [{title, days}]. The first forecast of an accepted job is its plan; a better forecast raises the bar.
+func plan_slips() -> Array:
+	var slips := []
+	var finish := projection_days()
+	for job in jobs:
+		var when: Array = finish.get(job["id"], [])
+		if when.is_empty():
+			continue
+		if not job.has("plan_finish"):
+			job["plan_finish"] = when
+			continue
+		var slip := _abs_day(when) - _abs_day(job["plan_finish"])
+		if slip < 0:
+			job["plan_finish"] = when
+		elif slip >= 3:
+			slips.append({"title": job["title"], "days": slip})
+	return slips
+
 func plan_brief() -> Array:
 	var lines := []
+	for slip in plan_slips():
+		lines.append("Plan gerisinde: %s · %d gün geç bitecek." % [slip["title"], slip["days"]])
 	if plan_shifts <= 1 and not plan_ot.has(true):
 		return lines
 	var wages := 0.0
@@ -1770,6 +1794,68 @@ func mail_thread(mail: Dictionary) -> Array:
 # A customer answer travels for 5-10 seconds (real time) before it shows up in the inbox.
 func mail_arrived(mail: Dictionary) -> bool:
 	return not mail.has("ready_ms") or Time.get_ticks_msec() >= int(mail["ready_ms"])
+
+# ---------------------------------------------------------------- delivery postponement (IDEA-023)
+
+const POSTPONE_MAX_MONTHS := 3
+const POSTPONE_DISCOUNT_STEP := 0.04   # each percent of discount offered raises the odds by this much (capped)
+
+# Chance that the customer lets the delivery slip by `months` (with `discount_pct` off the price): urgency, delivery score,
+# how many months are asked, how close the delivery is, earlier requests (the first one is free) and the discount.
+func postpone_chance(job: Dictionary, months: int, discount_pct: int) -> float:
+	var urgency := int(job.get("urgency", 5))
+	var base := 0.03 if urgency >= 8 else (0.9 if urgency <= 3 else 0.55)
+	base *= 0.6 + 0.4 * delivery_score
+	base *= pow(0.5, float(maxi(0, months - 1)))
+	var left := int(job["due_month"]) - month
+	base *= 1.0 if left >= 4 else (0.9 if left == 3 else (0.7 if left == 2 else (0.4 if left == 1 else 0.2)))
+	base *= pow(0.6, float(int(job.get("postponed", 0))))
+	base += minf(0.3, POSTPONE_DISCOUNT_STEP * float(discount_pct)) * (0.0 if urgency >= 8 else 1.0)   # an urgent customer is not for sale
+	return clampf(base, 0.0, 0.95)
+
+func postpone_block_reason(job_id: int) -> String:
+	var job := job_by_id(job_id)
+	if job.is_empty():
+		return "İş bulunamadı."
+	if bool(job.get("continuous", false)):
+		return "Sürekli İş'te teslim tarihi ötelenmez."
+	if month > int(job["due_month"]):
+		return "Teslim tarihi geçti."
+	return ""
+
+# Asks the customer to move the delivery; the answer comes as mail. Returns {ok, accepted, mail}.
+func request_postpone(job_id: int, months: int, discount_pct: int) -> Dictionary:
+	var reason := postpone_block_reason(job_id)
+	if reason != "":
+		return {"ok": false, "reason": reason}
+	var job := job_by_id(job_id)
+	months = clampi(months, 1, POSTPONE_MAX_MONTHS)
+	var chance := postpone_chance(job, months, discount_pct)
+	var roll := RandomNumberGenerator.new()
+	roll.seed = 17 * int(job["id"]) + 101 * int(job.get("postponed", 0)) + month
+	var accepted := roll.randf() < chance
+	job["postponed"] = int(job.get("postponed", 0)) + 1
+	var title := "İş No: %d teslim tarihi talebiniz" % _job_no_of(job)
+	var lines: Array = []
+	if accepted:
+		job["due_month"] = int(job["due_month"]) + months
+		job["months"] = int(job["months"]) + months
+		if discount_pct > 0:
+			job["revenue"] = snappedf(float(job["revenue"]) * (1.0 - float(discount_pct) / 100.0), 0.001)
+		lines = ["Merhaba,", "Teslim tarihini %d ay öteleme talebinizi kabul ediyoruz.%s" % [months, " Karşılığında %%%d indirim uygulanacak." % discount_pct if discount_pct > 0 else ""],
+			"Yeni teslim tarihi: %s." % Data.month_label(int(job["due_month"])).get_slice(" · ", 1), "Saygılar"]
+		log_event("İşler", "Teslim ötelendi: %s (+%d ay)" % [job["title"], months])
+	else:
+		lines = ["Merhaba,", "Üzgünüz, bu işin teslim tarihini öteleyemiyoruz; mevcut tarih bizim için sabit.", "Saygılar"]
+		if chance > 0.25 and discount_pct < 10:
+			lines.insert(2, "Bir fiyat indirimi önerirseniz yeniden değerlendirebiliriz.")
+		log_event("İşler", "Teslim öteleme talebi reddedildi: %s" % job["title"])
+	var mail := post_mail(title, lines, String(job["customer"]))
+	delay_mail(mail)
+	return {"ok": true, "accepted": accepted, "mail": mail}
+
+func _job_no_of(job: Dictionary) -> int:
+	return 261000 + int(job["id"])
 
 func delay_mail(mail: Dictionary) -> void:
 	mail["ready_ms"] = Time.get_ticks_msec() + randi_range(5000, 10000)

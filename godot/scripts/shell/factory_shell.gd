@@ -522,7 +522,7 @@ func _flow_after_month() -> void:
 		_month_banner()
 	var brief: Array = game.plan_brief() if game.phase == "offers" else []
 	if not brief.is_empty():
-		_confirm("Ay başı: vardiya özeti", brief, "Tamam", Callable())
+		_confirm("Ay başı özeti", brief, "Tamam", Callable())
 
 # Big month number that fades away (the small date stays in the header).
 func _month_banner() -> void:
@@ -1445,8 +1445,33 @@ func _job_card(job: Dictionary, finish_month: int) -> void:
 		card.add_child(_button("Tolerans payını değiştir", _bonus_popup.bind(job["id"])))
 	_row(card, "Peşinat alındı", Data.usd(float(job["advance"])), MUTED, 13)
 	_row(card, "Gelir (tesliminde)", Data.usd(float(job["revenue"])), GREEN, 14)
+	var postpone_reason: String = game.postpone_block_reason(job["id"])
+	if postpone_reason == "":
+		card.add_child(_button("Mail at: teslimi ötele", _postpone_popup.bind(job["id"])))
 	var reason: String = game.abandon_block_reason(job["id"])
 	card.add_child(_button("İşi bırak · ceza %s" % Data.usd(game.abandon_penalty(job)) if reason == "" else reason, _ask_abandon.bind(job["id"]), false, reason != ""))
+
+# Asks the customer to move the delivery date (IDEA-023); the answer comes as mail a few seconds later.
+func _postpone_popup(job_id: int) -> void:
+	var job: Dictionary = game.job_by_id(job_id)
+	if job.is_empty():
+		return
+	var months_box := [1]
+	var discount_box := [0]
+	_filter_popup("Teslimi ötele", func(box: VBoxContainer) -> void:
+		box.add_child(_label("%s · mevcut teslim: %s" % [job["title"], Data.month_label(int(job["due_month"]))], 13, MUTED))
+		box.add_child(_label("Müşteri yanıtı mail olarak gelir. Aciliyet, teslim skorun, istenen süre, teslime kalan zaman ve önceki taleplerin etkiler; ilk talep ücretsizdir, sonrakilerin kabul ihtimali düşer. Fiyat indirimi önermek ihtimali artırır (acil müşteri için pek değil).", 12, MUTED))
+		_slider_row(box, "Süre", 1, game.POSTPONE_MAX_MONTHS, 1, func(v: int, shown: Label) -> void:
+			months_box[0] = v
+			shown.text = "%d ay" % v)
+		_slider_row(box, "İndirim", 0, 10, 0, func(v: int, shown: Label) -> void:
+			discount_box[0] = v
+			shown.text = "%%%d" % v)
+		box.add_child(_button("Mail gönder", func() -> void:
+			var result: Dictionary = game.request_postpone(job_id, int(months_box[0]), int(discount_box[0]))
+			_close_overlay()
+			_say("Talebiniz iletildi; müşteri birkaç saniye içinde yanıt verecek." if bool(result["ok"]) else String(result["reason"]))
+			_render(), true)))
 
 # Tolerance slack: the drawing is looser than the machine, so the boss trades the room for speed or for scrap.
 func _bonus_popup(job_id: int) -> void:
