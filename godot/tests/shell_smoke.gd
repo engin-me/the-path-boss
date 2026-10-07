@@ -399,9 +399,13 @@ func _run() -> void:
 	if shell.content.get_child_count() < 3:
 		return _fail("Quote screen did not render")
 	shell._send_quote(quote_offer["id"])
+	if shell.game.mails.is_empty() or shell.game.mail_arrived(shell.game.mails[0]):
+		return _fail("The customer's answer must exist but travel for a few seconds")
+	for mail in shell.game.mails:
+		mail.erase("ready_ms")   # fast-forward the wait
 	shell._on_tab("mail")
-	if shell.game.mails.is_empty() or shell.content.get_child_count() < 2:
-		return _fail("Sending a quote must create a mail and show it")
+	if shell.content.get_child_count() < 1 or shell.game.unread_mails() < 1:
+		return _fail("Once it has arrived the mail shows in the inbox")
 	shell._open_mail(shell.game.mails[0]["id"])
 	if shell.content.get_child_count() < 2 or not shell.game.mails[0]["read"]:
 		return _fail("Opening a mail must render it and mark it read")
@@ -1077,5 +1081,33 @@ func _run() -> void:
 	gt.delivery_score = 0.85
 	if gt.gate_block_reason(987654) != "":
 		return _fail("With the record the listing opens")
+	# ---- quote calendar and delayed mail
+	var pl = Boss.new()
+	pl.from_save(snapshot_day)
+	pl.jobs.clear()
+	var quote_calendar_offer: Dictionary = {}
+	for candidate in pl.offers:
+		if pl.fit_block_reason(candidate["id"]) == "" and pl.gate_block_reason(candidate["id"]) == "":
+			quote_calendar_offer = candidate
+			break
+	if quote_calendar_offer.is_empty():
+		quote_calendar_offer = fason_offer
+	var plan: Dictionary = pl.plan_schedule(quote_calendar_offer, int(quote_calendar_offer["months"]))
+	var found_extra := false
+	for kind in plan["kinds"]:
+		for segment in plan["kinds"][kind]:
+			if bool(segment["extra"]) and int(segment["end"]) > int(segment["start"]):
+				found_extra = true
+	if not found_extra or int(plan["window_end"]) <= 0:
+		return _fail("The quote calendar places the quoted job and knows the customer's window")
+	var mail_test := {"id": 99999, "read": false}
+	pl.mails.push_front(mail_test)
+	var unread_before: int = pl.unread_mails()
+	pl.delay_mail(mail_test)
+	if pl.mail_arrived(mail_test) or pl.unread_mails() != unread_before - 1:
+		return _fail("A delayed mail is not in the inbox yet and not counted as unread")
+	mail_test["ready_ms"] = 0
+	if not pl.mail_arrived(mail_test) or pl.unread_mails() != unread_before:
+		return _fail("Once its time has come the mail counts as unread")
 	print("Shell smoke passed")
 	quit(0)

@@ -13,6 +13,7 @@ const FloorScript = preload("res://scripts/shell/factory_floor.gd")
 const AudioDirector = preload("res://scripts/shell/audio_director.gd")
 const GaugeScript = preload("res://scripts/shell/gauge.gd")
 const YonetimView = preload("res://scripts/shell/yonetim_view.gd")
+const PlanGantt = preload("res://scripts/shell/plan_gantt.gd")
 
 # Palette (art/ui/renk_paleti.png)
 const BG := Color("#0f1720")          # main screen background (as drawn in the design deck)
@@ -106,6 +107,9 @@ var stage: Control
 var background: TextureRect
 var content: VBoxContainer
 var tab_captions := {}
+var mail_badge: PanelContainer
+var mail_badge_label: Label
+var announced_mails := {}
 var tab_buttons := {}
 var scroll_view: ScrollContainer
 var floor_view: Control
@@ -392,6 +396,33 @@ func _skip_month() -> void:
 func _date_text() -> String:
 	return Data.month_label(int(game.month)).get_slice(" · ", 1)   # "Mart 2027"; the day is on the time bar
 
+func _update_mail_badge() -> void:
+	if mail_badge == null:
+		return
+	var unread: int = game.unread_mails()
+	mail_badge.visible = unread > 0
+	mail_badge_label.text = str(unread) if unread < 10 else "9+"
+	# top-right corner of the Mail button
+	var button: Button = tab_buttons["mail"]
+	mail_badge.position = Vector2(button.size.x - mail_badge.size.x - 6.0, 4.0)
+
+# A customer answer reaches the inbox 5-10 seconds after the quote: a short note, the red badge, no auto-open.
+func _check_mail_arrivals() -> void:
+	if game == null:
+		return
+	var news := false
+	for mail in game.mails.slice(0, 6):
+		var id: int = int(mail["id"])
+		if mail.has("ready_ms") and game.mail_arrived(mail) and not announced_mails.has(id):
+			announced_mails[id] = true
+			news = true
+			_toast("✉ Yeni mail: %s" % mail["title"], 0.0)
+			audio.play("coin_up")
+	if news:
+		_update_mail_badge()
+		if page == "mail" and detail == "" and mail_open < 0:
+			_render_keep_scroll()
+
 func _update_clock() -> void:
 	if clock_bar == null:
 		return
@@ -411,6 +442,7 @@ func _update_clock() -> void:
 			button.add_theme_color_override(color_name, GREEN_HI if active else TEXT)
 
 func _process(delta: float) -> void:
+	_check_mail_arrivals()
 	if not flow_on or flow_speed <= 0 or game == null or game.phase != "offers":
 		return
 	if overlay != null and overlay.get_child_count() > 0:
@@ -557,6 +589,19 @@ func _build_tab_bar() -> Control:
 		_juice(button)
 		row.add_child(button)
 		tab_buttons[tab["id"]] = button
+		if tab["id"] == "mail":
+			mail_badge = PanelContainer.new()
+			mail_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			mail_badge.add_theme_stylebox_override("panel", _box(RED, BAR, 12, 2))
+			mail_badge_label = _label("0", 11, BG, false)
+			mail_badge_label.add_theme_font_override("font", FONT_SEMIBOLD)
+			mail_badge_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			mail_badge.add_child(_margin(mail_badge_label, 6, 0))
+			mail_badge.custom_minimum_size = Vector2(22, 22)
+			button.add_child(mail_badge)
+			mail_badge.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+			mail_badge.position = Vector2(button.size.x * 0.0, 0.0)
+			mail_badge.visible = false
 	return bar
 
 # Section picker at the top of every Ofis screen: summary, plant, jobs, suppliers and the boss profile in one place.
@@ -892,11 +937,7 @@ func _render_inner() -> void:
 	header_hours.text = "⏱ %d/%d sa" % [game.hours_left, game.monthly_hours] if game.phase == "report" else ""
 	if tab_buttons.has("mail"):
 		var unread: int = game.unread_mails()
-		var mail_text := "Mail (%d)" % unread if unread > 0 else "Mail"
-		if tab_captions.has("mail"):
-			tab_captions["mail"].text = mail_text
-		else:
-			tab_buttons["mail"].text = mail_text
+		_update_mail_badge()
 	for id in tab_buttons:
 		var active: bool = id == page or (id == "ofis" and OFFICE_PAGES.has(page))
 		if page == "ilanlar":
@@ -1833,6 +1874,18 @@ func _gold_italic(text: String, size := 13) -> Label:
 	label.add_theme_font_override("font", font)
 	return label
 
+# Fills the quote calendar from the engine: one lane per machine kind the job needs.
+func _update_gantt(gantt: Control, offer: Dictionary, months: int) -> void:
+	var plan: Dictionary = game.plan_schedule(offer, months)
+	var lanes: Array = []
+	var horizon := float(plan["window_end"]) + 30.0
+	for kind in plan["kinds"]:
+		var segments: Array = plan["kinds"][kind]
+		for segment in segments:
+			horizon = maxf(horizon, float(segment["end"]) + 15.0)
+		lanes.append({"kind": kind, "icon": Art.find("res://art/ui/" + Art.slug(kind) + "_icon"), "color": KIND_COLOR.get(kind, TEXT), "segments": segments, "window_end": plan["window_end"]})
+	gantt.set_data(lanes, minf(horizon, 420.0), mini(int(plan["late_days"]), 999))
+
 func _quote_row(parent: Control, left: String, right: String, color := GOLD, size := 14) -> void:
 	var row := HBoxContainer.new()
 	var name_label := _gold_italic(left, size)
@@ -2028,10 +2081,8 @@ func _detail_quote() -> void:
 	var gauge_panel := PanelContainer.new()
 	gauge_panel.add_theme_stylebox_override("panel", _box(Color(0, 0, 0, 0), TEXT, 12, 1))
 	gauge_panel.add_child(_margin(gauge_box, 8, 6))
-	var warning := _label("", 12, RED)
-	var chart_holder := GridContainer.new()
-	chart_holder.columns = 2
-	chart_holder.add_theme_constant_override("h_separation", 10)
+	var gantt = PlanGantt.new()
+	gantt.lane_tapped.connect(func(_kind: String) -> void: _say("Plan penceresi (süre hesabı) yakında."))
 	var cash_label := _label("", 12, MUTED)
 	var refresh := func() -> void:
 		quote_price = ceilf(total * (1.0 + quote_margin) * 100.0) / 100.0
@@ -2040,18 +2091,7 @@ func _detail_quote() -> void:
 		cash_label.text = "Tahmini kâr %s · kabulde peşinat girişi %s · hammadde %s %s" % [Data.usd(quote_price - total), Data.usd(quote_price * float(quote_adv) / 100.0), Data.usd(float(estimate["material"])), "peşin çıkar" if int(material_terms["terms"]) == 0 else "%d ay vadeli çıkar" % int(material_terms["terms"])]
 		cash_label.text += "\nTeslim skorun %%%d: müşteri en fazla ~%%%d peşinata rahat razı olur; üstü ihtimali düşürür." % [int(roundf(float(game.delivery_score) * 100.0)), game.advance_comfort()]
 		gauge.set_value(float(game.accept_probability(offer, quote_price, quote_adv, quote_months)["accept"]))
-		var forecast: Array = _delivery_check(offer, quote_months)
-		warning.text = forecast[0]
-		for old in chart_holder.get_children():
-			chart_holder.remove_child(old)
-			old.queue_free()
-		var needed: Array = []
-		for req in offer["reqs"]:
-			if not needed.has(req["kind"]):
-				needed.append(req["kind"])
-		for kind in needed:
-			chart_holder.add_child(_capacity_chart_box(kind, offer, quote_months))
-		warning.add_theme_color_override("font_color", forecast[1])
+		_update_gantt(gantt, offer, quote_months)
 	box.add_child(price_label)
 	box.add_child(cash_label)
 	_slider_row(sliders, "Peşinat", 0, 100, quote_adv, func(v: int, shown: Label) -> void:
@@ -2068,9 +2108,8 @@ func _detail_quote() -> void:
 		if is_instance_valid(gauge): refresh.call())
 	box.add_child(lower)
 	lower.add_child(gauge_panel)
-	box.add_child(warning)
-	box.add_child(chart_holder)
-	_capacity_legend(box, true)
+	box.add_child(gantt)
+	box.add_child(_label("Mavi: işlerin · sarı: müşterinin istediği süre · yeşil/kırmızı: bu işin bugünkü ayarlarınla yeri", 11, MUTED))
 	refresh.call()
 	var reason: String = game.quote_block_reason(int(detail_arg), maxf(quote_price, 0.001))
 	var send := _button("TEKLİF VER" if reason == "" else reason, _ask_send_quote.bind(int(detail_arg)), reason == "", reason != "", true)
@@ -2119,11 +2158,9 @@ func _send_quote(offer_id: int) -> void:
 		_say(result["reason"])
 		_render()
 		return
+	game.delay_mail(result["mail"])
 	detail = ""
-	page = "mail"
-	mail_open = int(result["mail"]["id"])
-	mail_show_offer = false
-	_say({"accepted": "Teklif kabul edildi.", "counter": "Müşteri karşı teklif gönderdi.", "rejected": "Teklif reddedildi."}[result["status"]])
+	_say("Teklifiniz gönderildi; müşteri birkaç saniye içinde yanıt verecek.")
 	_render()
 
 # ------------------------------------------------------------------ Mail
@@ -2146,11 +2183,17 @@ func _page_mail() -> void:
 		else:
 			_mail_detail(game.mail_thread(mail)[0])   # opening any message shows the whole chain, newest on top
 			return
-	if game.mails.is_empty():
+	var arrived := 0
+	for mail in game.mails:
+		if game.mail_arrived(mail):
+			arrived += 1
+	if arrived == 0:
 		content.add_child(_label("Mail kutun boş. Bir ilana teklif verince müşteri burada yanıt verir; sistem bildirimleri de buraya düşer.", 14, MUTED))
 		return
 	var shown_jobs := {}
 	for mail in game.mails:
+		if not game.mail_arrived(mail):
+			continue
 		var job_id: int = int(mail.get("offer_id", 0))
 		if job_id > 0:
 			if shown_jobs.has(job_id):
@@ -2383,9 +2426,10 @@ func _revise_mail(mail_id: int, price: float) -> void:
 		_say(result["reason"])
 		_render()
 		return
-	mail_open = int(result["mail"]["id"])
+	game.delay_mail(result["mail"])
+	mail_open = -1
 	mail_show_offer = false
-	_say({"accepted": "Teklif kabul edildi.", "counter": "Müşteri yine karşı teklif gönderdi.", "rejected": "Teklif reddedildi."}[result["status"]])
+	_say("Güncel teklifiniz gönderildi; müşteri birkaç saniye içinde yanıt verecek.")
 	_render()
 
 func _answer_counter(mail_id: int, yes: bool) -> void:

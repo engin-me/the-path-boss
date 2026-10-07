@@ -108,6 +108,8 @@ func from_save(data: Dictionary) -> String:
 	var copy: Dictionary = data.duplicate(true)
 	for field in BASE_FIELDS + SHELL_FIELDS:
 		set(field, copy[field])
+	for mail in mails:
+		mail.erase("ready_ms")   # a saved mail has long arrived; the clock of a new session starts at zero
 	machines.assign(copy["machines"])
 	for machine in machines:
 		if not machine.has("slot"):
@@ -1638,15 +1640,22 @@ func mail_thread(mail: Dictionary) -> Array:
 		return [mail]
 	var thread: Array = []
 	for other in mails:
-		if int(other.get("offer_id", 0)) == int(mail["offer_id"]):
+		if int(other.get("offer_id", 0)) == int(mail["offer_id"]) and mail_arrived(other):
 			thread.append(other)
 	thread.sort_custom(func(a, b): return int(a["id"]) > int(b["id"]))
 	return thread
 
+# A customer answer travels for 5-10 seconds (real time) before it shows up in the inbox.
+func mail_arrived(mail: Dictionary) -> bool:
+	return not mail.has("ready_ms") or Time.get_ticks_msec() >= int(mail["ready_ms"])
+
+func delay_mail(mail: Dictionary) -> void:
+	mail["ready_ms"] = Time.get_ticks_msec() + randi_range(5000, 10000)
+
 func unread_mails() -> int:
 	var count := 0
 	for mail in mails:
-		if not bool(mail.get("read", true)):
+		if not bool(mail.get("read", true)) and mail_arrived(mail):
 			count += 1
 	return count
 
@@ -2205,7 +2214,8 @@ func projection(extra := {}) -> Dictionary:
 
 # When a quoted offer would finish if accepted now: queue behind the accepted jobs, material from the default
 # supplier (optionally one month late), the offer's own start delay, and the machines that exist or are in transit.
-func quote_projection(offer: Dictionary, months_offered: int, delayed := false) -> Dictionary:
+# The job as it would run if it were accepted today (delivery in `months_offered`, material from the default supplier).
+func _quote_job(offer: Dictionary, months_offered: int, delayed := false) -> Dictionary:
 	var job: Dictionary = offer.duplicate(true)
 	var quote := material_quote(offer, default_supplier)
 	job["months"] = months_offered
@@ -2218,11 +2228,72 @@ func quote_projection(offer: Dictionary, months_offered: int, delayed := false) 
 		"pay_month": month + int(quote["terms"]), "pay_day": day, "amount": float(quote["amount"]), "paid": false, "delayed": delayed}
 	if bool(offer.get("fason", false)):
 		job["order"] = {"supplier": "customer", "arrive_month": month, "arrive_day": day, "pay_month": month, "pay_day": day, "amount": 0.0, "paid": true, "delayed": false}
+	return job
+
+func quote_projection(offer: Dictionary, months_offered: int, delayed := false) -> Dictionary:
+	var job := _quote_job(offer, months_offered, delayed)
+	var quote := material_quote(offer, default_supplier)
 	var done: Array = projection_days(job).get(job["id"], [])
 	var finish_month: int = int(done[0]) if not done.is_empty() else 0
 	var finish_day: int = int(done[1]) if not done.is_empty() else 0
 	return {"finish": finish_month, "finish_day": finish_day, "due": int(job["due_month"]), "late": finish_month == 0 or late_days(int(job["due_month"]), finish_month, finish_day) > 0,
 		"late_days": 0 if finish_month == 0 else late_days(int(job["due_month"]), finish_month, finish_day), "delay_chance": float(quote["delay"])}
+
+# Calendar of the machine kinds a quote needs, in days from today: {kind: {segments: [{id, title, start, end, extra}], window_end}}.
+# The accepted jobs run first (oldest first); the quoted job takes what is left. `late_days` is the quoted job's lateness.
+func plan_schedule(offer: Dictionary, months_offered: int) -> Dictionary:
+	var extra := _quote_job(offer, months_offered)
+	var copy: Array = jobs.duplicate(true)
+	copy.append(extra.duplicate(true))
+	var mults := problem_mults(loss_fractions())
+	var nets := {}
+	for machine in machines:
+		nets[machine["uid"]] = float(machine_steps(machine, mults)["net"]) / float(Data.MONTH_DAYS)
+	var first := {}
+	var last := {}
+	var m := month
+	var d := day
+	var steps := Data.MONTH_DAYS * 14
+	for step in range(steps):
+		var before := {}
+		for job in copy:
+			for i in job["reqs"].size():
+				before["%d|%d" % [job["id"], i]] = float(job["reqs"][i]["remaining"])
+		var cap_left := {}
+		for machine in machines:
+			if _producing(machine, d, m):
+				cap_left[machine["uid"]] = nets[machine["uid"]]
+		_allocate_at(copy, cap_left, m, d, false)
+		for job in copy:
+			for i in job["reqs"].size():
+				if float(job["reqs"][i]["remaining"]) < float(before["%d|%d" % [job["id"], i]]) - 0.0001:
+					var key := "%d|%s" % [job["id"], job["reqs"][i]["kind"]]
+					if not first.has(key):
+						first[key] = step
+					last[key] = step + 1
+		d += 1
+		if d > Data.MONTH_DAYS:
+			d = 1
+			m += 1
+	var kinds: Array = []
+	for req in offer["reqs"]:
+		if not kinds.has(req["kind"]):
+			kinds.append(req["kind"])
+	var window_end := (int(extra["due_month"]) - month) * Data.MONTH_DAYS + (Data.MONTH_DAYS - day + 1)
+	var result := {"kinds": {}, "window_end": window_end, "late_days": 0}
+	for kind in kinds:
+		var segments: Array = []
+		for job in copy:
+			var key := "%d|%s" % [job["id"], kind]
+			if first.has(key):
+				segments.append({"id": job["id"], "title": job["title"], "start": int(first[key]), "end": int(last[key]), "extra": job["id"] == extra["id"]})
+		result["kinds"][kind] = segments
+	var done: Array = projection_days(extra).get(extra["id"], [])
+	if not done.is_empty():
+		result["late_days"] = late_days(int(extra["due_month"]), int(done[0]), int(done[1]))
+	else:
+		result["late_days"] = 999
+	return result
 
 # ---------------------------------------------------------------- report
 
