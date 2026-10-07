@@ -482,8 +482,11 @@ func _run() -> void:
 	plan_view.busy = {shell.game.machines[0]["uid"]: true}
 	plan_view.plan_output = {shell.game.machines[0]["uid"]: 3000.0}
 	plan_view.add_day({shell.game.machines[0]["uid"]: 120.0})
-	if plan_view.floaters.is_empty() or not str(plan_view.floaters[0]["text"]).begins_with("+"):
-		return _fail("A working machine must show its daily output while the clock runs")
+	if plan_view.floaters.is_empty() or bool(plan_view.floaters[0]["bad"]) or absf(float(plan_view.floaters[0]["amount"]) - 120.0) > 0.01:
+		return _fail("A working machine must send its daily good parts to the counter while the clock runs")
+	plan_view._process(plan_view.FLIGHT_SECONDS + 0.1)
+	if float(plan_view.shown[shell.game.machines[0]["uid"]][0]) < 119.0:
+		return _fail("A landed part must raise the good counter")
 	# slots are a hard cap
 	var cap_game = Boss.new()
 	cap_game.default_setup(9)

@@ -44,6 +44,7 @@ var next_mail := 1
 var plan_shifts := 1   # factory shift plan (applies to every machine; machines can still differ in tests)
 var plan_ot := [false, false, false]   # overtime per shift row
 var staff_policy := 1   # index into Data.STAFF_POLICIES
+var month_counts := {}   # uid -> [good, scrapped] pieces made since the month began (floor view counters)
 var quote_progress := true   # payment form of the quote being built: monthly progress payments (true) or one payment at delivery
 var plan_contract := 0   # 0 = permanent crews on the extra shifts, else fixed-term months (3/6/9)
 var plan_contract_end := 0   # first month without the fixed-term crews
@@ -2029,6 +2030,12 @@ func advance_day() -> Dictionary:
 		var made := float(before[uid]) - float(cap_left[uid])
 		if made > 0.0001:
 			result["produced"][uid] = made
+			var machine_now := machine_by_uid(int(uid))
+			var rate := clampf(machine_scrap(machine_now), 0.0, 0.9) if not machine_now.is_empty() else 0.0
+			var counts: Array = month_counts.get(uid, [0.0, 0.0])
+			counts[0] = float(counts[0]) + made
+			counts[1] = float(counts[1]) + made * rate / (1.0 - rate)
+			month_counts[uid] = counts
 	# running costs of the day follow the plan of the day: a shift cut on the last day does not cheapen the month
 	var day_cost := plant_fixed_cost() / float(Data.MONTH_DAYS)
 	for machine in machines:
@@ -2564,6 +2571,7 @@ func close_month() -> String:
 	day = 1
 	days_run = 0
 	month_events = []
+	month_counts = {}
 	month_material_used = 0.0
 	month_revenue = 0.0
 	month_late = 0
