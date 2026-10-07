@@ -114,6 +114,7 @@ const TERMS := [
 	{"months": 12, "factor": 1.00, "prepay_discount": 0.08},
 	{"months": 24, "factor": 0.90, "prepay_discount": 0.12}
 ]
+const PROGRESS_SHARE := 0.8   # progress payment: at every month end 80 % of the work done so far is paid; the rest comes with the final delivery
 const MONTH_DAYS := 30   # a month is 30 days in the day-by-day engine
 const IDLE_WAGE_FLOOR := 0.5   # share of a crew's wage still paid on a day the machine has no work (short-time work)
 const FASON_SHARE := 0.25   # share of the listings that are toll work (customer supplies the material)
@@ -147,7 +148,7 @@ const SLACK_SCRAP := 0.50   # best case -50% scrap
 const PRECISION_MM := {1: 0.1, 2: 0.01, 3: 0.001}
 const TOLERANCE_CHOICES := {1: [0.5, 0.3, 0.2, 0.1], 2: [0.08, 0.05, 0.03, 0.02], 3: [0.008, 0.005, 0.003, 0.002]}
 const POWER_RANGE := {1: [1.3, 1.9], 2: [1.8, 2.2], 3: [1.6, 2.0]}
-const KW_CAPACITY := 1500.0   # μ per month at three shifts, per kW
+const KW_CAPACITY := 1500.0   # ω per month at three shifts, per kW
 const ENERGY_PER_KW := 0.075   # k$ per month and kW (one shift)
 const KIND_CAPACITY_FACTOR := {"Torna": 1.0, "Freze": 0.8, "Taşlama": 0.6, "Dövme": 0.4}   # placeholder until the capacity tables arrive
 const CONDITION_MIN := 40.0
@@ -310,7 +311,7 @@ const TITLES := {
 	"Taşlama": ["Hassas rulman yatağı", "Piston taşlama serisi", "Valf yuvası"],
 	"Dövme": ["Krank mili dövme", "Flanş dövme partisi", "Aks dövme serisi"]
 }
-static var price_per_x := 0.0135  # units (k$) per μ for a Torna; other kinds scale with machine price and nameplate (used for the capacity-value estimate)
+static var price_per_x := 0.0135  # units (k$) per ω for a Torna; other kinds scale with machine price and nameplate (used for the capacity-value estimate)
 static var revenue_scale := 1.0  # calibration input for simulations (not a rule)
 static var rent_scale := 1.0  # kept at 1.0; rents in FACTORIES are already the calibrated values
 static var start_cash := 30.0   # five years of saving $400 a month as an operator, plus a little family help
@@ -432,7 +433,7 @@ static func ref_output(kind: String) -> float:
 static func price_x(kind: String) -> float:
 	return price_per_x * revenue_scale * float(TYPE_PRICE[kind]) / 80.0 * 2000.0 / float(NAMEPLATE[kind])
 
-const DIFFICULTY_SYMBOL := "μ"   # Parça İşleme Katsayısı: higher = harder part
+const DIFFICULTY_SYMBOL := "ω"   # Parça İşleme Katsayısı: higher = harder part
 # Staff care (meals, shuttle, ...): monthly cost per head and the extra chance that a people-related
 # problem is prevented before it starts. Placeholder numbers.
 const STAFF_POLICIES := [

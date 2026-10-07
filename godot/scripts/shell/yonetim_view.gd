@@ -74,7 +74,7 @@ func _chevron() -> TextureRect:
 	return rect
 
 func _tap(control: Control, target: String) -> void:
-	control.mouse_filter = Control.MOUSE_FILTER_STOP
+	control.mouse_filter = Control.MOUSE_FILTER_PASS   # PASS keeps the screen scrollable when a drag starts on a card
 	control.gui_input.connect(func(event: InputEvent) -> void:
 		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
 			go.emit(target))
@@ -82,6 +82,7 @@ func _tap(control: Control, target: String) -> void:
 # The shared card: icon + title on top, a content box below. Returns the content box.
 func _card(title: String, icon_name: String, target := "") -> VBoxContainer:
 	var panel := PanelContainer.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_PASS
 	panel.add_theme_stylebox_override("panel", _style(CARD, CARD_RADIUS))
 	add_child(panel)
 	var margin := MarginContainer.new()
@@ -106,6 +107,7 @@ func _card(title: String, icon_name: String, target := "") -> VBoxContainer:
 
 func _inner(fill := INNER, radius := INNER_RADIUS) -> PanelContainer:
 	var panel := PanelContainer.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_PASS
 	panel.add_theme_stylebox_override("panel", _style(fill, radius))
 	return panel
 
@@ -238,6 +240,7 @@ func _check(label: String, on: bool, enabled: bool, callback: Callable) -> Contr
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", int(S(4)))
 	var box := Panel.new()
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.custom_minimum_size = Vector2(S(16), S(16))
 	box.add_theme_stylebox_override("panel", _style(GREEN_HI if on else CARD, 3.0))
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -254,7 +257,7 @@ func _check(label: String, on: bool, enabled: bool, callback: Callable) -> Contr
 	row.custom_minimum_size = Vector2(0, S(24))
 	row.modulate = Color(1, 1, 1, 1.0 if enabled else 0.5)
 	if enabled:
-		row.mouse_filter = Control.MOUSE_FILTER_STOP
+		row.mouse_filter = Control.MOUSE_FILTER_PASS
 		row.gui_input.connect(func(event: InputEvent) -> void:
 			if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
 				callback.call(not on))
@@ -292,6 +295,7 @@ func _machine_bar(row: Dictionary) -> Control:
 	var cap_label := _text("%s %s" % [Data.x_text(cap).replace(" " + Data.DIFFICULTY_SYMBOL, ""), Data.DIFFICULTY_SYMBOL], 9, CYAN, "Regular", HORIZONTAL_ALIGNMENT_CENTER)
 	column.add_child(cap_label)
 	var track := Panel.new()
+	track.mouse_filter = Control.MOUSE_FILTER_PASS
 	track.custom_minimum_size = Vector2(S(53.2), S(252.6))
 	track.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	track.add_theme_stylebox_override("panel", _style(DARK, 13.851 * 53.2 / 100.0 * 1.0 + 0.0))

@@ -43,7 +43,7 @@ func _draw() -> void:
 		draw_string(font, Vector2((size.x + left) * 0.5 - ns.x * 0.5, (top + bottom) * 0.5), none, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, AXIS)
 	draw_line(Vector2(left, top), Vector2(left, bottom), AXIS, 1.0)
 	draw_line(Vector2(left, bottom), Vector2(size.x, bottom), AXIS, 1.0)
-	draw_string(font, Vector2(2, top + 4), "μ", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, AXIS)
+	draw_string(font, Vector2(2, top + 4), "ω", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, AXIS)
 	var group_w := (size.x - left) / 3.0
 	var bar_w := minf(26.0, group_w * 0.32)
 	for i in 3:
@@ -87,7 +87,7 @@ func _draw() -> void:
 			draw_rect(Rect2(lx, bottom - oh - sh, bar_w, sh), GOLD)
 		if extra > 0.0:
 			var er := Rect2(lx, bottom - oh - sh - eh, bar_w, eh)
-			draw_rect(er, Color(1, 1, 1, 0.12))
+			draw_rect(er, Color(1, 1, 1, 0.38))
 			draw_rect(er, TEXT, false, 1.5)
 		if unmet > 0.0:
 			draw_rect(Rect2(lx, bottom - oh - sh - eh - uh, bar_w, uh), RED)

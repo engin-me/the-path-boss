@@ -1123,7 +1123,7 @@ func leave_job_costs() -> Dictionary:
 	var orders := 0.0
 	for job in jobs:
 		penalty += abandon_penalty(job)
-		refund += float(job["advance"])
+		refund += job_received(job)
 		var order: Dictionary = job.get("order", {})
 		if not order.is_empty() and not bool(order.get("paid", false)):
 			orders += float(order["amount"])
@@ -1778,8 +1778,8 @@ func abandon_block_reason(id: int) -> String:
 		return "İş bulunamadı."
 	if phase != "offers" and phase != "report":
 		return "İş şu an bırakılamaz."
-	if abandon_penalty(job) + float(job["advance"]) > cash:
-		return "Yetersiz nakit (ceza + peşinat iadesi %.0f)" % (abandon_penalty(job) + float(job["advance"]))
+	if abandon_penalty(job) + job_received(job) > cash:
+		return "Yetersiz nakit (ceza + alınan ödemelerin iadesi %.0f)" % (abandon_penalty(job) + job_received(job))
 	return ""
 
 # The job is dropped: the advance is refunded, the penalty is paid, material already
@@ -1790,10 +1790,10 @@ func abandon_job(id: int) -> String:
 		return reason
 	var job := job_by_id(id)
 	var penalty := abandon_penalty(job)
-	cash -= penalty + float(job["advance"])
+	cash -= penalty + job_received(job)
 	jobs.erase(job)
 	_score_event(0.0)
-	_hist("İşler", "Ay %d: iş bırakıldı: %s (ceza %.0f, peşinat iade %.0f, hammadde yandı)." % [month, job["title"], penalty, job["advance"]])
+	_hist("İşler", "Ay %d: iş bırakıldı: %s (ceza %.0f, alınan ödemeler iade %.0f, hammadde yandı)." % [month, job["title"], penalty, job_received(job)])
 	notice = "%s bırakıldı; ceza %.0f, peşinat iade edildi, ödenen hammadde kayıp, teslimat skoru düştü." % [job["title"], penalty]
 	return ""
 
@@ -2048,7 +2048,7 @@ func _deliver_job(job: Dictionary) -> Array:
 	month_material_used += material_used_month(job)
 	var days_late := late_days(int(job["due_month"]), month, day)
 	var on_time := days_late == 0
-	var remainder := float(job["revenue"]) - float(job["advance"])
+	var remainder := float(job["revenue"]) - job_received(job)
 	cash += remainder
 	month_revenue += float(job["revenue"])
 	_score_event(late_target(days_late))
@@ -2137,6 +2137,25 @@ func job_remaining(job: Dictionary) -> float:
 	for req in job["reqs"]:
 		total += float(req["remaining"])
 	return total
+
+# Money already received for a job: the advance plus progress payments.
+func job_received(job: Dictionary) -> float:
+	return float(job["advance"]) + float(job.get("paid_progress", 0.0))
+
+# Progress payment (hakediş): at month end the customer pays 80 % of the work done so far, the advance counting
+# against it; the remaining 20 % and any rest come with the final delivery.
+func _progress_payment(job: Dictionary) -> float:
+	var workload := job_workload(job)
+	if workload <= 0.0:
+		return 0.0
+	var share := clampf(1.0 - job_remaining(job) / workload, 0.0, 1.0)
+	var target := maxf(0.0, Data.PROGRESS_SHARE * float(job["revenue"]) - float(job["advance"])) * share
+	var due := target - float(job.get("paid_progress", 0.0))
+	if due < 0.0005:
+		return 0.0
+	job["paid_progress"] = float(job.get("paid_progress", 0.0)) + due
+	cash += due
+	return due
 
 func job_workload(job: Dictionary) -> float:
 	var total := 0.0
@@ -2302,7 +2321,7 @@ func close_month() -> String:
 		if job_done(job):
 			var days_late := late_days(int(job["due_month"]), month, Data.MONTH_DAYS)
 			var on_time := days_late == 0
-			var remainder := float(job["revenue"]) - float(job["advance"])
+			var remainder := float(job["revenue"]) - job_received(job)
 			cash += remainder
 			delivered_revenue += float(job["revenue"])
 			_score_event(late_target(days_late))
@@ -2311,10 +2330,14 @@ func close_month() -> String:
 				report["undelivered"] = int(report.get("undelivered", 0)) + 1
 		elif month > int(job["due_month"]) + LATE_CANCEL_MONTHS:
 			var penalty := abandon_penalty(job)
-			cash -= penalty + float(job["advance"])
+			cash -= penalty + job_received(job)
 			_score_event(0.0)
-			lines.append("İptal: %s müşteri tarafından iptal edildi (ceza %s, peşinat iade %s, hammadde yandı)" % [job["title"], Data.usd(penalty), Data.usd(float(job["advance"]))])
+			lines.append("İptal: %s müşteri tarafından iptal edildi (ceza %s, peşinat iade %s, hammadde yandı)" % [job["title"], Data.usd(penalty), Data.usd(job_received(job))])
 		else:
+			var progress := _progress_payment(job)
+			if progress > 0.0:
+				lines.append("Hakediş tahsilatı: %s (+%s)" % [job["title"], Data.usd(progress)])
+				log_event("Finans", "Hakediş tahsilatı: %s" % job["title"], progress)
 			running_jobs.append(job)
 	jobs = running_jobs
 	report["revenue"] = delivered_revenue

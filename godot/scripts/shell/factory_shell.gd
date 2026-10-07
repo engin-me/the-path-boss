@@ -338,6 +338,44 @@ func _set_flow_speed(speed: int) -> void:
 	flow_speed = speed
 	_update_clock()
 
+# The clock stops by itself (month end, a quote or a purchase being decided): a big amber pause icon shrinks and
+# fades toward the pause button so the player sees that time stands still.
+func _auto_pause() -> void:
+	if flow_speed <= 0:
+		return
+	flow_speed = 0
+	_update_clock()
+	_pause_focus()
+
+func _pause_focus() -> void:
+	var texture: Texture2D = Art.find("res://art/ui/yonetim/saat_durdur")
+	if texture == null or not clock_buttons.has(0):
+		return
+	var target: Button = clock_buttons[0]
+	var big := TextureRect.new()
+	big.texture = texture
+	big.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	big.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	big.size = Vector2(150, 150)
+	big.pivot_offset = Vector2(75, 75)
+	big.modulate = GOLD
+	big.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	big.position = size * 0.5 - Vector2(75, 75)
+	add_child(big)
+	var goal: Vector2 = target.global_position + target.size * 0.5 - Vector2(75, 75)
+	var tween := create_tween()
+	tween.tween_interval(0.25)
+	tween.set_parallel(true)
+	tween.tween_property(big, "position", goal, 0.55).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	tween.tween_property(big, "scale", Vector2(0.24, 0.24), 0.55).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	tween.tween_property(big, "modulate:a", 0.0, 0.55).set_delay(0.15)
+	tween.chain().tween_callback(func() -> void:
+		big.queue_free()
+		if is_instance_valid(target):
+			var pulse := create_tween()
+			pulse.tween_property(target, "scale", Vector2(1.25, 1.25), 0.12)
+			pulse.tween_property(target, "scale", Vector2.ONE, 0.18))
+
 # Skip the month: the remaining days run at once, then the month closes with its report.
 func _skip_month() -> void:
 	if game == null or game.phase != "offers":
@@ -432,6 +470,7 @@ func _toast(text: String, amount: float) -> void:
 # The month is over: the clock stops and the report opens (it stays mandatory for now).
 func _flow_month_end() -> void:
 	flow_resume = flow_speed
+	_auto_pause()
 	flow_speed = 0
 	audio.play("month")
 	page = "ozet"
@@ -719,9 +758,7 @@ func _image_slot(kind: String, id: String, tint: Color, height := 250) -> Contro
 
 func _confirm(title: String, lines: Array, ok_text: String, on_ok: Callable, warn := "") -> void:
 	_close_overlay()
-	if flow_speed > 0:
-		flow_speed = 0   # a decision dialog stops the clock
-		_update_clock()
+	_auto_pause()   # a decision dialog stops the clock
 	pending = on_ok
 	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	var dim := ColorRect.new()
@@ -766,6 +803,8 @@ func _close_overlay() -> void:
 # ------------------------------------------------------------------ navigation
 
 func _on_tab(id: String) -> void:
+	if id == "satin" or id == "teklif":
+		_auto_pause()   # buying and quoting are decided with the clock stopped
 	if id == "satin":
 		id = "ilanlar"
 		if not ["tezgah", "ekipman"].has(subtab["ilanlar"]):
@@ -782,6 +821,8 @@ func _on_tab(id: String) -> void:
 	_render()
 
 func _open_detail(kind: String, arg := "") -> void:
+	if kind == "quote" or kind == "order" or kind == "supplier_pick":
+		_auto_pause()
 	detail = kind
 	detail_arg = arg
 	if kind == "quote":
@@ -1167,7 +1208,7 @@ func _ozet_report() -> void:
 			by_dep.add_child(_label("Bir alanın kaybı %20 tavanına kırpıldı.", 12, GOLD))
 	var why := _card(content, "Bu sayılar nereden?")
 	for line in ["Teorik: makinelerin 3 vardiya (24 saat) çalışırsa üretebileceği x. Tek başına sen bir makinede yalnız bir vardiya çalıştırırsın; bu yüzden \"vardiya kaybı\" büyük görünür.",
-			"Kapasite: tezgahın gücüne (kW × 1.500 μ) ve kondisyonuna bağlı; her %10 kondisyon eksiği kapasiteyi %5 düşürür. Hurda: tezgah türü, seviyesi ve kondisyonuna bağlı.",
+			"Kapasite: tezgahın gücüne (kW × 1.500 ω) ve kondisyonuna bağlı; her %10 kondisyon eksiği kapasiteyi %5 düşürür. Hurda: tezgah türü, seviyesi ve kondisyonuna bağlı.",
 			"Sorun kaybı: aktif sorunlar (Bakım/Planlama/Depo → kullanılabilirlik, Üretim → performans, Kalite → hurda; diğer alanlar OEE dışı).",
 			"Üretilebilir kapasite, kabul ettiğin işlere FIFO ile dağıtılır; dağıtılan kısım \"gerçek üretim\", artan kısım \"boş kapasite\"dir. İş yoksa üretilebilir kapasite yine de görünür ama gerçek üretim sıfırdır.",
 			"OEE (24 saat bazlı) = fiziksel kayıplardan sonra iyi parça / teorik."]:
@@ -1635,8 +1676,14 @@ func _flow_chips(parent: Control, caption: String, options: Array, current, call
 func _filter_bar(active_count: int, chips: Array, on_open: Callable, on_clear: Callable) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
-	var open := _button("Filtre", on_open, active_count > 0)
+	var open := _button("Filtre", on_open, false)
 	open.custom_minimum_size = Vector2(96, 38)
+	if active_count > 0:
+		# active filters: a green frame only (a filled button grabs too much attention)
+		for style_name in ["normal", "hover", "pressed"]:
+			open.add_theme_stylebox_override(style_name, _box(PANEL_ALT if style_name != "normal" else BG, GREEN, 10, 1))
+		for color_name in ["font_color", "font_hover_color", "font_pressed_color", "icon_normal_color", "icon_hover_color", "icon_pressed_color"]:
+			open.add_theme_color_override(color_name, TEXT)
 	var filter_icon := Art.find("res://art/ui/filtre")
 	if filter_icon != null:
 		open.icon = filter_icon
@@ -1865,7 +1912,7 @@ func _capacity_note(offer: Dictionary, months_offered: int) -> String:
 	var lead: int = int(game.material_quote(offer, game.default_supplier)["lead"])
 	var parts: Array = []
 	for req in offer["reqs"]:
-		parts.append("%s: iş yükü %s μ, net kapasite ~%s μ/ay" % [req["kind"], Data.usd(float(req["workload"]) / 1000.0).trim_prefix("$"), Data.usd(game.requirement_capacity(req) / 1000.0).trim_prefix("$")])
+		parts.append("%s: iş yükü %s ω, net kapasite ~%s ω/ay" % [req["kind"], Data.usd(float(req["workload"]) / 1000.0).trim_prefix("$"), Data.usd(game.requirement_capacity(req) / 1000.0).trim_prefix("$")])
 	return "%s. Hammadde %d ay sonra gelir; üretime %d ay kalır. Net kapasite, teorik kapasitenin vardiya payı, performans, hurda ve sorun kayıpları düşülmüş halidir (1 vardiya ≈ teorik / 3)." % [" · ".join(parts), lead, maxi(0, months_offered - lead)]
 
 func _delivery_check(offer: Dictionary, months_offered: int) -> Array:
@@ -2818,7 +2865,7 @@ func _capacity_legend(parent: Control, with_extra: bool) -> void:
 	parent.add_child(_label(text, 11, MUTED))
 
 func _page_capacity() -> void:
-	var box := _card(content, "Kapasite ve yük (μ/ay)", GREEN, true)
+	var box := _card(content, "Kapasite ve yük (ω/ay)", GREEN, true)
 	box.add_child(_label("Her tolerans sınıfında kapasite ile kabul ettiğin işlerin aylık yükü. İnce bir tezgah, kendi seviyesindeki iş bitince kaba işleri de alır.", 12, MUTED))
 	var grid := GridContainer.new()
 	grid.columns = 2

@@ -1038,5 +1038,25 @@ func _run() -> void:
 			if not FileAccess.file_exists("res://art/contacts/%s.png" % person["id"]) or seen_faces.has(person["id"]):
 				return _fail("Every contact has its own portrait: " + String(person["id"]))
 			seen_faces[person["id"]] = true
+	# ---- progress payment (hakediş): 80 % of the work done is paid at month end, the advance counting against it
+	var pp = Boss.new()
+	pp.from_save(snapshot_day)
+	pp.jobs.clear()
+	var pp_job: Dictionary = pp._create_job(fason_offer.duplicate(true), 10.0, 0.3, int(fason_offer["months"]))
+	for req in pp_job["reqs"]:
+		req["remaining"] = float(req["workload"]) / 2.0
+	var cash_pp: float = pp.cash
+	var paid_now: float = pp._progress_payment(pp_job)
+	var expected_pp: float = (0.8 * 10.0 - 3.0) * 0.5
+	if not _near(paid_now, expected_pp, 0.001) or not _near(pp.cash - cash_pp, expected_pp, 0.001):
+		return _fail("Progress payment: 80%% of the work done minus the advance, pro rata")
+	if pp._progress_payment(pp_job) != 0.0:
+		return _fail("No second payment for the same work")
+	for req in pp_job["reqs"]:
+		req["remaining"] = 0.0
+	var cash_before_delivery: float = pp.cash
+	pp._deliver_job(pp_job)
+	if not _near(pp.cash - cash_before_delivery, 10.0 - 3.0 - expected_pp, 0.001):
+		return _fail("The final delivery pays the rest: revenue - advance - progress payments")
 	print("Shell smoke passed")
 	quit(0)
