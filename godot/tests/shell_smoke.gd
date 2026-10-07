@@ -1175,6 +1175,35 @@ func _run() -> void:
 	sj.jobs.append(standing_job)
 	if sj.continuous_block_reason(standing) == "":
 		return _fail("Only one standing contract per machine kind")
+	# ---- binding plan: the job starts on the planned day, not before
+	var bp = Boss.new()
+	bp.from_save(snapshot_day)
+	bp.jobs.clear()
+	var binding_offer: Dictionary = {}
+	for candidate in bp.offers:
+		if bp.fit_block_reason(candidate["id"]) == "" and bp.gate_block_reason(candidate["id"]) == "":
+			binding_offer = candidate
+			break
+	if not binding_offer.is_empty():
+		bp.quote_start_offset = 0
+		var binding_now: Dictionary = bp.plan_schedule(binding_offer, int(binding_offer["months"]))
+		bp.quote_start_offset = 40
+		var binding_later: Dictionary = bp.plan_schedule(binding_offer, int(binding_offer["months"]))
+		var kind_now: String = binding_offer["reqs"][0]["kind"]
+		var start_now := 0.0
+		var start_later := 0.0
+		for seg in binding_now["kinds"][kind_now]:
+			if bool(seg.get("extra", false)):
+				start_now = float(seg["start"])
+		for seg in binding_later["kinds"][kind_now]:
+			if bool(seg.get("extra", false)):
+				start_later = float(seg["start"])
+		if start_later < 39.0 or start_later <= start_now:
+			return _fail("A planned start day must move the job's bar: %f -> %f" % [start_now, start_later])
+		var planned_job: Dictionary = bp._create_job(binding_offer, 1.0, 0.3, int(binding_offer["months"]))
+		var date_check: Array = bp._date_after(40)
+		if int(planned_job["start_month"]) != int(date_check[0]) or int(planned_job["start_day"]) != int(date_check[1]):
+			return _fail("The created job keeps the planned start date")
 	var pool_game = Boss.new()
 	pool_game.from_save(snapshot_day)
 	pool_game._generate_offers()

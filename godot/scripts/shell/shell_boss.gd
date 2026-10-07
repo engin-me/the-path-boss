@@ -45,6 +45,7 @@ var plan_shifts := 1   # factory shift plan (applies to every machine; machines 
 var plan_ot := [false, false, false]   # overtime per shift row
 var staff_policy := 1   # index into Data.STAFF_POLICIES
 var month_counts := {}   # uid -> [good, scrapped] pieces made since the month began (floor view counters)
+var quote_start_offset := 0   # planned start of the quote being built, in days from today (the binding plan)
 var quote_progress := true   # payment form of the quote being built: monthly progress payments (true) or one payment at delivery
 var plan_contract := 0   # 0 = permanent crews on the extra shifts, else fixed-term months (3/6/9)
 var plan_contract_end := 0   # first month without the fixed-term crews
@@ -1513,6 +1514,9 @@ func _create_job(offer: Dictionary, price: float, advance_rate: float, due_month
 	job["accepted_month"] = month
 	job["start_month"] = month + int(offer["start_delay"])
 	job["start_day"] = day
+	var planned_start := _planned_start(offer)   # the binding plan: production does not begin before the planned day
+	job["start_month"] = planned_start[0]
+	job["start_day"] = planned_start[1]
 	job["accept_day"] = day
 	job["due_month"] = month + due_months - 1
 	job["produced"] = 0.0
@@ -1795,7 +1799,7 @@ func submit_quote(offer_id: int, price: float, advance_pct: int, months_offered:
 	var wanted: int = int(offer["months"])
 	var cost_total := float(cost_estimate(offer)["total"])
 	var base := {"my_price": price, "my_advance": advance_pct, "my_months": months_offered, "cost_total": cost_total, "round": round,
-		"mail_no": Data.mail_count(offer, round), "my_progress": quote_progress, "my_margin": price / maxf(0.001, cost_total) - 1.0}
+		"mail_no": Data.mail_count(offer, round), "my_progress": quote_progress, "my_start": quote_start_offset, "my_margin": price / maxf(0.001, cost_total) - 1.0}
 	if price <= limit:
 		if months_offered > wanted and time_refused(int(offer["urgency"]), months_offered - wanted) and round >= MAX_QUOTE_ROUNDS:
 			var firm := _mail(offer, "rejected", ["Teslim süresi bizim için şart: %d ayda teslim edemeyeceğiniz için bu işte çalışamayacağız." % wanted], base)
@@ -1841,6 +1845,7 @@ func revise_quote(mail_id: int, price: float, months_offered := -1, advance_pct 
 	var offer: Dictionary = mail["offer"].duplicate(true)
 	offers.append(offer)
 	quote_progress = bool(mail.get("my_progress", true))
+	quote_start_offset = int(mail.get("my_start", 0))
 	var result := submit_quote(int(offer["id"]), price, int(mail["my_advance"]) if advance_pct < 0 else advance_pct,
 		int(mail["my_months"]) if months_offered < 0 else months_offered, int(mail["round"]) + 1)
 	if not result["ok"]:
@@ -2342,12 +2347,30 @@ func projection(extra := {}) -> Dictionary:
 # When a quoted offer would finish if accepted now: queue behind the accepted jobs, material from the default
 # supplier (optionally one month late), the offer's own start delay, and the machines that exist or are in transit.
 # The job as it would run if it were accepted today (delivery in `months_offered`, material from the default supplier).
+# Calendar date (month, day) that lies `offset` days after today.
+func _date_after(offset: int) -> Array:
+	var absolute := (month - 1) * Data.MONTH_DAYS + (day - 1) + maxi(0, offset)
+	return [absolute / Data.MONTH_DAYS + 1, absolute % Data.MONTH_DAYS + 1]
+
+# First production day of a quote: the customer's start, or the planned day when that is later.
+func _planned_start(offer: Dictionary) -> Array:
+	var earliest := [month + int(offer["start_delay"]), day]
+	if quote_start_offset <= 0:
+		return earliest
+	var planned := _date_after(quote_start_offset)
+	if int(planned[0]) > int(earliest[0]) or (int(planned[0]) == int(earliest[0]) and int(planned[1]) > int(earliest[1])):
+		return planned
+	return earliest
+
 func _quote_job(offer: Dictionary, months_offered: int, delayed := false) -> Dictionary:
 	var job: Dictionary = offer.duplicate(true)
 	var quote := material_quote(offer, default_supplier)
 	job["months"] = months_offered
 	job["start_month"] = month + int(offer["start_delay"])
 	job["start_day"] = day
+	var planned_job := _planned_start(offer)
+	job["start_month"] = planned_job[0]
+	job["start_day"] = planned_job[1]
 	job["due_month"] = month + months_offered - 1
 	job["produced"] = 0.0
 	job["yield"] = float(quote["yield"])

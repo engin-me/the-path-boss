@@ -76,6 +76,9 @@ var mail_show_offer := false
 var mail_reply_open := false
 var quote_details := false
 var quote_progress := true
+var quote_start_offset := 0
+var quote_buffer := 0
+var drag_base := 0
 var type_filter := "Tümü"
 var detail := ""
 var detail_arg := ""
@@ -1945,6 +1948,8 @@ func _open_quote(offer_id: int) -> void:
 	quote_margin = 0.30
 	quote_edit = {}
 	quote_progress = true
+	quote_start_offset = 0
+	quote_buffer = 0
 	quote_adv = 30
 	quote_months = int(offer["months"])
 	quote_details = false
@@ -2018,6 +2023,7 @@ func _detail_quote() -> void:
 	var lines: Array = estimate["lines"]
 	var total: float = float(estimate["total"])
 	game.quote_progress = quote_progress
+	game.quote_start_offset = quote_start_offset
 	var parts := 0
 	var load_total := 0.0
 	var difficulty := 0.0
@@ -2120,9 +2126,8 @@ func _detail_quote() -> void:
 	shifts_row.add_child(to_shifts)
 	box.add_child(shifts_row)
 	var gantt = PlanGantt.new()
-	gantt.lane_tapped.connect(func(_kind: String) -> void: _say("Plan penceresi (süre hesabı) yakında."))
 	box.add_child(gantt)
-	box.add_child(_label("Mavi: işlerin · sarı: müşterinin istediği süre · yeşil/kırmızı: bu işin bugünkü ayarlarınla yeri", 11, MUTED))
+	box.add_child(_label("Mavi: işlerin · sarı: müşterinin istediği süre · yeşil/kırmızı: bu işin yeri. Çubuğu sürükleyerek başlangıç gününü seç; tezgah simgesine dokunarak güvenlik payını ayarla.", 11, MUTED))
 	box.add_child(_quote_line())
 	var price_label := _label("", 22, GREEN, false)
 	price_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -2148,6 +2153,7 @@ func _detail_quote() -> void:
 		cost_label.text = "Öngörülen Giderler Toplamı: " + Data.usd(total)
 		profit_label.text = "Öngörülen Kâr Tutarı: " + Data.usd(quote_price - total)
 		game.quote_progress = quote_progress
+		game.quote_start_offset = quote_start_offset
 		gauge.set_value(float(game.accept_probability(offer, quote_price, quote_adv, quote_months)["accept"]))
 		_update_gantt(gantt, offer, quote_months)
 	_slider_row(sliders, "Peşinat", 0, 100, quote_adv, func(v: int, shown: Label) -> void:
@@ -2164,6 +2170,11 @@ func _detail_quote() -> void:
 		if is_instance_valid(gauge): refresh.call())
 	lower.add_child(gauge_panel)
 	box.add_child(lower)
+	gantt.drag_started.connect(func() -> void: drag_base = quote_start_offset)
+	gantt.start_dragged.connect(func(delta: int) -> void:
+		quote_start_offset = maxi(0, drag_base + delta)
+		refresh.call())
+	gantt.lane_tapped.connect(func(kind: String) -> void: _plan_popup(offer, kind))
 	var monthly := CheckBox.new()
 	monthly.text = "Her ay ödeme yapılsın"
 	monthly.add_theme_font_size_override("font_size", _fs(14))
@@ -2185,6 +2196,78 @@ func _detail_quote() -> void:
 	var reason: String = game.quote_block_reason(int(detail_arg), maxf(quote_price, 0.001))
 	var send := _button("TEKLİF VER" if reason == "" else reason, _ask_send_quote.bind(int(detail_arg)), reason == "", reason != "", true)
 	box.add_child(send)
+
+# The plan window of one machine kind: workload, the daily capacity of today's settings, the computed duration, the start day
+# and a safety margin that stretches the delivery time offered (IDEA-023).
+func _plan_popup(offer: Dictionary, kind: String) -> void:
+	_close_overlay()
+	_auto_pause()
+	var plan: Dictionary = game.plan_schedule(offer, quote_months)
+	var segment := {}
+	for item in plan["kinds"].get(kind, []):
+		if bool(item.get("extra", false)):
+			segment = item
+	if segment.is_empty():
+		return
+	var load_total := 0.0
+	var per_day := 0.0
+	for req in offer["reqs"]:
+		if req["kind"] == kind:
+			load_total += float(req["workload"])
+			per_day += game.requirement_capacity(req) / float(Data.MONTH_DAYS)
+	var work_days := int(ceilf(load_total / maxf(0.001, per_day)))
+	var start_day_n := int(segment["start"])
+	var end_day_n := int(segment["end"])
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.66)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.add_child(center)
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(460, 0)
+	panel.add_theme_stylebox_override("panel", _box(PANEL, GOLD, 14, 2))
+	center.add_child(panel)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 10)
+	panel.add_child(_margin(column, 20, 18))
+	column.add_child(_label("Plan · %s" % kind, 20, TEXT))
+	_row(column, "İş yükü", Data.mu_text(load_total), TEXT, 15)
+	_row(column, "Günlük kapasite", "%s/gün" % _xfmt(per_day), TEXT, 15)
+	column.add_child(_label("Vardiya, mesai ve hızlandırma Yönetim ayarlarından otomatik gelir.", 11, MUTED))
+	_row(column, "Hesaplanan süre", "%d gün" % work_days, GREEN, 15)
+	_row(column, "Başlangıç", "%s (bugünden %d gün sonra)" % [Data.date_text(int(game._date_after(start_day_n)[0]), int(game._date_after(start_day_n)[1])), start_day_n], TEXT, 14)
+	var offered_label := _label("", 14, GOLD, false)
+	var buffer_value := _label("", 15, GOLD, false)
+	var slider_row := HBoxContainer.new()
+	slider_row.add_child(_label("Güvenlik payı", 15, TEXT, false))
+	var slider := HSlider.new()
+	slider.min_value = 0
+	slider.max_value = 30
+	slider.step = 1
+	slider.value = quote_buffer
+	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	slider.custom_minimum_size = Vector2(0, 44)
+	slider_row.add_child(slider)
+	buffer_value.custom_minimum_size = Vector2(56, 0)
+	slider_row.add_child(buffer_value)
+	column.add_child(slider_row)
+	column.add_child(offered_label)
+	var update := func(v: float) -> void:
+		var days := int(ceilf(float(end_day_n) * (1.0 + v / 100.0)))
+		buffer_value.text = "%%%d" % int(v)
+		offered_label.text = "Teslim önerisi: %d gün sonra (%d ay)" % [days, maxi(1, int(ceilf(float(days) / float(Data.MONTH_DAYS))))]
+	slider.value_changed.connect(update)
+	update.call(slider.value)
+	column.add_child(_button("Planı uygula", func() -> void:
+		quote_buffer = int(slider.value)
+		var offered_days := int(ceilf(float(end_day_n) * (1.0 + float(quote_buffer) / 100.0)))
+		quote_months = clampi(int(ceilf(float(offered_days) / float(Data.MONTH_DAYS))), 1, int(offer["months"]) + 2)
+		_close_overlay()
+		_render(), true))
+	column.add_child(_button("Vazgeç", _confirm_no))
 
 func _quote_line() -> Control:
 	var line := ColorRect.new()
@@ -2220,6 +2303,7 @@ func _ask_send_quote(offer_id: int) -> void:
 
 func _send_quote(offer_id: int) -> void:
 	game.quote_progress = quote_progress
+	game.quote_start_offset = quote_start_offset
 	var result: Dictionary = game.submit_quote(offer_id, quote_price, quote_adv, quote_months)
 	quote_months = 0
 	if not result["ok"]:

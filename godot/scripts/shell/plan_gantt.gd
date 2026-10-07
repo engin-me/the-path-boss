@@ -3,6 +3,8 @@ extends Control
 # and where this job would sit with today's settings (green when it fits the window, red when it is late).
 
 signal lane_tapped(kind: String)
+signal drag_started
+signal start_dragged(delta_days: int)   # the player slides this job's bar: days moved since the press
 
 const BLUE := Color("#62a8e5")
 const AMBER := Color("#e7b75c")
@@ -17,8 +19,11 @@ var lanes: Array = []        # [{kind, icon, color, segments: [{start, end, extr
 var horizon := 180.0         # days shown
 var late_days := 0
 
+var dragging := false
+var drag_from_x := 0.0
+
 func _init() -> void:
-	mouse_filter = Control.MOUSE_FILTER_PASS
+	mouse_filter = Control.MOUSE_FILTER_STOP
 
 func set_data(new_lanes: Array, new_horizon: float, new_late: int) -> void:
 	lanes = new_lanes
@@ -30,11 +35,35 @@ func set_data(new_lanes: Array, new_horizon: float, new_late: int) -> void:
 func _x(day: float) -> float:
 	return LEFT + (size.x - LEFT - 6.0) * clampf(day / horizon, 0.0, 1.0)
 
+# True when `point` lies on this job's own bar (the green or red one, lower half of a lane).
+func _on_own_bar(point: Vector2) -> bool:
+	var index := int(point.y / LANE_H)
+	if index < 0 or index >= lanes.size() or point.y - LANE_H * index < LANE_H * 0.5:
+		return false
+	for segment in lanes[index]["segments"]:
+		if bool(segment.get("extra", false)) and point.x >= _x(float(segment["start"])) - 10.0 and point.x <= _x(float(segment["end"])) + 10.0:
+			return true
+	return false
+
 func _gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
-		var index := int(event.position.y / LANE_H)
-		if event.position.x < LEFT and index >= 0 and index < lanes.size():
-			lane_tapped.emit(String(lanes[index]["kind"]))
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			if _on_own_bar(event.position):
+				dragging = true
+				drag_from_x = event.position.x
+				drag_started.emit()
+				accept_event()
+		elif dragging:
+			dragging = false
+			accept_event()
+		else:
+			var index := int(event.position.y / LANE_H)
+			if event.position.x < LEFT and index >= 0 and index < lanes.size():
+				lane_tapped.emit(String(lanes[index]["kind"]))
+	elif event is InputEventMouseMotion and dragging:
+		var per_day := (size.x - LEFT - 6.0) / horizon
+		start_dragged.emit(int(roundf((event.position.x - drag_from_x) / maxf(0.01, per_day))))
+		accept_event()
 
 func _draw() -> void:
 	var font := ThemeDB.fallback_font

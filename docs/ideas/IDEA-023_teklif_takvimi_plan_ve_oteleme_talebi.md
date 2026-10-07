@@ -33,7 +33,7 @@ Bağımlılıklar: IDEA-017, IDEA-019, IDEA-021, IDEA-022.
 ## Notlar (Claude)
 
 ### Aldığım Notlar
-- Prototipte takvim, posta gecikmesi ve rozet çalışır; bağlayıcı plan penceresi, rezervasyon ve öteleme talebi henüz yoktur.
+- Prototipte takvim, posta gecikmesi, rozet, bağlayıcı plan (çubuğu sürükleyerek başlangıç günü, tezgah simgesine dokununca güvenlik payı penceresi) çalışır; plan işin kabulünde kaydolur ve iş planlanan günden önce üretime girmez (en eski iş önceliği rezervasyon işini görür). Ay başı uyarısı ve öteleme talebi henüz yoktur.
 - Mevcut iş sırası FIFO'dur ve motor planı kendisi yürütür; bağlayıcı plan için `_job_started_day`'e planlanan başlangıç ve rezervasyon eklenmelidir.
 
 ### Bulduğum Sakıncalar
