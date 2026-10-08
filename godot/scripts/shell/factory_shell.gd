@@ -1191,7 +1191,7 @@ func _yonetim_go(target: String) -> void:
 func _ozet_general_old() -> void:
 	var factory: Dictionary = game.factory()
 	content.add_child(_label(factory["name"], 22, TEXT))
-	content.add_child(_label("%s · %d m² · %.1f m yükseklik" % [factory["region"], factory["m2"], factory["height"]], 13, MUTED))
+	content.add_child(_label("%s · %s m² · %.1f m yükseklik" % [factory["region"], Data.thousands(int(factory["m2"])), factory["height"]], 13, MUTED))
 	if not game.package_bought:
 		var warn := _card(content, "Gerekli ekipman eksik", GOLD)
 		warn.add_child(_label("Gerekli ekipman seti alınmadan kapasite kullanılamaz.", 13, MUTED))
@@ -1550,7 +1550,7 @@ func _job_requirement_rows(box: Control, offer: Dictionary, with_load := true) -
 		var have: bool = game.owns(req)
 		var tolerance: String = Data.tolerance_text(float(req["tolerance"])) if req.has("tolerance") else ""
 		_row(box, "%s %s%s" % [Data.LEVELS[int(req["level"])], req["kind"], (" · " + tolerance) if tolerance != "" else ""],
-			"%d parça × %s = %s" % [req["parts"], Data.mu_text(float(req["difficulty"])), _xfmt(float(req["workload"]))] if with_load else "", TEXT if have else RED, 14)
+			"%s parça × %s = %s" % [Data.thousands(int(req["parts"])), Data.mu_text(float(req["difficulty"])), _xfmt(float(req["workload"]))] if with_load else "", TEXT if have else RED, 14)
 		box.add_child(_label("%s kg/parça · yaklaşık %s kg %s çelik %s" % [str(req["weight"]).trim_suffix(".0").replace(".", ","), str(int(roundf(float(req["tons"]) * 1000.0))), "nitelikli" if int(req["steel"]) > 1 else "standart", "(müşteri verir)" if bool(offer.get("fason", false)) else "gerekir"], 11, MUTED))
 		if not have:
 			box.add_child(_label("Makine yok: bu hassasiyet için %s gerekli." % Data.level_needed_text(int(req["level"])), 11, RED))
@@ -2410,11 +2410,8 @@ func _ask_send_quote(offer_id: int) -> void:
 	var offer: Dictionary = game.offer_by_id(offer_id)
 	if offer.is_empty():
 		return
-	_confirm("Teklifi gönder", [
-		"%s · %s" % [offer["title"], offer["customer"]],
-		"Teklif tutarı: %s (maliyet %s, marj %%%d)" % [Data.usd(quote_price), Data.usd(float(game.cost_estimate(offer, quote_edit)["total"])), int(roundf(quote_margin * 100.0))],
-		"Peşinat %%%d · Teslimat %d ay" % [quote_adv, quote_months]], "Teklif ver", _send_quote.bind(offer_id),
-		"Müşteri yanıtı birkaç saniye içinde Mail kutuna düşer. Anlaşırsan iş fabrikana eklenir.")
+	_design_dialog("Teklif Onayı", "%s işi ([color=#e7b75c]İş No: %d[/color]) için [color=#2fd17b]%s[/color] teklif verilecek. Onaylıyor musunuz?" % [offer["title"], _job_no(offer), Data.usd(quote_price)],
+		"Onayla", _send_quote.bind(offer_id))
 
 func _send_quote(offer_id: int) -> void:
 	game.quote_progress = quote_progress
@@ -2958,9 +2955,9 @@ func _update_area_preview(hover_area := -1.0) -> void:
 	var used: float = game.area_used()
 	area_used_bar.value = used
 	area_preview_bar.value = used + extra
-	var text := "Yuva: %d / %d tezgah · Alan: %d / %d m² · tavan %.1f m" % [game.machines.size(), game.slots_total(), int(used), factory["m2"], factory["height"]]
+	var text := "Yuva: %d / %d tezgah · Alan: %s / %s m² · tavan %.1f m" % [game.machines.size(), game.slots_total(), Data.thousands(int(used)), Data.thousands(int(factory["m2"])), factory["height"]]
 	if extra > 0.0:
-		text += "  (+%d m² → %d m²)" % [int(extra), int(used + extra)]
+		text += "  (+%s m² → %s m²)" % [Data.thousands(int(extra)), Data.thousands(int(used + extra))]
 	area_label.text = text
 	area_label.add_theme_color_override("font_color", YELLOW if extra > 0.0 else MUTED)
 
@@ -3065,9 +3062,9 @@ func _machine_card(listing: Dictionary) -> void:
 	var arrive: int = int(game.month) + int(listing["delivery"])
 	var energy_day: float = _listing_energy(listing) / float(Data.MONTH_DAYS)
 	var bullets := [
-		"Teslimat: %s [i](%d Ay sonra)[/i]" % [_date_dots(arrive, int(game.day)), int(listing["delivery"])],
-		"Gerekli Operatör Sayısı: [color=#e86f6f]%d[/color] – [i]otomatik işe başlar[/i]" % int(listing["personnel"]),
-		"Teorik Kapasite: [color=#2fd17b]%s ω/Ay[/color] [i](3 vardiya)[/i]" % _xfmt(float(listing["nameplate"])).replace(" ω", ""),
+		"Teslimat: %s [color=#e7edf3][i](%d Ay sonra)[/i][/color]" % [_date_dots(arrive, int(game.day)), int(listing["delivery"])],
+		"Gerekli Operatör Sayısı: [color=#e86f6f]%d[/color] – [color=#e7edf3][i]otomatik işe başlar[/i][/color]" % int(listing["personnel"]),
+		"Teorik Kapasite: [color=#2fd17b]%s ω/Ay[/color] [color=#e7edf3][i](3 vardiya)[/i][/color]" % _xfmt(float(listing["nameplate"])).replace(" ω", ""),
 		"Enerji Gideri: [color=#e86f6f]%s /gün*vardiya[/color]" % Data.usd(energy_day),
 		"Bakım Giderleri: [color=#e86f6f]%s /ay[/color]" % Data.usd(_listing_maintenance(listing))]
 	for i in bullets.size():
@@ -3078,12 +3075,13 @@ func _machine_card(listing: Dictionary) -> void:
 	var buy := c.button(305, 377, 123, 37, "Satın al", func() -> void:
 		if reason == "":
 			_ask_buy(int(listing["uid"]))
-		else:
+		elif not reason.begins_with("Alımdan sonra kasa"):
 			_say(reason)
 			_render_keep_scroll(), 12.0, reason == "", 10.0)
 	if reason != "":
 		buy.modulate = Color(1, 1, 1, 0.55)
-		c.text(9, 380, 290, reason, 9.0, DesignCanvas.RED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 30.0, true)
+		if not reason.begins_with("Alımdan sonra kasa"):   # that rule still holds, but the card no longer spells it out
+			c.text(9, 380, 290, reason, 9.0, DesignCanvas.RED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 30.0, true)
 	c.gui_input.connect(_on_card_input.bind(int(listing["uid"])))
 
 # A tap selects; a drag (scrolling) does not.
@@ -3104,11 +3102,11 @@ func _ask_buy(uid: int) -> void:
 	var listing: Dictionary = game.listing_by_uid(uid)
 	if listing.is_empty():
 		return
-	_design_dialog("%s Tezgahı (%s) – %s için [color=#e86f6f]%s[/color] ödeme yapılacak onaylıyor musunuz?" % [listing["kind"], Data.LEVELS[int(listing["level"])], listing["model"], Data.usd(float(listing["price"]))],
+	_design_dialog("Satın alma Onayı", "%s Tezgahı (%s) – %s için [color=#e86f6f]%s[/color] ödeme yapılacak onaylıyor musunuz?" % [listing["kind"], Data.LEVELS[int(listing["level"])], listing["model"], Data.usd(float(listing["price"]))],
 		"Onayla", _buy.bind(uid))
 
-# The confirmation card of the design (tezgah_satinal_onayla): one question, Vazgeç and Onayla.
-func _design_dialog(body: String, ok_text: String, on_ok: Callable) -> void:
+# The confirmation card of the designs (satın alma, kiralama and teklif onayı): cyan title, a line, one question, Vazgeç and Onayla.
+func _design_dialog(title: String, body: String, ok_text: String, on_ok: Callable) -> void:
 	_close_overlay()
 	_auto_pause()
 	pending = on_ok
@@ -3121,13 +3119,15 @@ func _design_dialog(body: String, ok_text: String, on_ok: Callable) -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	overlay.add_child(center)
 	var c := DesignCanvas.new()
-	c.setup(Vector2.ZERO, 437.0, 480.0, 116.0, 14.0)
+	c.setup(Vector2.ZERO, 437.0, 480.0, 155.0, 14.0)
 	center.add_child(c)
-	c.rich(8, 8, 420, body, 14.0, DesignCanvas.TEXT, 62.0)
-	var cancel := c.button(177, 70, 123, 37, "Vazgeç", _confirm_no, 12.0, false, 10.0)
+	c.text(7.2, 8, 300, title, 16.0, DesignCanvas.CYAN, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 26.0)
+	c.line(9, 38, 403)
+	c.rich(9, 44, 430, body, 14.0, DesignCanvas.TEXT, 62.0)
+	var cancel := c.button(177, 104, 123, 37, "Vazgeç", _confirm_no, 12.0, false, 10.0)
 	for state in ["normal", "hover", "pressed"]:
 		cancel.add_theme_stylebox_override(state, c.style(Color("#232f3d"), 10.0, DesignCanvas.BORDER))
-	c.button(305, 70, 123, 37, ok_text, _confirm_yes, 12.0, true, 10.0)
+	c.button(305, 104, 123, 37, ok_text, _confirm_yes, 12.0, true, 10.0)
 
 # Same figures as the listing card: energy and upkeep of the machine's condition (a missing 10 points costs more).
 func _listing_energy(listing: Dictionary) -> float:
@@ -3215,7 +3215,7 @@ func _change_qty(id: String, delta: int) -> void:
 
 func _ask_package() -> void:
 	var package: Dictionary = game.package_info()
-	_confirm("Gerekli seti al", ["Ödeme: %s" % Data.usd(float(package["price"]))], "Satın al", _buy_package)
+	_design_dialog("Satın alma Onayı", "Gerekli ekipman için [color=#e86f6f]%s[/color] ödeme yapılacak onaylıyor musunuz?" % Data.usd(float(package["price"])), "Onayla", _buy_package)
 
 func _buy_package() -> void:
 	var result: String = game.buy_package()
@@ -3226,7 +3226,7 @@ func _buy_package() -> void:
 func _ask_equipment(id: String) -> void:
 	var item: Dictionary = Data.EQUIPMENT[id]
 	var qty: int = equip_qty.get(id, 1)
-	_confirm("Ekipman satın al", ["%s × %d" % [item["name"], qty], "Ödeme: %s" % Data.usd(float(item["price"]) * qty)], "Satın al", _buy_equipment.bind(id, qty))
+	_design_dialog("Satın alma Onayı", "%s × %d için [color=#e86f6f]%s[/color] ödeme yapılacak onaylıyor musunuz?" % [item["name"], qty, Data.usd(float(item["price"]) * qty)], "Onayla", _buy_equipment.bind(id, qty))
 
 func _buy_equipment(id: String, qty: int) -> void:
 	var result: String = game.buy_equipment(id, qty)
@@ -3293,7 +3293,7 @@ func _page_fabrika() -> void:
 		var box := _card(content, "Kiraladığın yer", GREEN, true)
 		box.add_child(_image_slot("factories", factory["id"], factory["tint"]))
 		_row(box, "Fabrika", factory["name"], TEXT, 16)
-		_row(box, "Alan / yükseklik", "%d m² · %.1f m" % [factory["m2"], factory["height"]], TEXT, 16)
+		_row(box, "Alan / yükseklik", "%s m² · %.1f m" % [Data.thousands(int(factory["m2"])), factory["height"]], TEXT, 16)
 		_row(box, "Aylık kira", Data.usd(game.base_rent()), TEXT, 16)
 		_row(box, "Sözleşme", "%d ay · %d ay kaldı" % [game.term, game.months_left], TEXT, 16)
 		if int(game.prepaid_months) > 0:
@@ -3641,7 +3641,7 @@ func _detail_factory(factory: Dictionary) -> void:
 	hero.add_child(top)
 	hero.add_child(_label(String(factory["name"]), 20, TEXT, false))
 	hero.add_child(_label(String(factory["region"]), 13, MUTED, false))
-	var floor_size: String = ("%d m²" % int(factory["m2"]))
+	var floor_size: String = ("%s m²" % Data.thousands(int(factory["m2"])))
 	for spec in [["fabrika_zemin", "Zemin Ölçüleri", floor_size, ""],
 			["fabrika_slot", "Makine Slot Sayısı", str(Data.slot_count(factory["id"])), "1 slot = 1 makine"],
 			["fabrika_cati", "Çatı Yüksekliği", ("%.1f m" % float(factory["height"])).replace(".0 m", " m").replace(".", ","), ""]]:
@@ -3818,14 +3818,10 @@ func _toggle_prepay(on: bool) -> void:
 func _ask_rent(id: String) -> void:
 	var factory := Data.factory_by_id(id)
 	var quote: Dictionary = game.prepay_quote(id, picked_term)
-	var lines: Array = [
-		"%s · %d m² · %.1f m" % [factory["name"], factory["m2"], factory["height"]],
-		"Aylık kira: %s · sözleşme %d ay" % [Data.usd(float(quote["rent"])), picked_term]
-	]
+	var body := "%s yerleşkesi için [color=#e86f6f]%s[/color] x [color=#e7b75c]%d Ay[/color] sözleşme yapılacak. Erken terk durumunda [color=#e86f6f]%s[/color] ceza ödenecek." % [factory["name"], Data.usd(float(quote["rent"])), picked_term, Data.usd(float(quote["rent"]) * Data.EXIT_FEE_RENTS)]
 	if picked_prepay:
-		lines.append("Şimdi ödenecek peşin kira (%d ay, %%%d indirimli): %s. Peşin ödenen kira iade edilmez." % [quote["half"], int(roundf(float(quote["discount"]) * 100.0)), Data.usd(float(quote["amount"]))])
-	_confirm("Kiralama onayı", lines, "Kirala", _rent_factory.bind(id),
-		"Sözleşmeyi erken bırakırsan %d kira (%s) ceza ödersin." % [Data.EXIT_FEE_RENTS, Data.usd(float(quote["rent"]) * Data.EXIT_FEE_RENTS)])
+		body += " Peşin kira (%d ay, %%%d indirimli): [color=#e86f6f]%s[/color]; iade edilmez." % [quote["half"], int(roundf(float(quote["discount"]) * 100.0)), Data.usd(float(quote["amount"]))]
+	_design_dialog("Kiralama Onayı", body + " Onaylıyor musunuz?", "Onayla", _rent_factory.bind(id))
 
 func _rent_factory(id: String) -> void:
 	var result: String = game.rent_factory(id, picked_term, picked_prepay)
@@ -4169,7 +4165,7 @@ func _factory_row(factory: Dictionary) -> Control:
 	box.add_child(top)
 	var chips := HBoxContainer.new()
 	chips.add_theme_constant_override("separation", 6)
-	chips.add_child(_icon_value("fabrika_zemin", "%d m²" % int(factory["m2"])))
+	chips.add_child(_icon_value("fabrika_zemin", "%s m²" % Data.thousands(int(factory["m2"]))))
 	chips.add_child(_icon_value("fabrika_slot", "%d slot" % Data.slot_count(factory["id"])))
 	chips.add_child(_icon_value("fabrika_cati", ("%.1f m" % float(factory["height"])).replace(".0 m", " m").replace(".", ",")))
 	chips.add_child(_icon_value("fabrika_sozlesme", "12 Ay"))

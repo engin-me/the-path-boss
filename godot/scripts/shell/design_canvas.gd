@@ -91,10 +91,7 @@ func rich(x: float, y: float, w: float, content: String, pt: float, color := TEX
 	label.add_theme_font_size_override("normal_font_size", font_px(pt))
 	label.add_theme_color_override("default_color", color)
 	label.add_theme_font_override("normal_font", Art.font("Regular"))
-	var slanted := FontVariation.new()   # no italic file: slant the regular face
-	slanted.base_font = Art.font("Regular")
-	slanted.variation_transform = Transform2D(Vector2(1, 0), Vector2(-0.2, 1), Vector2.ZERO)
-	label.add_theme_font_override("italics_font", slanted)
+	label.add_theme_font_override("italics_font", Art.font("Italic"))
 	label.add_theme_font_size_override("italics_font_size", font_px(pt))
 	label.add_theme_font_size_override("bold_font_size", font_px(pt))
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE

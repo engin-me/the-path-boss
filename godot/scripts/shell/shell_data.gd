@@ -519,6 +519,16 @@ static func contract_premium(months: int) -> float:
 static func contract_severance_cut(months: int) -> float:
 	return float(CONTRACTS[months][1]) if CONTRACTS.has(months) else 0.0
 
+# 1000 -> "1.000" (a dot every three digits above 999).
+static func thousands(value: int) -> String:
+	var digits := str(absi(value))
+	var out := ""
+	for i in digits.length():
+		if i > 0 and (digits.length() - i) % 3 == 0:
+			out += "."
+		out += digits[i]
+	return ("-" if value < 0 else "") + out
+
 static func mu_text(value: float) -> String:
 	return "%s %s" % [DIFFICULTY_SYMBOL, str(value).trim_suffix(".0")]
 
@@ -704,7 +714,7 @@ static func _level(rng: RandomNumberGenerator) -> int:
 # ---------------------------------------------------------------- helpers
 
 static func x_text(value: float) -> String:
-	return "%d %s" % [int(roundf(value)), DIFFICULTY_SYMBOL]
+	return "%s %s" % [thousands(int(roundf(value))), DIFFICULTY_SYMBOL]
 
 static func usd(units: float) -> String:
 	var value := int(roundf(absf(units) * MONEY_UNIT_USD))

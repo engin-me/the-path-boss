@@ -686,7 +686,7 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	var font := ThemeDB.fallback_font
 	var factory: Dictionary = game.factory()
-	var title := "%s · %d × %d m · %d m² · %d / %d tezgah" % [factory["name"], factory["width"], factory["length"], factory["m2"], game.machines.size(), slots.size()]
+	var title := "%s · %d × %d m · %s m² · %d / %d tezgah" % [factory["name"], factory["width"], factory["length"], Data.thousands(int(factory["m2"])), game.machines.size(), slots.size()]
 	draw_string_outline(font, Vector2(14, 28), title, HORIZONTAL_ALIGNMENT_LEFT, size.x - 80.0, 15, 5, Color(0.03, 0.08, 0.13, 0.95))
 	draw_string(font, Vector2(14, 28), title, HORIZONTAL_ALIGNMENT_LEFT, size.x - 80.0, 15, TEXT)
 	draw_string(font, Vector2(14, 46), "Sürükle: kaydır · +/−: yakınlaştır · dokun: ayrıntı", HORIZONTAL_ALIGNMENT_LEFT, size.x - 80.0, 11, Color(1, 1, 1, 0.5))
