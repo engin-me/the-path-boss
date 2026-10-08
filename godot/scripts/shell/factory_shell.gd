@@ -3013,86 +3013,78 @@ func _price_block(listing: Dictionary, size := 18) -> String:
 		return "[right][s][color=#98a7b6]%s[/color][/s]\n[color=#e7b75c]-%%%d[/color]  [color=#2fd17b][b]%s[/b][/color][/right]" % [Data.usd(float(listing["base_price"])), int(roundf(float(listing["discount"]) * 100.0)), Data.usd(float(listing["price"]))]
 	return "[right][color=#2fd17b][b]%s[/b][/color][/right]" % Data.usd(float(listing["price"]))
 
+# Title block shared by the listing row and the open listing: kind icon, "Taşlama Tezgahı", the level in italics, the model and the price.
+func _listing_head(c: DesignCanvas, listing: Dictionary, icon_x: float, title_x: float, price_y: float) -> void:
+	c.picture(Art.find("res://art/ui/" + Art.slug(listing["kind"]) + "_icon_new"), icon_x, 14, 29, 28)
+	c.text(title_x, 12, 200, "%s Tezgahı" % listing["kind"], 14.0, DesignCanvas.TEXT, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 22.0)
+	c.rich(title_x, 30, 200, "[i]%s[/i]" % Data.LEVELS[int(listing["level"])], 14.0, DesignCanvas.TEXT, 22.0)
+	c.text(title_x, 50, 200, String(listing["model"]), 11.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 20.0)
+	var discounted: bool = float(listing["discount"]) > 0.0
+	if discounted:
+		c.rich(260, price_y - 28.0, 168, "[right][s]%s[/s][/right]" % Data.usd(float(listing["base_price"])).replace("$", "$ "), 16.0, DesignCanvas.MUTED, 26.0)
+		c.text(280, price_y + 4.0, 55, "- %%%d" % int(roundf(float(listing["discount"]) * 100.0)), 13.0, DesignCanvas.AMBER, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 22.0)
+	c.text(300, price_y - 2.0, 128, Data.usd(float(listing["price"])).replace("$", "$ "), 20.0, DesignCanvas.GREEN, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 32.0)
+
 func _machine_row(listing: Dictionary) -> void:
-	var box := _card(content, "", BORDER)
-	box.add_child(_row_head(Art.machine_photo(listing["kind"], int(listing["level"]), float(listing.get("condition", 100.0))), "%s %s" % [Data.LEVELS[int(listing["level"])], listing["kind"]], listing["model"], _price_block(listing)))
-	var tiles := HBoxContainer.new()
-	tiles.add_theme_constant_override("separation", 4)
-	tiles.add_child(_mini_tile("tezgah_guc", ("%.1f kW" % float(listing["power"])).replace(".", ","), false))
-	tiles.add_child(_mini_tile("tezgah_tolerans", Data.tolerance_text(float(listing["precision"])), false))
-	tiles.add_child(_mini_tile("tezgah_kondisyon", "%% %d" % int(listing["condition"]), false))
-	tiles.add_child(_mini_tile("tezgah_teslim", "%d Ay" % int(listing["delivery"]), false))
-	box.add_child(tiles)
-	_tap_panel(box, func() -> void:
+	var c := DesignCanvas.new()
+	c.setup(Vector2.ZERO, 437.0, 508.0, 147.0, 14.0)
+	content.add_child(c)
+	c.picture(Art.machine_photo(listing["kind"], int(listing["level"]), float(listing.get("condition", 100.0))), 9, 9, 107, 80, Color.WHITE, true, 6.0)
+	_listing_head(c, listing, 124.0, 153.0, 62.0)
+	c.line(9, 101, 414)
+	var specs := [["tasarim/detay_motor", 14.0, 47.0, ("%.1f kW" % float(listing["power"])).replace(".", ",")],
+		["tasarim/detay_alan", 123.0, 151.0, "%d m2 x %s m" % [int(listing["area"]), str(listing["height"]).replace(".", ",")]],
+		["tasarim/detay_tolerans", 244.0, 271.0, Data.tolerance_text(float(listing["precision"]))],
+		["tasarim/detay_kondisyon", 343.0, 373.0, "%% %d" % int(listing["condition"])]]
+	for spec in specs:
+		c.icon(spec[0], spec[1], 108.0, 26, 26, DesignCanvas.TEXT)
+		c.text(float(spec[2]) - 7.2, 110.0, 120, spec[3], 11.0, DesignCanvas.TEXT, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 22.0)
+	c.tap(0, 0, 437, 147, func() -> void:
 		selected_listing = int(listing["uid"])
 		_render_keep_scroll())
 
 func _machine_card(listing: Dictionary) -> void:
-	var selected: bool = listing["uid"] == selected_listing
-	var box := _card(content, "", GOLD if selected else BORDER, true)
-	box.add_theme_constant_override("separation", 16)
-	var panel := _panel_of(box)
-	listing_cards[listing["uid"]] = panel
-	var level_name: String = Data.LEVELS[int(listing["level"])]
-	var photo := Art.machine_photo(listing["kind"], int(listing["level"]), float(listing["condition"]))
-	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 12)
-	if photo != null:
-		var frame := _rounded_photo(photo, Vector2(0, 190), 16)
-		frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		frame.size_flags_stretch_ratio = 3.0
-		top.add_child(frame)
-	else:
-		var slot := _image_slot("machines", "%s_%d" % [Art.slug(listing["kind"]), listing["level"]], Color("#26313d"), 190)
-		slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		slot.size_flags_stretch_ratio = 3.0
-		top.add_child(slot)
-	var side := VBoxContainer.new()
-	side.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	side.size_flags_stretch_ratio = 2.0
-	side.add_child(_label("%s %s" % [level_name, listing["kind"]], 18, TEXT))
-	side.add_child(_label(String(listing["model"]), 13, MUTED))
-	var spacer := Control.new()
-	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	side.add_child(spacer)
-	side.add_child(_rich(_price_block(listing), 20))
-	top.add_child(side)
-	box.add_child(top)
-	# data in two columns: icon, name, value (technical cyan icons)
-	var data_grid := GridContainer.new()
-	data_grid.columns = 2
-	data_grid.add_theme_constant_override("h_separation", 14)
-	data_grid.add_theme_constant_override("v_separation", 18)
-	for entry in [
-		["tezgah_guc", "Motor Gücü", ("%.1f kW" % float(listing["power"])).replace(".", ",")],
-		[_area_icon(), "Gerekli Alan", ("%d m² x %.1fm" % [int(listing["area"]), float(listing["height"])]).replace(".0m", "m").replace(".", ",")],
-		["tezgah_tolerans", "Hassasiyet", Data.tolerance_text(float(listing["precision"]))],
-		["tezgah_teslim", "Teslim Süresi", "%d Ay" % int(listing["delivery"])],
-		["tezgah_kondisyon", "Kondisyon", "%% %d" % int(listing["condition"])]]:
-		data_grid.add_child(_spec_cell(entry[0], entry[1], entry[2], CYAN))
-	box.add_child(data_grid)
-	# forecast, 3 shifts (amber icons)
-	box.add_child(_label("Öngörülen Veriler (3 vardiya)", 15, GOLD, false))
-	var energy: float = _listing_energy(listing)   # the listing shows the low end; operation rolls 5-10 percent a step
-	var maintenance: float = _listing_maintenance(listing)
-	var forecast_grid := GridContainer.new()
-	forecast_grid.columns = 2
-	forecast_grid.add_theme_constant_override("h_separation", 14)
-	forecast_grid.add_theme_constant_override("v_separation", 18)
-	for entry in [
-		["tezgah_ongoru_bakim", "Bakım Gideri", "-%s /ay" % Data.usd(maintenance), RED],
-		["tezgah_ongoru_kapasite", "Kapasite", "%s/ay" % _xfmt(float(listing["nameplate"])), GREEN],
-		["tezgah_ongoru_enerji", "Enerji Gideri", "-%s /ay" % Data.usd(energy * 3.0), RED]]:
-		forecast_grid.add_child(_spec_cell(entry[0], entry[1], entry[2], GOLD, entry[3]))
-	box.add_child(forecast_grid)
-	var owned: int = game.machines_owned(listing["kind"], int(listing["level"]))
+	var c := DesignCanvas.new()
+	c.setup(Vector2.ZERO, 437.0, 508.0, 425.0, 14.0)
+	content.add_child(c)
+	listing_cards[listing["uid"]] = c
+	c.picture(Art.machine_photo(listing["kind"], int(listing["level"]), float(listing["condition"])), 9, 9, 236, 177, Color.WHITE, true, 8.0)
+	_listing_head(c, listing, 252.0, 281.0, 172.0)
+	# the price block of the open card sits lower than in the list
+	c.line(9, 201, 414)
+	var left_x := 14.0
+	var grid := [["tasarim/detay_motor", 14.0, "Motor Gücü", ("%.1f kW" % float(listing["power"])).replace(".", ","), 218.0, 55.0, 190.0],
+		["tasarim/detay_alan", 14.0, "Gerekli Alan", "%d m2 x %s m" % [int(listing["area"]), str(listing["height"]).replace(".", ",")], 254.0, 50.0, 190.0],
+		["tasarim/detay_tolerans", 250.0, "Tolerans", Data.tolerance_text(float(listing["precision"])), 218.0, 286.0, 421.0],
+		["tasarim/detay_kondisyon", 250.0, "Kondisyon", "%% %d" % int(listing["condition"]), 254.0, 286.0, 421.0]]
+	for cell in grid:
+		c.icon(cell[0], cell[1], float(cell[4]) - 4.0, 26, 26, DesignCanvas.TEXT)
+		c.text(float(cell[5]) - 7.2, float(cell[4]) - 2.0, 90, cell[2], 10.5, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 22.0)
+		c.text(float(cell[6]) - 130.0 - 7.2, float(cell[4]) - 2.0, 130.0 + 14.4, cell[3], 11.5, DesignCanvas.TEXT, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 22.0)
+	c.line(9, 290, 414)
+	var arrive: int = int(game.month) + int(listing["delivery"])
+	var energy_day: float = _listing_energy(listing) / float(Data.MONTH_DAYS)
+	var bullets := [
+		"Teslimat: %s [i](%d Ay sonra)[/i]" % [_date_dots(arrive, int(game.day)), int(listing["delivery"])],
+		"Gerekli Operatör Sayısı: [color=#e86f6f]%d[/color] – [i]otomatik işe başlar[/i]" % int(listing["personnel"]),
+		"Teorik Kapasite: [color=#2fd17b]%s ω/Ay[/color] [i](3 vardiya)[/i]" % _xfmt(float(listing["nameplate"])).replace(" ω", ""),
+		"Enerji Gideri: [color=#e86f6f]%s /gün*vardiya[/color]" % Data.usd(energy_day),
+		"Bakım Giderleri: [color=#e86f6f]%s /ay[/color]" % Data.usd(_listing_maintenance(listing))]
+	for i in bullets.size():
+		var y := 308.0 + 23.0 * i
+		c.text(8, y, 20, "•", 9.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 22.0)
+		c.rich(22, y, 400, bullets[i], 10.0, DesignCanvas.MUTED, 22.0)
 	var reason: String = game.listing_block_reason(listing["uid"])
-	box.add_child(_button("Satın al" if reason == "" else reason, _ask_buy.bind(listing["uid"]), reason == "", reason != "", true))
-	box.add_child(_label("Mevcut: %d ad (%s %s)" % [owned, level_name, listing["kind"]], 13, GOLD if owned > 0 else MUTED))
-	if not OS.has_feature("mobile"):
-		panel.mouse_entered.connect(func() -> void: _update_area_preview(float(listing["area"])))
-		panel.mouse_exited.connect(func() -> void: _update_area_preview())
-	panel.gui_input.connect(_on_card_input.bind(listing["uid"]))
+	var buy := c.button(305, 377, 123, 37, "Satın al", func() -> void:
+		if reason == "":
+			_ask_buy(int(listing["uid"]))
+		else:
+			_say(reason)
+			_render_keep_scroll(), 12.0, reason == "", 10.0)
+	if reason != "":
+		buy.modulate = Color(1, 1, 1, 0.55)
+		c.text(9, 380, 290, reason, 9.0, DesignCanvas.RED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 30.0, true)
+	c.gui_input.connect(_on_card_input.bind(int(listing["uid"])))
 
 # A tap selects; a drag (scrolling) does not.
 func _is_tap(event: InputEvent) -> bool:
@@ -3112,16 +3104,30 @@ func _ask_buy(uid: int) -> void:
 	var listing: Dictionary = game.listing_by_uid(uid)
 	if listing.is_empty():
 		return
-	var arrive: int = int(game.month) + int(listing["delivery"])
-	_confirm("Satın alma onayı", [
-		"%s · %s %s" % [listing["model"], Data.LEVELS[int(listing["level"])], listing["kind"]],
-		"Ödeme şimdi: %s" % Data.usd(float(listing["price"])),
-		"Teslim: %d ay sonra (%s). Teslime kadar kapasite artmaz." % [listing["delivery"], Data.month_label(arrive)],
-		"Teslimde %d personel otomatik işe başlar (kişi başı %s/ay)." % [listing["personnel"], Data.usd(Data.wage_for(listing["kind"]))],
-		"Aylık işletme: %s enerji (3 vardiya) + %s bakım" % [Data.usd(_listing_energy(listing) * 3.0), Data.usd(_listing_maintenance(listing))],
-		"Teorik kapasite %s/ay (3 vardiya); tek vardiyada bunun yaklaşık üçte biri." % _xfmt(float(listing["nameplate"])),
-		"Alan: %d m²" % listing["area"]
-	], "Satın al", _buy.bind(uid))
+	_design_dialog("%s Tezgahı (%s) – %s için [color=#e86f6f]%s[/color] ödeme yapılacak onaylıyor musunuz?" % [listing["kind"], Data.LEVELS[int(listing["level"])], listing["model"], Data.usd(float(listing["price"]))],
+		"Onayla", _buy.bind(uid))
+
+# The confirmation card of the design (tezgah_satinal_onayla): one question, Vazgeç and Onayla.
+func _design_dialog(body: String, ok_text: String, on_ok: Callable) -> void:
+	_close_overlay()
+	_auto_pause()
+	pending = on_ok
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.66)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.add_child(center)
+	var c := DesignCanvas.new()
+	c.setup(Vector2.ZERO, 437.0, 480.0, 116.0, 14.0)
+	center.add_child(c)
+	c.rich(8, 8, 420, body, 14.0, DesignCanvas.TEXT, 62.0)
+	var cancel := c.button(177, 70, 123, 37, "Vazgeç", _confirm_no, 12.0, false, 10.0)
+	for state in ["normal", "hover", "pressed"]:
+		cancel.add_theme_stylebox_override(state, c.style(Color("#232f3d"), 10.0, DesignCanvas.BORDER))
+	c.button(305, 70, 123, 37, ok_text, _confirm_yes, 12.0, true, 10.0)
 
 # Same figures as the listing card: energy and upkeep of the machine's condition (a missing 10 points costs more).
 func _listing_energy(listing: Dictionary) -> float:
