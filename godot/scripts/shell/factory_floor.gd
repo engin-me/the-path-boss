@@ -4,6 +4,7 @@ extends Control
 # working machine. The view opens fitted to the screen; the player zooms in.
 
 signal detail_requested(kind: String)
+signal machine_requested(uid: int)   # the arrow beside a machine was tapped
 signal layout_changed   # kept for the shell's wiring; the plan is fixed, nothing is rearranged any more
 
 const Data = preload("res://scripts/shell/shell_data.gd")
@@ -249,8 +250,8 @@ func _pick(screen_point: Vector2) -> void:
 	var hit := _slot_at(world)
 	if hit >= 0 and not machine_in_slot(hit).is_empty() and (_arrow_rect(slots[hit]) as Rect2).has_point(world):
 		selected = hit
-		_show_info()
-		detail_requested.emit("machines")
+		queue_redraw()
+		machine_requested.emit(int(machine_in_slot(hit)["uid"]))
 		return
 	selected = hit
 	_show_info()
@@ -271,13 +272,9 @@ func _slot_text(slot: int) -> String:
 	return "T-%02d · %s · %s %s\n%s%s" % [slot + 1, machine["model"], Data.LEVELS[int(machine["level"])], machine["kind"], status, extra]
 
 func _show_info() -> void:
-	if selected < 0:
-		info_panel.visible = false
-		return
-	info_label.text = _slot_text(selected)
-	info_kind = "machines" if not machine_in_slot(selected).is_empty() else ""
-	info_button.visible = info_kind != ""
-	info_panel.visible = true
+	# The detail opens from the arrow beside a machine; selecting a slot only frames it.
+	info_panel.visible = false
+	queue_redraw()
 
 func _build_controls() -> void:
 	for child in get_children():

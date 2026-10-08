@@ -13,6 +13,7 @@ const FloorScript = preload("res://scripts/shell/factory_floor.gd")
 const AudioDirector = preload("res://scripts/shell/audio_director.gd")
 const GaugeScript = preload("res://scripts/shell/gauge.gd")
 const YonetimView = preload("res://scripts/shell/yonetim_view.gd")
+const DesignCanvas = preload("res://scripts/shell/design_canvas.gd")
 const PlanGantt = preload("res://scripts/shell/plan_gantt.gd")
 
 # Palette (art/ui/renk_paleti.png)
@@ -79,6 +80,7 @@ var quote_progress := true
 var quote_start_offset := 0
 var quote_buffer := 0
 var drag_base := 0
+var return_to := {}   # where the back bar leads after a shortcut from the quote screen
 var type_filter := "Tümü"
 var detail := ""
 var detail_arg := ""
@@ -862,6 +864,7 @@ func _close_overlay() -> void:
 # ------------------------------------------------------------------ navigation
 
 func _on_tab(id: String) -> void:
+	return_to = {}
 	if id == "satin" or id == "teklif":
 		_auto_pause()   # buying and quoting are decided with the clock stopped
 	if id == "satin":
@@ -972,6 +975,8 @@ func _render_inner() -> void:
 		child.queue_free()
 	listing_cards.clear()
 	area_label = null
+	if not return_to.is_empty() and detail == "":
+		_return_bar()
 	if floor_view != null:
 		floor_state = floor_view.view_state()
 		stage.remove_child(floor_view)
@@ -996,6 +1001,7 @@ func _render_inner() -> void:
 		floor_view.setup(game, float(floor_state.get("zoom", 0.0)) if keep else 0.0, floor_state.get("pan", Vector2.ZERO) if keep else Vector2.ZERO)
 		floor_view.day_frac = flow_day / float(MONTH_DAYS) if flow_on else -1.0
 		floor_view.detail_requested.connect(func(kind: String) -> void: _open_detail(kind))
+		floor_view.machine_requested.connect(func(uid: int) -> void: _open_detail("machine", str(uid)))
 		floor_view.layout_changed.connect(func() -> void:
 			audio.play("drop")
 			SaveStore.write(game.to_save()))
@@ -1897,41 +1903,60 @@ func _offer_tolerance(offer: Dictionary) -> float:
 		tol = minf(tol, float(req.get("tolerance", 0.1)))
 	return tol
 
-func _offer_card(offer: Dictionary, reason: String) -> void:
-	var open: bool = open_offer == int(offer["id"])
-	var doable: bool = game.fit_block_reason(offer["id"]) == "" and game.gate_block_reason(int(offer["id"])) == ""
-	var box := _card(content, "", GREEN if doable else BORDER)
+# ------------------------------------------------------------------ Teklif ekranları (teklif_ekrani.pptx)
+
+func _offer_stats(offer: Dictionary) -> Dictionary:
 	var parts := 0
 	var difficulty := 0.0
+	var load_total := 0.0
+	var kg := 0
 	for req in offer["reqs"]:
 		parts = maxi(parts, int(req["parts"]))
+		load_total += float(req["workload"])
 		difficulty = maxf(difficulty, float(req["difficulty"]))
-	box.add_child(_row_head(Art.pick_image("res://art/jobs", int(offer["id"])), offer["title"], "İş No: %d%s · %s" % [_job_no(offer), "  [color=#e7b75c][b]FASON[/b][/color]" if bool(offer.get("fason", false)) else "", offer["customer"]],
-		"[right][color=#2fd17b]%s Ad[/color] x %s[/right]" % [Data.usd(float(parts) / 1000.0).trim_prefix("$"), Data.mu_text(difficulty)]))
-	var tiles := HBoxContainer.new()
-	tiles.add_theme_constant_override("separation", 6)
-	tiles.add_child(_mini_tile("tezgah_tolerans", Data.tolerance_text(_offer_tolerance(offer)), false))
-	tiles.add_child(_mini_tile("tezgah_teslim", "%d Ay" % int(offer["months"]), false))
-	tiles.add_child(_mini_tile("is_ilani_malzeme", Data.STEEL_GRADE[int(offer["reqs"][0]["steel"])], false))
-	box.add_child(tiles)
-	box.add_child(_need_icons(offer, open))
+		kg += int(roundf(float(req["tons"]) * 1000.0))
+	return {"parts": parts, "difficulty": difficulty, "load": load_total, "kg": kg,
+		"parts_text": "%s Ad" % Data.usd(float(parts) / 1000.0).trim_prefix("$"),
+		"size_text": "%s Ad  x  %s" % [Data.usd(float(parts) / 1000.0).trim_prefix("$"), Data.mu_text(difficulty).replace("ω ", "ω ")]}
+
+# The customer block of a listing: logo-less portrait and four lines of text (company, name, e-mail, phone).
+func _contact_block(c: DesignCanvas, offer: Dictionary, x: float, y: float) -> void:
+	var info: Dictionary = Data.contact_info(offer)
+	var portrait: Texture2D = Art.find("res://art/contacts/" + String(info["id"])) if String(info["id"]) != "" else null
+	if portrait != null:
+		c.picture(portrait, x, y, 49, 50, Color.WHITE, true, 10.0)
+	c.text(x + 49, y, 140, "%s\n%s\n%s\n%s" % [offer["customer"], Data.contact_of(offer), Data.contact_email(offer), Data.contact_phone(offer)], 9.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 51.0)
+
+func _offer_card(offer: Dictionary, reason: String) -> void:
+	var doable: bool = game.fit_block_reason(offer["id"]) == "" and game.gate_block_reason(int(offer["id"])) == ""
+	var stats: Dictionary = _offer_stats(offer)
+	var c := DesignCanvas.new()
+	c.setup(Vector2(9, 9), 437.0, 508.0, 216.0, 12.0)
+	content.add_child(c)
+	var photo := Art.pick_image("res://art/jobs", int(offer["id"]))
+	c.picture(photo, 17, 15, 73, 60, Color.WHITE, true, 8.0)
+	c.text(98, 15, 250, String(offer["title"]), 16.0, DesignCanvas.TEXT, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 27.0)
+	c.text(340, 19, 100, "İş No: %d" % _job_no(offer), 11.0, DesignCanvas.AMBER, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 21.0)
+	c.text(250, 43, 190, String(stats["size_text"]), 16.0, DesignCanvas.GREEN, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 27.0)
 	if bool(offer.get("continuous", false)):
-		box.add_child(_label("SÜREKLİ İŞ · %d ay · %s kapasitesinin %%%d'i · %14–22 garantili marj · her ay hakediş" % [Data.CONTINUOUS_MONTHS, offer["reqs"][0]["kind"], int(Data.CONTINUOUS_SHARE * 100.0)], 12, GOLD, false))
-	var urgency_color: Color = RED if Data.urgency_label(offer) == "Acil" else (GREEN if Data.urgency_label(offer) == "Esnek" else MUTED)
-	box.add_child(_label("%s müşteri" % Data.urgency_label(offer), 12, urgency_color, false))
-	var gate: Dictionary = Data.job_gate(offer)
-	if not gate.is_empty():
-		var met: bool = game.gate_block_reason(int(offer["id"])) == ""
-		box.add_child(_label(("Sürekli İş" if bool(offer.get("continuous", false)) else "Büyük iş") + " · en az %d iş bitirmiş ve %%%d teslim skoru gerekir" % [int(gate["jobs"]), int(roundf(float(gate["score"]) * 100.0))], 12, GREEN if met else RED))
-	if open and not doable:
-		box.add_child(_label(game.fit_block_reason(offer["id"]), 12, RED))
-	if open:
-		_job_requirement_rows(box, offer)
-		_row(box, "Teslim süresi", "%d ay" % offer["months"], TEXT, 13)
-		box.add_child(_button("Teklif ver" if reason == "" else reason, _open_detail.bind("quote", str(offer["id"])), reason == "", reason != ""))
-	_tap_panel(box, func() -> void:
-		open_offer = -1 if open else int(offer["id"])
-		_render_keep_scroll())
+		c.text(98, 43, 150, "Sürekli İş · %d ay" % Data.CONTINUOUS_MONTHS, 10.5, DesignCanvas.AMBER, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 21.0)
+	c.text(318, 104, 70, "Tolerans", 10.5, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 21.0)
+	c.text(384, 104, 56, Data.tolerance_text(_offer_tolerance(offer)), 11.0, DesignCanvas.CYAN, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 21.0)
+	c.text(318, 128, 70, "Teslimat", 10.5, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 21.0)
+	c.text(384, 128, 56, "%d Ay" % int(offer["months"]), 11.0, DesignCanvas.CYAN, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 21.0)
+	var kinds: Array = []
+	for req in offer["reqs"]:
+		if not kinds.has(req["kind"]):
+			kinds.append(req["kind"])
+	for i in kinds.size():
+		var have := true
+		for req in offer["reqs"]:
+			if req["kind"] == kinds[i] and not game.owns(req):
+				have = false
+		c.icon(Art.slug(kinds[i]) + "_icon", 17.0 + 40.0 * i, 115, 34, 32, DesignCanvas.TEXT if have else DesignCanvas.RED)
+	c.line(23, 158, 407)
+	_contact_block(c, offer, 17, 168)
+	c.button(346, 186, 91, 30, "İncele", func() -> void: _open_detail("quote", str(offer["id"])))
 
 func _gold_italic(text: String, size := 13) -> Label:
 	var label := _label(text, size, GOLD)
@@ -2057,6 +2082,85 @@ func _delivery_check(offer: Dictionary, months_offered: int) -> Array:
 		return [when + " Tedarikçi hammaddeyi geciktirirse (%%%d ihtimal) iş %s tarihine kayar, %d gün geç kalırsın." % [int(roundf(float(plan["delay_chance"]) * 100.0)), Data.date_text(int(risk["finish"]), int(risk["finish_day"])), int(risk["late_days"])], GOLD]
 	return [when + " Zamanında yetişir.", GREEN]
 
+# Opens another page from the quote screen and remembers where to come back to (the quote with its settings).
+func _goto_with_return(target_page: String, sub_key: String, sub_value: String) -> void:
+	return_to = {"page": page, "detail": detail, "arg": detail_arg, "ilanlar": subtab["ilanlar"], "label": "Teklife dön"}
+	detail = ""
+	page = target_page
+	subtab[sub_key] = sub_value
+	_render()
+
+func _return_bar() -> void:
+	var row := HBoxContainer.new()
+	var back := _button("‹ %s" % String(return_to["label"]), func() -> void:
+		var saved: Dictionary = return_to
+		return_to = {}
+		page = String(saved["page"])
+		detail = String(saved["detail"])
+		detail_arg = String(saved["arg"])
+		subtab["ilanlar"] = String(saved["ilanlar"])
+		_render())
+	back.custom_minimum_size = Vector2(190, 46)
+	row.add_child(back)
+	content.add_child(row)
+
+func _check_icon(c: DesignCanvas, on: bool, color: Color) -> Texture2D:
+	var k: float = c.scale_k
+	var side := int(roundf(14.0 * k))
+	return c.shape_texture(side, color if on else DesignCanvas.CARD, color if on else DesignCanvas.BORDER, 3.0 * k)
+
+func _design_check(c: DesignCanvas, x: float, y: float, caption: String, checked: bool, color: Color, enabled: bool, on_toggle := Callable(), text_color := DesignCanvas.MUTED) -> void:
+	var on_icon: Texture2D = _check_icon(c, true, color)
+	var off_icon: Texture2D = _check_icon(c, false, color if color != DesignCanvas.GREEN else DesignCanvas.BORDER)
+	if enabled:
+		var toggle := Button.new()
+		toggle.flat = true
+		toggle.toggle_mode = true
+		toggle.button_pressed = checked
+		toggle.icon = on_icon if checked else off_icon
+		toggle.expand_icon = false
+		toggle.focus_mode = Control.FOCUS_NONE
+		toggle.toggled.connect(func(on: bool) -> void:
+			toggle.icon = on_icon if on else off_icon
+			if on_toggle.is_valid():
+				on_toggle.call(on))
+		c.place(toggle, x - 4.0, y - 4.0, 22, 22)
+	else:
+		var mark := TextureRect.new()
+		mark.texture = on_icon if checked else off_icon
+		mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		c.place(mark, x, y, 14, 14)
+	c.text(x + 19.0, y - 3.0, 150, caption, 9.0, text_color, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
+
+func _design_slider(c: DesignCanvas, x: float, y: float, caption: String, low: int, high: int, value: int, unit: String, on_change: Callable) -> void:
+	c.text(x, y - 3.0, 70, caption, 11.0, DesignCanvas.TEXT, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 21.0)
+	var shown := c.text(x + 230.0, y - 3.0, 43, "", 11.0, DesignCanvas.TEXT, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 21.0)
+	var k: float = c.scale_k
+	var slider := HSlider.new()
+	slider.min_value = low
+	slider.max_value = high
+	slider.step = 1
+	slider.value = value
+	var track := c.style(DesignCanvas.INNER, 7.0, DesignCanvas.INNER_BORDER)
+	track.content_margin_top = 6.0 * k
+	track.content_margin_bottom = 6.0 * k
+	var filled := c.style(DesignCanvas.MUTED, 7.0, DesignCanvas.MUTED, 0)
+	filled.content_margin_top = 6.0 * k
+	filled.content_margin_bottom = 6.0 * k
+	slider.add_theme_stylebox_override("slider", track)
+	slider.add_theme_stylebox_override("grabber_area", filled)
+	slider.add_theme_stylebox_override("grabber_area_highlight", filled)
+	var knob: Texture2D = c.shape_texture(int(roundf(21.0 * k)), DesignCanvas.TEXT, DesignCanvas.TEXT, 10.5 * k)
+	slider.add_theme_icon_override("grabber", knob)
+	slider.add_theme_icon_override("grabber_highlight", knob)
+	slider.add_theme_icon_override("grabber_disabled", knob)
+	c.place(slider, x + 59.0, y - 4.0, 170, 22)
+	slider.value_changed.connect(func(v: float) -> void:
+		shown.text = unit % int(v)
+		on_change.call(int(v)))
+	shown.text = unit % value
+	on_change.call(value)
+
 func _detail_quote() -> void:
 	var offer: Dictionary = game.offer_by_id(int(detail_arg))
 	if offer.is_empty():
@@ -2064,184 +2168,137 @@ func _detail_quote() -> void:
 		return
 	if quote_months == 0:
 		_open_quote(int(detail_arg))
+	game.quote_progress = quote_progress
+	game.quote_start_offset = quote_start_offset
 	var wanted: int = int(offer["months"])
 	var estimate: Dictionary = game.cost_estimate(offer, quote_edit)
 	var lines: Array = estimate["lines"]
 	var total: float = float(estimate["total"])
-	game.quote_progress = quote_progress
-	game.quote_start_offset = quote_start_offset
-	var parts := 0
-	var load_total := 0.0
-	var difficulty := 0.0
-	var kg := 0
-	var tol := 99.0
-	for req in offer["reqs"]:
-		parts = maxi(parts, int(req["parts"]))
-		load_total += float(req["workload"])
-		difficulty = maxf(difficulty, float(req["difficulty"]))
-		kg += int(roundf(float(req["tons"]) * 1000.0))
-		tol = minf(tol, float(req.get("tolerance", 0.1)))
+	var stats: Dictionary = _offer_stats(offer)
 	var fason: bool = bool(offer.get("fason", false))
 	var grade: String = Data.STEEL_GRADE[int(offer["reqs"][0]["steel"])]
-	var parts_text := "%s Ad" % Data.usd(float(parts) / 1000.0).trim_prefix("$")
-	var box := _card(content, "", GOLD, true)
-	var photo := _offer_photo(offer, 158)
-	if photo != null:
-		box.add_child(photo)
-	var who := HBoxContainer.new()
-	who.add_theme_constant_override("separation", 10)
-	var avatar := _icon_rect("is_ilani_yetkili_kisi", 44)
-	var portrait: Texture2D = Art.find("res://art/contacts/" + String(Data.contact_info(offer)["id"])) if String(Data.contact_info(offer)["id"]) != "" else null
-	if portrait != null:
-		who.add_child(_rounded_photo(portrait, Vector2(44, 44), 10))
-	elif avatar != null:
-		who.add_child(avatar)
-	var who_text := VBoxContainer.new()
-	who_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	who_text.add_child(_label(offer["customer"], 15, TEXT, false))
-	who_text.add_child(_label("%s\n%s · %s" % [Data.contact_of(offer), Data.contact_email(offer), Data.contact_phone(offer)], 11, MUTED, false))
-	who.add_child(who_text)
-	var who_right := VBoxContainer.new()
-	var no_label := _rich("[right]İş No: %d%s[/right]" % [_job_no(offer), "  [color=#e7b75c][b]FASON[/b][/color]" if fason else ""], 14)
-	no_label.fit_content = true
-	who_right.add_child(no_label)
-	var size_label := _label("%s x %s" % [parts_text, Data.mu_text(difficulty)], 14, TEXT, false)
-	size_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	who_right.add_child(size_label)
-	who.add_child(who_right)
-	box.add_child(who)
-	box.add_child(_label(offer["title"], 22, TEXT))
+	# Positions are the design's own (card top-left = 9, 234); the title row adds 32 points under the picture.
+	var shift := 32.0
+	var c := DesignCanvas.new()
+	c.setup(Vector2(9, 234), 437.0, 508.0, 1100.0, 14.0)
+	content.add_child(c)
+	c.picture(Art.pick_image("res://art/jobs", int(offer["id"])), 17, 243, 419, 158, Color.WHITE, true, 12.0)
+	c.text(17, 411, 419, String(offer["title"]), 16.0, DesignCanvas.TEXT, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 22.0)
+	_contact_block(c, offer, 17, 411.0 + shift)
+	c.text(340, 412.0 + shift, 96, "İş No: %d" % _job_no(offer), 11.0, DesignCanvas.AMBER, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 21.0)
+	c.text(250, 437.0 + shift, 186, String(stats["size_text"]), 16.0, DesignCanvas.GREEN, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 27.0)
 	if bool(offer.get("continuous", false)):
-		box.add_child(_label("Sürekli İş: her ay kapasitenin %%%d'i bu işe ayrılır; teslimat bozulursa sözleşme biter." % int(Data.CONTINUOUS_SHARE * 100.0), 12, GOLD, false))
-	box.add_child(_label("%s müşteri · %s" % [Data.urgency_label(offer), {"Acil": "fiyata toleranslı, gecikmeye hiç toleranslı değil", "Normal": "dengeli", "Esnek": "fiyata hassas, süre konusunda esnek"}[Data.urgency_label(offer)]], 12, MUTED, false))
-	box.add_child(_quote_line())
-	_quote_pair(box, ["Parça Sayısı", parts_text], ["Hammadde", "müşteri verir" if fason else grade])
-	_quote_pair(box, ["Parça İş Gücü (ω)", str(difficulty).trim_suffix(".0").replace(".", ",")], ["Tolerans (mm)", Data.tolerance_text(tol)])
-	_quote_pair(box, ["İstenen Teslim", "%d Ay" % wanted], ["Gerekli Kapasite", _xfmt(load_total)])
-	box.add_child(_need_icons(offer, true, 34))
-	box.add_child(_quote_line())
-	box.add_child(_label("Öngörülen Veriler", 16, GOLD))
+		c.text(250, 463.0 + shift, 186, "Sürekli İş · %d ay" % Data.CONTINUOUS_MONTHS, 10.5, DesignCanvas.AMBER, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 21.0)
+	c.line(23, 472.0 + shift, 407)
+	var y0 := 490.0 + shift
+	c.text(17, y0, 120, "Parça Sayısı", 12.0, DesignCanvas.MUTED)
+	c.text(132, y0, 65, String(stats["parts_text"]), 12.0, DesignCanvas.GREEN, HORIZONTAL_ALIGNMENT_RIGHT)
+	c.text(257, y0, 100, "Hammadde", 12.0, DesignCanvas.MUTED)
+	c.text(357, y0, 80, "müşteri verir" if fason else grade, 12.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
+	c.text(17, y0 + 36.0, 120, "Parça İş Gücü (ω)", 12.0, DesignCanvas.MUTED)
+	c.text(132, y0 + 36.0, 65, str(stats["difficulty"]).trim_suffix(".0").replace(".", ","), 12.0, DesignCanvas.TEXT, HORIZONTAL_ALIGNMENT_RIGHT)
+	c.text(257, y0 + 36.0, 100, "Tolerans (mm)", 12.0, DesignCanvas.MUTED)
+	c.text(357, y0 + 36.0, 80, Data.tolerance_text(_offer_tolerance(offer)).trim_suffix(" mm"), 12.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
+	c.text(17, y0 + 72.0, 120, "İstenen Teslim", 12.0, DesignCanvas.MUTED)
+	c.text(132, y0 + 72.0, 65, "%d Ay" % wanted, 12.0, DesignCanvas.TEXT, HORIZONTAL_ALIGNMENT_RIGHT)
+	c.line(23, 602.0 + shift, 407)
+	var y := 616.0 + shift
+	c.text(17, y, 200, "Öngörülen Veriler", 12.0, DesignCanvas.BLUE)
+	y += 30.0
 	if not fason:
 		var supplier_now: Dictionary = Data.supplier_by_id(game.default_supplier)
-		var supplier_row := HBoxContainer.new()
-		var supplier_name := _label("Hammadde Tedarikçisi", 14, TEXT, false)
-		supplier_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		supplier_row.add_child(supplier_name)
-		var change := _button("%s ›" % supplier_now["name"], _open_detail.bind("supplier_pick", str(offer["id"])))
-		change.custom_minimum_size = Vector2(190, 38)
-		supplier_row.add_child(change)
-		box.add_child(supplier_row)
-		_quote_row(box, "Hammadde Gideri", Data.usd(float(estimate["material"])), TEXT, 14)
-		box.add_child(_label("%s kg x %s = %s kg" % [str(offer["reqs"][0]["weight"]).trim_suffix(".0").replace(".", ","), parts_text, Data.usd(float(kg) / 1000.0).trim_prefix("$")], 11, MUTED, false))
-	else:
-		box.add_child(_label("Fason iş: hammaddeyi müşteri verir; yalnızca işçilik fiyatlanır.", 12, MUTED))
-	_quote_row(box, "Hurda Gideri", Data.usd(_sum_lines(lines, "scrap")), TEXT, 14)
-	_quote_row(box, "Enerji, Personel, Sarf Malzeme", Data.usd(_sum_lines(lines, "energy") + _sum_lines(lines, "personnel") + _sum_lines(lines, "consumables")), TEXT, 14)
-	_quote_row(box, "Genel Gider & Amortisman", Data.usd(_sum_lines(lines, "overhead") + _sum_lines(lines, "amortization")), TEXT, 14)
-	_quote_row(box, "Toplam Gider", Data.usd(total), TEXT, 16)
-	box.add_child(_quote_line())
-	var shifts_row := HBoxContainer.new()
-	shifts_row.add_theme_constant_override("separation", 10)
-	var shifts := GridContainer.new()
-	shifts.columns = 3
-	shifts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	shifts.add_theme_constant_override("h_separation", 10)
+		c.text(17, y, 200, "Hammadde Tedarikçisi", 12.0, DesignCanvas.TEXT)
+		c.text(250, y, 170, String(supplier_now["name"]), 12.0, DesignCanvas.TEXT, HORIZONTAL_ALIGNMENT_RIGHT)
+		c.chevron(425, y + 4.0)
+		c.tap(17, y - 4.0, 420, 30, func() -> void: _goto_supplier_pick(offer))
+		y += 27.0
+		c.text(17, y, 200, "Hammadde Gideri", 12.0, DesignCanvas.AMBER)
+		c.text(375, y, 62, Data.usd(float(estimate["material"])), 12.0, DesignCanvas.AMBER, HORIZONTAL_ALIGNMENT_RIGHT)
+		y += 20.0
+		c.text(28, y, 250, "%s kg x %s = %s kg" % [str(offer["reqs"][0]["weight"]).trim_suffix(".0").replace(".", ","), String(stats["parts_text"]), Data.usd(float(stats["kg"]) / 1000.0).trim_prefix("$")], 12.0, DesignCanvas.AMBER)
+		y += 23.0
+	var cost_rows := [["Hurda Gideri", fason_free(fason, _sum_lines(lines, "scrap"))],
+		["Enerji, Personel, Sarf Malzeme", _sum_lines(lines, "energy") + _sum_lines(lines, "personnel") + _sum_lines(lines, "consumables")],
+		["Genel Gider & Amortisman", _sum_lines(lines, "overhead") + _sum_lines(lines, "amortization")]]
+	for row in cost_rows:
+		c.text(17, y, 250, String(row[0]), 12.0, DesignCanvas.AMBER)
+		c.text(355, y, 82, Data.usd(float(row[1])), 12.0, DesignCanvas.AMBER, HORIZONTAL_ALIGNMENT_RIGHT)
+		y += 27.0
+	c.text(17, y, 200, "Toplam Gider", 12.0, DesignCanvas.RED)
+	c.text(355, y, 82, Data.usd(total), 12.0, DesignCanvas.RED, HORIZONTAL_ALIGNMENT_RIGHT)
+	var line_y := y + 38.0
+	c.line(23, line_y, 407)
+	# shifts (information only; the arrow opens the factory's shift page)
 	for n in [1, 2, 3]:
-		var cell := VBoxContainer.new()
-		cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var tick := CheckBox.new()
-		tick.text = "Vardiya %d" % n
-		tick.add_theme_font_size_override("font_size", _fs(13))
-		tick.button_pressed = game.plan_shifts >= n
-		tick.disabled = true   # information only; the plan is changed on the factory's shift page
-		tick.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		cell.add_child(tick)
-		var overtime := CheckBox.new()
-		overtime.text = "Mesai + 4 sa"
-		overtime.add_theme_font_size_override("font_size", _fs(12))
-		overtime.button_pressed = bool(game.plan_ot[n - 1])
-		overtime.disabled = true
-		overtime.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		cell.add_child(overtime)
-		shifts.add_child(cell)
-	shifts_row.add_child(shifts)
-	var to_shifts := _button("›", func() -> void:
-		subtab["fabrika"] = "vardiya"
-		_on_tab("fabrika"))
-	to_shifts.custom_minimum_size = Vector2(52, 52)
-	shifts_row.add_child(to_shifts)
-	box.add_child(shifts_row)
+		var col_x: float = [19.0, 165.0, 317.0][n - 1]
+		_design_check(c, col_x, line_y + 19.0, "Vardiya %d" % n, game.plan_shifts >= n, DesignCanvas.GREEN, false)
+		_design_check(c, col_x, line_y + 44.0, "Mesai + 4 sa", bool(game.plan_ot[n - 1]), DesignCanvas.GREEN, false)
+	c.chevron(425, line_y + 35.0, func() -> void: _goto_with_return("fabrika", "fabrika", "vardiya"))
+	# calendar
 	var gantt = PlanGantt.new()
-	box.add_child(gantt)
-	box.add_child(_label("Mavi: işlerin · sarı: müşterinin istediği süre · yeşil/kırmızı: bu işin yeri. Çubuğu sürükleyerek başlangıç gününü seç; tezgah simgesine dokunarak güvenlik payını ayarla.", 11, MUTED))
-	box.add_child(_quote_line())
-	var price_label := _label("", 22, GREEN, false)
-	price_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	var cost_label := _label("", 13, MUTED, false)
-	var profit_label := _label("", 13, MUTED, false)
-	var lower := HBoxContainer.new()
-	lower.add_theme_constant_override("separation", 10)
-	var sliders := VBoxContainer.new()
-	sliders.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	sliders.add_theme_constant_override("separation", 4)
-	lower.add_child(sliders)
-	var gauge_box := VBoxContainer.new()
-	gauge_box.custom_minimum_size = Vector2(150, 0)
-	gauge_box.add_child(_label("İşi Alma İhtimali", 12, MUTED, false))
+	var gantt_top := line_y + 78.0
+	var gantt_h := 64.0
+	c.box(19, gantt_top, 417, gantt_h, DesignCanvas.CARD, 8.0, DesignCanvas.BORDER)
+	c.place(gantt, 22, gantt_top + 2.0, 395, gantt_h - 4.0)
+	c.chevron(425, gantt_top + gantt_h * 0.5 - 7.0, func() -> void: _goto_with_return("fabrika", "fabrika", "kapasite"))
+	var after_gantt := gantt_top + gantt_h + 19.0
+	c.line(23, after_gantt, 407)
+	var sliders_top := after_gantt + 23.0
+	var price_label := c.text(350, sliders_top + 147.0, 87, "", 16.0, DesignCanvas.TEXT, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 27.0)
+	var cost_label := c.text(375, sliders_top + 175.0, 62, Data.usd(total), 12.0, DesignCanvas.RED, HORIZONTAL_ALIGNMENT_RIGHT)
+	var profit_label := c.text(375, sliders_top + 199.0, 62, "", 12.0, DesignCanvas.GREEN, HORIZONTAL_ALIGNMENT_RIGHT)
+	var gauge_box := c.box(305, sliders_top - 1.0, 132, 98, DesignCanvas.INNER, 9.0, DesignCanvas.INNER_BORDER)
+	c.text(313, sliders_top, 120, "İşi Alma İhtimali", 11.0, DesignCanvas.TEXT, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 21.0)
 	var gauge: Control = GaugeScript.new()
-	gauge_box.add_child(gauge)
-	var gauge_panel := PanelContainer.new()
-	gauge_panel.add_theme_stylebox_override("panel", _box(Color(0, 0, 0, 0), TEXT, 12, 1))
-	gauge_panel.add_child(_margin(gauge_box, 8, 6))
+	c.place(gauge, 312, sliders_top + 22.0, 118, 70)
 	var refresh := func() -> void:
 		quote_price = ceilf(total * (1.0 + quote_margin) * 100.0) / 100.0
 		price_label.text = Data.usd(quote_price)
-		cost_label.text = "Öngörülen Giderler Toplamı: " + Data.usd(total)
-		profit_label.text = "Öngörülen Kâr Tutarı: " + Data.usd(quote_price - total)
+		profit_label.text = Data.usd(quote_price - total)
 		game.quote_progress = quote_progress
 		game.quote_start_offset = quote_start_offset
 		gauge.set_value(float(game.accept_probability(offer, quote_price, quote_adv, quote_months)["accept"]))
 		_update_gantt(gantt, offer, quote_months)
-	_slider_row(sliders, "Peşinat", 0, 100, quote_adv, func(v: int, shown: Label) -> void:
+	_design_slider(c, 19, sliders_top, "Peşinat", 0, 100, quote_adv, "%% %d", func(v: int) -> void:
 		quote_adv = v
-		shown.text = "%% %d" % v
 		if is_instance_valid(gauge): refresh.call())
-	_slider_row(sliders, "Teslimat", 1, wanted + 2, clampi(quote_months, 1, wanted + 2), func(v: int, shown: Label) -> void:
+	_design_slider(c, 19, sliders_top + 38.0, "Teslimat", 1, wanted + 2, clampi(quote_months, 1, wanted + 2), "%d Ay", func(v: int) -> void:
 		quote_months = v
-		shown.text = "%d Ay" % v
 		if is_instance_valid(gauge): refresh.call())
-	_slider_row(sliders, "Kâr Marjı", 0, 100, int(roundf(quote_margin * 100.0)), func(v: int, shown: Label) -> void:
+	_design_slider(c, 19, sliders_top + 77.0, "Kar Marjı", 0, 100, int(roundf(quote_margin * 100.0)), "%% %d", func(v: int) -> void:
 		quote_margin = float(v) / 100.0
-		shown.text = "%%%d" % v
 		if is_instance_valid(gauge): refresh.call())
-	lower.add_child(gauge_panel)
-	box.add_child(lower)
 	gantt.drag_started.connect(func() -> void: drag_base = quote_start_offset)
 	gantt.start_dragged.connect(func(delta: int) -> void:
 		quote_start_offset = maxi(0, drag_base + delta)
 		refresh.call())
 	gantt.lane_tapped.connect(func(kind: String) -> void: _plan_popup(offer, kind))
-	var monthly := CheckBox.new()
-	monthly.text = "Her ay ödeme yapılsın"
-	monthly.add_theme_font_size_override("font_size", _fs(14))
-	monthly.button_pressed = quote_progress
-	monthly.toggled.connect(func(on: bool) -> void:
+	_design_check(c, 27, sliders_top + 117.0, "Her ay ödeme yapılsın", quote_progress, DesignCanvas.AMBER, true, func(on: bool) -> void:
 		quote_progress = on
-		refresh.call())
-	box.add_child(monthly)
-	box.add_child(_label("İşaretliyken müşteri yapılan işe göre her ay %%%d öder; işaretsizken kalan tutar teslimde tek seferde gelir (müşteri bunu daha çok sever)." % int(Data.PROGRESS_SHARE * 100.0), 11, MUTED))
-	var price_row := HBoxContainer.new()
-	var price_caption := _label("Teklif Tutarı", 15, TEXT, false)
-	price_caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	price_row.add_child(price_caption)
-	price_row.add_child(price_label)
-	box.add_child(price_row)
-	box.add_child(cost_label)
-	box.add_child(profit_label)
+		refresh.call(), DesignCanvas.AMBER)
+	c.text(177, sliders_top + 147.0, 100, "Teklif Ver".replace("Teklif Ver", "Teklif Tutarı"), 12.0, DesignCanvas.TEXT)
+	c.text(177, sliders_top + 175.0, 190, "Öngörülen Giderler Toplamı", 12.0, DesignCanvas.RED)
+	c.text(177, sliders_top + 199.0, 190, "Öngörülen Kar Tutarı", 12.0, DesignCanvas.GREEN)
 	refresh.call()
 	var reason: String = game.quote_block_reason(int(detail_arg), maxf(quote_price, 0.001))
-	var send := _button("TEKLİF VER" if reason == "" else reason, _ask_send_quote.bind(int(detail_arg)), reason == "", reason != "", true)
-	box.add_child(send)
+	var send := c.button(346, sliders_top + 234.0, 91, 30, "Teklif Ver", func() -> void:
+		if reason == "":
+			_ask_send_quote(int(detail_arg))
+		else:
+			_say(reason)
+			_render(), 12.0, reason == "")
+	send.disabled = false
+	if reason != "":
+		c.text(19, sliders_top + 234.0, 320, reason, 9.0, DesignCanvas.RED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 30.0).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	c.set_height(sliders_top + 234.0 + 30.0 + 12.0 - 234.0 + 0.0)
+	gauge_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+func fason_free(fason: bool, value: float) -> float:
+	return 0.0 if fason else value
+
+func _goto_supplier_pick(offer: Dictionary) -> void:
+	_open_detail("supplier_pick", str(offer["id"]))
+
 
 # The plan window of one machine kind: workload, the daily capacity of today's settings, the computed duration, the start day
 # and a safety margin that stretches the delivery time offered (IDEA-023).
@@ -3452,6 +3509,9 @@ func _render_detail() -> void:
 		"machines":
 			title.text = "  Makineler"
 			_detail_machines()
+		"machine":
+			title.text = "  Tezgah"
+			_detail_machine(int(detail_arg))
 		"oee":
 			title.text = "  OEE ve kapasite"
 			_detail_oee()
@@ -3875,6 +3935,74 @@ func _close_loan() -> void:
 	_render()
 
 # ------------------------------------------------------------------ summary details
+
+const KIND_PICTURE_SUFFIX := "_icon_new"
+
+# One machine, laid out exactly like the design file (tezgah_detay.pptx): photo and specs, capacity / maintenance / energy /
+# condition rows with their formulas, and the selling price with the Sat button.
+func _detail_machine(uid: int) -> void:
+	var machine: Dictionary = game.machine_by_uid(uid)
+	if machine.is_empty():
+		content.add_child(_label("Bu tezgah artık yok.", 14, MUTED))
+		return
+	var c := DesignCanvas.new()
+	c.setup(Vector2(27, 0), 452.0, 508.0, 464.0)
+	content.add_child(c)
+	var delivered: bool = int(machine["arrive"]) <= game.month
+	var mults: Dictionary = game.problem_mults(game.loss_fractions())
+	c.picture(Art.machine_photo(machine["kind"], int(machine["level"]), float(machine["condition"])), 37, 9, 244, 183, Color.WHITE, true, 9.0)
+	c.text(318, 9, 150, "%s Tezgahı" % machine["kind"], 14.0, DesignCanvas.TEXT)
+	c.text(318, 27, 150, "T-%02d\n%s" % [int(machine.get("slot", 0)) + 1, machine["model"]], 9.0, DesignCanvas.AMBER, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 36.0)
+	c.picture(Art.find("res://art/ui/" + Art.slug(machine["kind"]) + KIND_PICTURE_SUFFIX), 288, 14, 29, 28)
+	var power_text := ("%.1f kW" % float(machine["power"])).replace(".", ",") if machine.has("power") else "—"
+	var area_text := ("%d m2 x %s m" % [int(machine["area"]), str(machine["height"]).replace(".", ",")]) if machine.has("area") else "—"
+	var specs := [
+		["tasarim/detay_seviye", 62, "Seviye", Data.LEVELS[int(machine["level"])]],
+		["tasarim/detay_kondisyon", 90, "Kondisyon", "%% %d" % int(roundf(float(machine["condition"])))],
+		["tasarim/detay_motor", 118, "Motor Gücü", power_text],
+		["tasarim/detay_tolerans", 146, "Tolerans", Data.tolerance_text(float(machine.get("precision", 0.1))) if machine.has("precision") else "—"],
+		["tasarim/detay_alan", 174, "Gerekli Alan", area_text]]
+	for spec in specs:
+		c.icon(spec[0], 301, float(spec[1]), 15, 14, DesignCanvas.MUTED)
+		c.text(318, float(spec[1]) - 4.0, 100, spec[2], 9.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
+		c.text(373, float(spec[1]) - 4.0, 100, spec[3], 9.0, DesignCanvas.TEXT, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 18.0)
+	c.line(37, 208, 427)
+	var output: float = game.machine_output(machine, mults) if delivered else 0.0
+	var energy: float = game.machine_energy(machine) * game.shift_equiv(machine)
+	var rows := [
+		[225, "tasarim/detay_kapasite", "Kapasite", "Teorik × vardiya × verim", "%d Vardiya" % int(machine["shifts"]), "%s/ay" % _xfmt(output), DesignCanvas.GREEN],
+		[271, "tasarim/detay_bakim", "Bakım Gideri", "Fiyat × bakım oranı", "Aylık, sabit", "−" + Data.usd(game.machine_maintenance(machine)), DesignCanvas.RED],
+		[318, "tasarim/detay_enerji", "Enerji Gideri", "Motor gücü × vardiya", "Çalışmaya bağlı", "−" + Data.usd(energy), DesignCanvas.RED]]
+	for row in rows:
+		var y: float = float(row[0])
+		c.icon(row[1], 37, y, 28, 28, DesignCanvas.MUTED)
+		c.text(75, y + 4.0, 95, row[2], 9.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
+		c.text(171, y + 4.0, 146, row[3], 8.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
+		c.text(318, y + 4.0, 90, row[4], 9.0, DesignCanvas.AMBER, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
+		c.text(400, y + 4.0, 73, row[5], 9.0, row[6], HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 18.0)
+	c.line(37, 259, 429)
+	c.line(37, 311, 429)
+	c.line(37, 353, 429)
+	c.icon("tasarim/detay_kondisyon", 41, 364, 24, 21, DesignCanvas.MUTED)
+	c.text(75, 364, 95, "Kondisyon", 9.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
+	c.text(171, 364, 146, "Yılda −10 puan", 8.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
+	c.text(318, 364, 90, "Aylık değişim", 9.0, DesignCanvas.AMBER, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
+	c.text(400, 364, 73, "−0,8 puan", 9.0, DesignCanvas.RED, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 18.0)
+	c.line(37, 399, 427)
+	c.text(200, 414, 122, "Güncel Satış Fiyatı", 11.0, DesignCanvas.TEXT, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 21.0)
+	c.text(323, 411, 81, Data.usd(game.sale_income(machine)).replace("$", "$ "), 16.0, DesignCanvas.GREEN, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 27.0)
+	var sell_reason: String = game.sell_block_reason(uid)
+	c.button(418, 409, 54, 45, "Sat", func() -> void:
+		if sell_reason != "":
+			_say(sell_reason)
+			_render()
+		else:
+			_ask_sell(uid), 12.0, sell_reason == "")
+	c.text(232, 436, 91, "Değer × %%%d satış oranı" % int(Data.SALE_RATE * 100.0), 8.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 18.0)
+	if delivered:
+		var extra := _card(content, "", BORDER)
+		_boost_controls(extra, machine)
+		extra.add_child(_label("Vardiya ve mesai Fabrika > Vardiya bölümünden ayarlanır.", 12, MUTED))
 
 func _detail_machines() -> void:
 	if game.machines.is_empty():

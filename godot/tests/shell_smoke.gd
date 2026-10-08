@@ -429,6 +429,14 @@ func _run() -> void:
 	shell._open_detail("quote", str(quote_offer["id"]))
 	if shell.content.get_child_count() < 1:
 		return _fail("Quote screen did not render")
+	var quote_detail_arg: String = shell.detail_arg
+	shell._goto_with_return("fabrika", "fabrika", "vardiya")
+	if shell.page != "fabrika" or shell.detail != "" or shell.return_to.is_empty():
+		return _fail("The shift shortcut must leave the quote and remember it")
+	var back_bar: Node = shell.content.get_child(0)
+	(back_bar.get_child(0) as Button).pressed.emit()
+	if shell.detail != "quote" or shell.detail_arg != quote_detail_arg or not shell.return_to.is_empty():
+		return _fail("The back bar must reopen the same quote")
 	shell._send_quote(quote_offer["id"])
 	if shell.game.mails.is_empty() or shell.game.mail_arrived(shell.game.mails[0]):
 		return _fail("The customer's answer must exist but travel for a few seconds")
