@@ -16,6 +16,7 @@ const AMBER := Color("#e7b75c")
 const RED := Color("#e86f6f")
 const BLUE := Color("#62a8e5")
 const CYAN := Color("#45c7d8")
+const GREEN_HI := Color("#4be394")
 const TEXT_INSET := 7.2
 
 var scale_k := 1.0        # screen pixels per design point
@@ -60,7 +61,7 @@ func place(node: Control, x: float, y: float, w: float, h: float) -> Control:
 	return node
 
 # Text in a box (x, y, w, h in design points); alignment left, center or right.
-func text(x: float, y: float, w: float, content: String, pt: float, color := TEXT, align := HORIZONTAL_ALIGNMENT_LEFT, weight := "Regular", h := 22.0) -> Label:
+func text(x: float, y: float, w: float, content: String, pt: float, color := TEXT, align := HORIZONTAL_ALIGNMENT_LEFT, weight := "Regular", h := 22.0, wrap := false) -> Label:
 	var label := Label.new()
 	label.text = content
 	label.add_theme_font_size_override("font_size", font_px(pt))
@@ -69,9 +70,17 @@ func text(x: float, y: float, w: float, content: String, pt: float, color := TEX
 	label.horizontal_alignment = align
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_constant_override("line_spacing", -3)
+	if wrap:
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+		label.clip_text = true
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	place(label, x + TEXT_INSET, y, maxf(4.0, w - 2.0 * TEXT_INSET), h)   # PowerPoint text boxes keep a 7.2 pt side inset
 	return label
+
+# A wrapping paragraph in a box (formula descriptions).
+func paragraph(x: float, y: float, w: float, content: String, pt: float, color := MUTED, h := 40.0) -> Label:
+	return text(x, y, w, content, pt, color, HORIZONTAL_ALIGNMENT_LEFT, "Regular", h, true)
 
 # Same box rules as text(), with colour tags ([color=#e7b75c]...[/color]).
 func rich(x: float, y: float, w: float, content: String, pt: float, color := TEXT, h := 22.0) -> RichTextLabel:

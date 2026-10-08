@@ -10,7 +10,7 @@ const BLUE := Color("#62a8e5")
 const AMBER := Color("#e7b75c")
 const GREEN := Color("#2fd17b")
 const RED := Color("#e86f6f")
-const GRID := Color(1, 1, 1, 0.10)
+const GRID := Color(1, 1, 1, 0.85)
 const TEXT := Color("#98a7b6")
 const LANE_H := 58.0
 const LEFT := 58.0
@@ -71,7 +71,7 @@ func _draw() -> void:
 	var body := LANE_H * lanes.size()
 	for m in range(0, months + 1):
 		var x := _x(float(m) * 30.0)
-		draw_line(Vector2(x, 0), Vector2(x, body), GRID, 1.0)
+		draw_line(Vector2(x, 4.0), Vector2(x, body - 4.0), GRID, 1.5 if m > 0 else 2.0)
 		if m > 0 and m % 3 == 0:
 			var label := str(m)
 			draw_string(font, Vector2(x - font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x * 0.5, body + 16.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, TEXT)
@@ -80,21 +80,23 @@ func _draw() -> void:
 		var top := LANE_H * i
 		var icon: Texture2D = lane.get("icon", null)
 		if icon != null:
-			draw_texture_rect(icon, Rect2(6, top + 8, 40, 40), false, lane["color"])
-		draw_line(Vector2(LEFT, top + LANE_H * 0.5), Vector2(size.x - 6.0, top + LANE_H * 0.5), Color(1, 1, 1, 0.14), 1.5)
+			var texture_size := icon.get_size()
+			var fit := minf(46.0 / texture_size.x, 38.0 / texture_size.y)
+			draw_texture_rect(icon, Rect2(Vector2(6, top + LANE_H * 0.5 - texture_size.y * fit * 0.5), texture_size * fit), false, Color.WHITE)
+		draw_line(Vector2(LEFT, top + LANE_H * 0.5), Vector2(size.x - 6.0, top + LANE_H * 0.5), Color(1, 1, 1, 0.95), 1.5)
 		# customer window (lower half), then this job over it
 		var window_end := float(lane.get("window_end", 0.0))
-		draw_rect(Rect2(_x(0), top + LANE_H * 0.5 + 3.0, _x(window_end) - _x(0), LANE_H * 0.5 - 8.0), Color(AMBER.r, AMBER.g, AMBER.b, 0.38))
+		draw_rect(Rect2(_x(0), top + LANE_H * 0.5, _x(window_end) - _x(0), LANE_H * 0.5 - 6.0), AMBER)
 		var extra_end := 0.0
 		for segment in lane["segments"]:
 			var a := _x(float(segment["start"]))
 			var b := _x(float(segment["end"]))
 			if bool(segment.get("extra", false)):
 				var fits: bool = float(segment["end"]) <= window_end + 0.5
-				draw_rect(Rect2(a, top + LANE_H * 0.5 + 3.0, maxf(2.0, b - a), LANE_H * 0.5 - 8.0), GREEN if fits else RED)
+				draw_rect(Rect2(a, top + LANE_H * 0.5, maxf(2.0, b - a), LANE_H * 0.5 - 6.0), GREEN if fits else RED)
 				extra_end = b
 			else:
-				draw_rect(Rect2(a, top + 5.0, maxf(2.0, b - a), LANE_H * 0.5 - 8.0), BLUE)
+				draw_rect(Rect2(a, top + 5.0, maxf(2.0, b - a), LANE_H * 0.5 - 5.0), BLUE)
 		if late_days > 0 and extra_end > 0.0:
 			var text := "%d gün geç" % late_days
 			var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x

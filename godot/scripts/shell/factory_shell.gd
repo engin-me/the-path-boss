@@ -1905,6 +1905,8 @@ func _offer_tolerance(offer: Dictionary) -> float:
 
 # ------------------------------------------------------------------ Teklif ekranları (teklif_ekrani.pptx)
 
+const LIST_ICON := {"Dövme": "tasarim/liste_1", "Torna": "tasarim/liste_2", "Freze": "tasarim/liste_3", "Taşlama": "tasarim/liste_4"}
+
 func _offer_stats(offer: Dictionary) -> Dictionary:
 	var parts := 0
 	var difficulty := 0.0
@@ -1917,7 +1919,7 @@ func _offer_stats(offer: Dictionary) -> Dictionary:
 		kg += int(roundf(float(req["tons"]) * 1000.0))
 	return {"parts": parts, "difficulty": difficulty, "load": load_total, "kg": kg,
 		"parts_text": "%s Ad" % Data.usd(float(parts) / 1000.0).trim_prefix("$"),
-		"size_text": "%s Ad  x  %s" % [Data.usd(float(parts) / 1000.0).trim_prefix("$"), Data.mu_text(difficulty).replace("ω ", "ω ")]}
+		"mu": Data.mu_text(difficulty)}
 
 # The customer block of a listing: logo-less portrait and four lines of text (company, name, e-mail, phone).
 func _contact_block(c: DesignCanvas, offer: Dictionary, x: float, y: float) -> void:
@@ -1937,7 +1939,7 @@ func _offer_card(offer: Dictionary, reason: String) -> void:
 	c.picture(photo, 17, 15, 73, 60, Color.WHITE, true, 8.0)
 	c.text(90, 15, 250, String(offer["title"]), 16.0, DesignCanvas.TEXT, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 27.0)
 	c.text(340, 19, 100, "İş No: %d" % _job_no(offer), 11.0, DesignCanvas.AMBER, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 21.0)
-	c.text(250, 43, 190, String(stats["size_text"]), 16.0, DesignCanvas.GREEN, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 27.0)
+	c.rich(250, 43, 190, "[right][color=#2fd17b]%s[/color]  x  %s[/right]" % [stats["parts_text"], stats["mu"]], 16.0, DesignCanvas.TEXT, 27.0)
 	if bool(offer.get("continuous", false)):
 		c.text(98, 43, 150, "Sürekli İş · %d ay" % Data.CONTINUOUS_MONTHS, 10.5, DesignCanvas.AMBER, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 21.0)
 	c.text(318, 104, 70, "Tolerans", 10.5, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 21.0)
@@ -1953,7 +1955,7 @@ func _offer_card(offer: Dictionary, reason: String) -> void:
 		for req in offer["reqs"]:
 			if req["kind"] == kinds[i] and not game.owns(req):
 				have = false
-		c.icon(Art.slug(kinds[i]) + "_icon", 17.0 + 40.0 * i, 115, 34, 32, DesignCanvas.TEXT if have else DesignCanvas.RED)
+		c.icon(String(LIST_ICON[kinds[i]]), 17.0 + 40.0 * i, 113, 34, 34, Color.WHITE if have else DesignCanvas.RED)
 	c.line(23, 158, 407)
 	_contact_block(c, offer, 17, 168)
 	c.button(346, 186, 91, 30, "İncele", func() -> void: _open_detail("quote", str(offer["id"])))
@@ -1974,7 +1976,7 @@ func _update_gantt(gantt: Control, offer: Dictionary, months: int) -> void:
 		var segments: Array = plan["kinds"][kind]
 		for segment in segments:
 			horizon = maxf(horizon, float(segment["end"]) + 15.0)
-		lanes.append({"kind": kind, "icon": Art.find("res://art/ui/" + Art.slug(kind) + "_icon"), "color": KIND_COLOR.get(kind, TEXT), "segments": segments, "window_end": plan["window_end"]})
+		lanes.append({"kind": kind, "icon": Art.find("res://art/ui/" + Art.slug(kind) + "_icon_new"), "color": KIND_COLOR.get(kind, TEXT), "segments": segments, "window_end": plan["window_end"]})
 	gantt.set_data(lanes, minf(horizon, 420.0), mini(int(plan["late_days"]), 999))
 
 func _quote_row(parent: Control, left: String, right: String, color := GOLD, size := 14) -> void:
@@ -2111,7 +2113,7 @@ func _check_icon(c: DesignCanvas, on: bool, color: Color) -> Texture2D:
 
 func _design_check(c: DesignCanvas, x: float, y: float, caption: String, checked: bool, color: Color, enabled: bool, on_toggle := Callable(), text_color := DesignCanvas.MUTED) -> void:
 	var on_icon: Texture2D = _check_icon(c, true, color)
-	var off_icon: Texture2D = _check_icon(c, false, color if color != DesignCanvas.GREEN else DesignCanvas.BORDER)
+	var off_icon: Texture2D = _check_icon(c, false, color if color != DesignCanvas.GREEN_HI else DesignCanvas.BORDER)
 	if enabled:
 		var toggle := Button.new()
 		toggle.flat = true
@@ -2186,7 +2188,7 @@ func _detail_quote() -> void:
 	c.text(9.8, 411, 430, String(offer["title"]), 16.0, DesignCanvas.TEXT, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 22.0)
 	_contact_block(c, offer, 17, 411.0 + shift)
 	c.text(340, 412.0 + shift, 96, "İş No: %d" % _job_no(offer), 11.0, DesignCanvas.AMBER, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 21.0)
-	c.text(250, 437.0 + shift, 186, String(stats["size_text"]), 16.0, DesignCanvas.GREEN, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 27.0)
+	c.rich(250, 437.0 + shift, 190, "[right][color=#2fd17b]%s[/color]  x  %s[/right]" % [stats["parts_text"], stats["mu"]], 16.0, DesignCanvas.TEXT, 27.0)
 	if bool(offer.get("continuous", false)):
 		c.text(250, 463.0 + shift, 186, "Sürekli İş · %d ay" % Data.CONTINUOUS_MONTHS, 10.5, DesignCanvas.AMBER, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 21.0)
 	c.line(23, 472.0 + shift, 407)
@@ -2195,50 +2197,27 @@ func _detail_quote() -> void:
 	c.text(132, y0, 65, String(stats["parts_text"]), 12.0, DesignCanvas.GREEN, HORIZONTAL_ALIGNMENT_RIGHT)
 	c.text(257, y0, 100, "Hammadde", 12.0, DesignCanvas.MUTED)
 	c.text(357, y0, 80, "müşteri verir" if fason else grade, 12.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
-	c.text(17, y0 + 36.0, 120, "Parça İş Gücü (ω)", 12.0, DesignCanvas.MUTED)
+	c.rich(17, y0 + 36.0, 120, "Parça İş Gücü ([color=#e7b75c]ω[/color])", 12.0, DesignCanvas.MUTED)
 	c.text(132, y0 + 36.0, 65, str(stats["difficulty"]).trim_suffix(".0").replace(".", ","), 12.0, DesignCanvas.TEXT, HORIZONTAL_ALIGNMENT_RIGHT)
-	c.text(257, y0 + 36.0, 100, "Tolerans (mm)", 12.0, DesignCanvas.MUTED)
+	c.rich(257, y0 + 36.0, 100, "Tolerans ([color=#e7b75c]mm[/color])", 12.0, DesignCanvas.MUTED)
 	c.text(357, y0 + 36.0, 80, Data.tolerance_text(_offer_tolerance(offer)).trim_suffix(" mm"), 12.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
 	c.text(17, y0 + 72.0, 120, "İstenen Teslim", 12.0, DesignCanvas.MUTED)
 	c.text(132, y0 + 72.0, 65, "%d Ay" % wanted, 12.0, DesignCanvas.TEXT, HORIZONTAL_ALIGNMENT_RIGHT)
 	c.line(23, 602.0 + shift, 407)
-	var y := 616.0 + shift
-	c.text(17, y, 200, "Öngörülen Veriler", 12.0, DesignCanvas.BLUE)
-	y += 30.0
-	if not fason:
-		var supplier_now: Dictionary = Data.supplier_by_id(game.default_supplier)
-		c.text(17, y, 200, "Hammadde Tedarikçisi", 12.0, DesignCanvas.TEXT)
-		c.text(250, y, 170, String(supplier_now["name"]), 12.0, DesignCanvas.TEXT, HORIZONTAL_ALIGNMENT_RIGHT)
-		c.chevron(425, y + 4.0)
-		c.tap(17, y - 4.0, 420, 30, func() -> void: _goto_supplier_pick(offer))
-		y += 27.0
-		c.text(17, y, 200, "Hammadde Gideri", 12.0, DesignCanvas.AMBER)
-		c.text(375, y, 62, Data.usd(float(estimate["material"])), 12.0, DesignCanvas.AMBER, HORIZONTAL_ALIGNMENT_RIGHT)
-		y += 20.0
-		c.text(28, y, 250, "%s kg x %s = %s kg" % [str(offer["reqs"][0]["weight"]).trim_suffix(".0").replace(".", ","), String(stats["parts_text"]), Data.usd(float(stats["kg"]) / 1000.0).trim_prefix("$")], 12.0, DesignCanvas.AMBER)
-		y += 23.0
-	var cost_rows := [["Hurda Gideri", fason_free(fason, _sum_lines(lines, "scrap"))],
-		["Enerji, Personel, Sarf Malzeme", _sum_lines(lines, "energy") + _sum_lines(lines, "personnel") + _sum_lines(lines, "consumables")],
-		["Genel Gider & Amortisman", _sum_lines(lines, "overhead") + _sum_lines(lines, "amortization")]]
-	for row in cost_rows:
-		c.text(17, y, 250, String(row[0]), 12.0, DesignCanvas.AMBER)
-		c.text(355, y, 82, Data.usd(float(row[1])), 12.0, DesignCanvas.AMBER, HORIZONTAL_ALIGNMENT_RIGHT)
-		y += 27.0
-	c.text(17, y, 200, "Toplam Gider", 12.0, DesignCanvas.RED)
-	c.text(355, y, 82, Data.usd(total), 12.0, DesignCanvas.RED, HORIZONTAL_ALIGNMENT_RIGHT)
+	var y := _design_cost_block(c, offer, estimate, 616.0 + shift, true)
 	var line_y := y + 38.0
 	c.line(23, line_y, 407)
 	# shifts (information only; the arrow opens the factory's shift page)
 	for n in [1, 2, 3]:
 		var col_x: float = [19.0, 165.0, 317.0][n - 1]
-		_design_check(c, col_x, line_y + 19.0, "Vardiya %d" % n, game.plan_shifts >= n, DesignCanvas.GREEN, false)
-		_design_check(c, col_x, line_y + 44.0, "Mesai + 4 sa", bool(game.plan_ot[n - 1]), DesignCanvas.GREEN, false)
+		_design_check(c, col_x, line_y + 19.0, "Vardiya %d" % n, game.plan_shifts >= n, DesignCanvas.GREEN_HI, false)
+		_design_check(c, col_x, line_y + 44.0, "Mesai + 4 sa", bool(game.plan_ot[n - 1]), DesignCanvas.GREEN_HI, false)
 	c.chevron(425, line_y + 35.0, func() -> void: _goto_with_return("fabrika", "fabrika", "vardiya"))
 	# calendar
 	var gantt = PlanGantt.new()
 	var gantt_top := line_y + 78.0
 	var gantt_h := 64.0
-	c.box(19, gantt_top, 417, gantt_h, DesignCanvas.CARD, 8.0, DesignCanvas.BORDER)
+	c.box(19, gantt_top, 417, gantt_h, DesignCanvas.INNER, 8.0, DesignCanvas.INNER_BORDER)
 	c.place(gantt, 22, gantt_top + 2.0, 395, gantt_h - 4.0)
 	c.chevron(425, gantt_top + gantt_h * 0.5 - 7.0, func() -> void: _goto_with_return("fabrika", "fabrika", "kapasite"))
 	var after_gantt := gantt_top + gantt_h + 19.0
@@ -2292,6 +2271,39 @@ func _detail_quote() -> void:
 		c.text(19, sliders_top + 234.0, 320, reason, 9.0, DesignCanvas.RED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 30.0).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	c.set_height(sliders_top + 234.0 + 30.0 + 12.0 - 234.0 + 0.0)
 	gauge_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+# "Öngörülen Veriler": supplier, material, scrap, energy/staff/consumables, overhead and the total, in the design's rows.
+# Returns the y of the Toplam Gider row; `tappable` lets the supplier row open the supplier choice.
+func _design_cost_block(c: DesignCanvas, offer: Dictionary, estimate: Dictionary, y_start: float, tappable: bool) -> float:
+	var lines: Array = estimate["lines"]
+	var fason: bool = bool(offer.get("fason", false))
+	var stats: Dictionary = _offer_stats(offer)
+	var y := y_start
+	c.text(17, y, 200, "Öngörülen Veriler", 12.0, DesignCanvas.BLUE)
+	y += 30.0
+	if not fason:
+		var supplier_now: Dictionary = Data.supplier_by_id(game.default_supplier)
+		c.text(17, y, 200, "Hammadde Tedarikçisi", 12.0, DesignCanvas.TEXT)
+		c.text(250, y, 170, String(supplier_now["name"]), 12.0, DesignCanvas.TEXT, HORIZONTAL_ALIGNMENT_RIGHT)
+		c.chevron(425, y + 4.0)
+		if tappable:
+			c.tap(17, y - 4.0, 420, 30, func() -> void: _goto_supplier_pick(offer))
+		y += 27.0
+		c.text(17, y, 200, "Hammadde Gideri", 12.0, DesignCanvas.AMBER)
+		c.text(375, y, 62, Data.usd(float(estimate["material"])), 12.0, DesignCanvas.AMBER, HORIZONTAL_ALIGNMENT_RIGHT)
+		y += 20.0
+		c.text(28, y, 250, "%s kg x %s = %s kg" % [str(offer["reqs"][0]["weight"]).trim_suffix(".0").replace(".", ","), String(stats["parts_text"]), Data.usd(float(stats["kg"]) / 1000.0).trim_prefix("$")], 12.0, DesignCanvas.AMBER)
+		y += 23.0
+	var cost_rows := [["Hurda Gideri", fason_free(fason, _sum_lines(lines, "scrap"))],
+		["Enerji, Personel, Sarf Malzeme", _sum_lines(lines, "energy") + _sum_lines(lines, "personnel") + _sum_lines(lines, "consumables")],
+		["Genel Gider & Amortisman", _sum_lines(lines, "overhead") + _sum_lines(lines, "amortization")]]
+	for row in cost_rows:
+		c.text(17, y, 250, String(row[0]), 12.0, DesignCanvas.AMBER)
+		c.text(355, y, 82, Data.usd(float(row[1])), 12.0, DesignCanvas.AMBER, HORIZONTAL_ALIGNMENT_RIGHT)
+		y += 27.0
+	c.text(17, y, 200, "Toplam Gider", 12.0, DesignCanvas.RED)
+	c.text(355, y, 82, Data.usd(float(estimate["total"])), 12.0, DesignCanvas.RED, HORIZONTAL_ALIGNMENT_RIGHT)
+	return y
 
 func fason_free(fason: bool, value: float) -> float:
 	return 0.0 if fason else value
@@ -2513,6 +2525,13 @@ func _mail_row(mail: Dictionary, thread := []) -> void:
 			_open_mail(mail["id"]))
 	content.add_child(panel)
 
+func _date_dots(month: int, day: int) -> String:
+	return "%02d.%02d.%d" % [day, (8 + month - 1) % 12 + 1, 2026 + (8 + month - 1) / 12]
+
+# Rough height of a wrapped paragraph in design points (about 80 characters a line, 14.5 pt a line).
+func _para_height(text: String, chars_per_line := 78) -> float:
+	return 14.5 * float(maxi(1, int(ceilf(float(text.length()) / float(chars_per_line)))))
+
 func _mail_detail(mail: Dictionary) -> void:
 	mail["read"] = true
 	var top := HBoxContainer.new()
@@ -2525,52 +2544,84 @@ func _mail_detail(mail: Dictionary) -> void:
 	content.add_child(top)
 	var offer: Dictionary = mail.get("offer", {})
 	var is_quote: bool = mail.get("kind", "quote") == "quote" and not offer.is_empty()
-	var box := _card(content, "", GOLD, true)
-	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 12)
-	head.add_child(_contact_face(mail, 70))
-	var info := VBoxContainer.new()
-	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var person: Dictionary = _mail_person(mail)
-	info.add_child(_label(Data.month_label(int(mail["month"])).get_slice(" · ", 0), 13, MUTED, false))
-	if is_quote:
-		info.add_child(_label("Konu: İş No: %d teklifiniz hk." % _job_no(offer), 14, TEXT))
-		info.add_child(_label("Kimden: %s <%s>" % [person["name"], Data.contact_email(offer)], 12, MUTED))
-	else:
-		info.add_child(_label(mail["title"], 17, TEXT))
-		info.add_child(_label("Kimden: %s" % String(mail["customer"]), 12, MUTED))
-	head.add_child(info)
-	box.add_child(head)
-	box.add_child(_quote_line())
 	var status: String = mail["status"]
 	if not is_quote:
+		var box := _card(content, "", GOLD, true)
+		box.add_child(_label(mail["title"], 18, TEXT))
+		box.add_child(_label("%s · %s" % [Data.month_label(int(mail["month"])).get_slice(" · ", 0), String(mail["customer"])], 12, MUTED))
 		for line in mail["lines"]:
 			box.add_child(_label(str(line), 14, TEXT))
 		return
+	var person: Dictionary = _mail_person(mail)
 	var wanted_price: float = float(mail.get("price", 0.0))
-	box.add_child(_label("Merhaba,", 14, TEXT))
-	box.add_child(_label("Teklifiniz için teşekkür ederiz.", 14, TEXT))
 	var kind_counter: String = String(mail.get("kind_counter", ""))
+	# design coordinates: the mail cards of teklif_ekrani.pptx, x shifted by 5 so the shared cost block lines up
+	var c := DesignCanvas.new()
+	c.setup(Vector2(5, 0), 437.0, 508.0, 216.0, 14.0)
+	content.add_child(c)
+	var portrait: Texture2D = Art.find("res://art/contacts/" + String(person["id"])) if String(person["id"]) != "" else null
+	c.picture(portrait, 13, 8, 69, 70, Color.WHITE, true, 10.0)
+	c.text(86, 17, 56, "Kimden", 9.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
+	c.text(131, 17, 260, _date_dots(int(mail["month"]), int(mail.get("day", 1))), 9.0, DesignCanvas.TEXT, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
+	c.text(86, 35, 56, "Konu", 9.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
+	c.text(131, 35, 300, "İş No: %d teklifiniz hk." % _job_no(offer), 9.0, DesignCanvas.AMBER, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
+	c.text(86, 54, 56, "Kimden", 9.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
+	c.text(131, 54, 300, "%s <%s>" % [person["name"], Data.contact_email(offer)], 9.0, DesignCanvas.TEXT, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
+	c.line(17, 87, 407)
+	var y := 98.0
+	c.text(17, y, 300, "Merhaba,", 9.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
+	c.text(17, y + 23.0, 300, "Teklifiniz için teşekkür ederiz.", 9.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
+	y += 47.0
+	var amber := "#e7b75c"
+	var green := "#2fd17b"
+	var red := "#e86f6f"
+	var body := ""
+	var summary_rows: Array = []
 	if status == "accepted":
-		box.add_child(_label("Belirttiğiniz koşulların bizler için uygun olduğunu bildirmek isteriz. Ürünlerimizi aşağıdaki şartlarda teslim almayı hedefliyoruz;", 14, TEXT))
+		body = "Belirttiğiniz koşulların bizler için uygun olduğunu bildirmek isteriz. Ürünlerimizi aşağıdaki şartlarda teslim almayı hedefliyoruz;"
 		var price: float = float(mail["my_price"])
 		var advance: float = price * float(mail["my_advance"]) / 100.0
 		var due_month: int = int(mail["month"]) + int(mail["my_months"]) - 1
-		box.add_child(_label("Proje Bedeli: %s" % Data.usd(price), 14, TEXT))
-		box.add_child(_label("Teslimat: %s (%d Ay)" % [Data.date_text(due_month, Data.MONTH_DAYS), int(mail["my_months"])], 14, TEXT))
-		box.add_child(_label("Peşinat: %s (Hesabınıza aktarıldı)" % Data.usd(advance), 14, TEXT))
-		var rest := "Her ay yapılan işin %%%d'i ödenir, kalanı son teslimatta" % int(Data.PROGRESS_SHARE * 100.0) if bool(mail.get("my_progress", true)) else "Teslimde tek seferde"
-		box.add_child(_label("Kalan Ödeme: %s (%s)" % [Data.usd(price - advance), rest], 14, TEXT))
+		var rest_text := "Her ay yapılan işin %%%d'i ödenir, kalanı son teslimatta" % int(Data.PROGRESS_SHARE * 100.0) if bool(mail.get("my_progress", true)) else "Teslimde tek seferde"
+		summary_rows = [["Proje Bedeli: [color=%s]%s[/color]" % [green, Data.usd(price)], 19.0],
+			["Teslimat: [color=%s]%s (%d Ay)[/color]" % [amber, _date_dots(due_month, Data.MONTH_DAYS), int(mail["my_months"])], 19.0],
+			["Peşinat: [color=%s]%s[/color] [color=#e7edf3](Hesabınıza aktarıldı)[/color]" % [green, Data.usd(advance)], 19.0],
+			["Kalan Ödeme: [color=%s]%s[/color] [color=#e7edf3](%s)[/color]" % [green, Data.usd(price - advance), rest_text], _para_height("Kalan Ödeme: %s (%s)" % [Data.usd(price - advance), rest_text], 80) + 4.0]]
 	elif status == "counter" and kind_counter == "price":
-		box.add_child(_label("Hedef fiyatımız bu fiyatın (%s) biraz üzerinde kalıyor. Teklifinizi revize etmeniz mümkün mü? Beklediğimiz teklif tutarı: %s (− %s, − %%%s)" % [
-			Data.usd(float(mail["my_price"])), Data.usd(wanted_price), Data.usd(float(mail["my_price"]) - wanted_price), ("%.1f" % (float(mail["request_pct"]) * 100.0)).replace(".", ",")], 14, TEXT))
+		body = "Hedef fiyatımız bu fiyatın ([color=%s]%s[/color]) biraz üzerinde kalıyor. Teklifinizi revize etmeniz mümkün mü? Beklediğimiz teklif tutarı: [color=%s]%s[/color] ([color=%s] - %s, - %% %s[/color])" % [
+			green, Data.usd(float(mail["my_price"])), amber, Data.usd(wanted_price), red, Data.usd(float(mail["my_price"]) - wanted_price), ("%.1f" % (float(mail["request_pct"]) * 100.0)).replace(".", ",")]
 	elif status == "rejected" and not String(mail["lines"][0]).begins_with("Teslim süresi"):
-		box.add_child(_label("Ancak, hedef fiyatımızın üzerinde kaldığınız için sizinle çalışamayacağımızı üzülerek bildirmek isteriz.", 14, TEXT))
+		body = "Ancak, hedef fiyatımızın üzerinde kaldığınız için sizinle [color=%s]çalışamayacağımızı[/color] üzülerek bildirmek isteriz." % red
 	else:
-		for line in mail["lines"]:
-			box.add_child(_label(str(line), 14, TEXT))
-	box.add_child(_label("Saygılar\n%s" % person["name"], 14, TEXT))
+		body = " ".join(PackedStringArray(mail["lines"]))
+	var plain_body := body
+	for tag in ["[color=%s]" % green, "[color=%s]" % amber, "[color=%s]" % red, "[/color]"]:
+		plain_body = plain_body.replace(tag, "")
+	var para_h := _para_height(plain_body)
+	c.rich(17, y, 380, body, 9.0, DesignCanvas.MUTED, para_h + 4.0)
+	y += para_h + 6.0
+	for row in summary_rows:
+		c.rich(17, y, 380, String(row[0]), 9.0, DesignCanvas.MUTED, float(row[1]))
+		y += float(row[1]) + 0.0
+	y += 8.0
+	c.text(17, y, 200, "Saygılar", 9.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
 	var editable: bool = status == "counter" and game.phase == "offers"
+	var reply := c.button(342, y + 1.0, 91, 30, "Yanıtla", func() -> void:
+		if status == "counter":
+			mail_reply_open = not mail_reply_open
+			_render(), 12.0, status == "counter", 8.0)
+	if status != "counter":
+		for state in ["normal", "hover", "pressed", "disabled"]:
+			reply.add_theme_stylebox_override(state, c.style(Color("#667c91"), 8.0, DesignCanvas.BORDER))
+		reply.disabled = true
+	y += 40.0
+	if status == "counter":
+		# the player's own cost breakdown, as the design shows under the counter offer
+		c.line(17, y, 407)
+		var cost_end := _design_cost_block(c, offer, game.cost_estimate(offer), y + 14.0, false)
+		y = cost_end + 30.0
+	c.set_height(y + 6.0)
+	# actions that are not in the design: show the quote, delete, answer
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 10)
 	var show := _button("TEKLİFİ GÖSTER" if not mail_show_offer else "TEKLİFİ GİZLE", func() -> void:
@@ -2578,12 +2629,6 @@ func _mail_detail(mail: Dictionary) -> void:
 		_render())
 	show.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	buttons.add_child(show)
-	if status == "counter":
-		var reply := _button("Yanıtla", func() -> void:
-			mail_reply_open = not mail_reply_open
-			_render(), true)
-		reply.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		buttons.add_child(reply)
 	var trash := Button.new()
 	trash.custom_minimum_size = Vector2(52, 44)
 	var trash_icon: Texture2D = Art.find("res://art/ui/btn_delete")
@@ -2598,11 +2643,11 @@ func _mail_detail(mail: Dictionary) -> void:
 		_render())
 	_juice(trash)
 	buttons.add_child(trash)
-	box.add_child(buttons)
+	content.add_child(buttons)
 	if status == "counter" and mail_reply_open:
-		box.add_child(_quote_line())
+		var reply_box := _card(content, "", GOLD, true)
 		if not editable:
-			box.add_child(_label("Yanıt ay başında (rapordan önce) verilir.", 12, GOLD))
+			reply_box.add_child(_label("Yanıt ay başında (rapordan önce) verilir.", 12, GOLD))
 		else:
 			var prob_label := _label("", 14, GOLD, false)
 			var prob_row := HBoxContainer.new()
@@ -2611,11 +2656,11 @@ func _mail_detail(mail: Dictionary) -> void:
 			prob_row.add_child(prob_name)
 			prob_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 			prob_row.add_child(prob_label)
-			box.add_child(prob_row)
-			var update_prob := func(price: float) -> void:
+			reply_box.add_child(prob_row)
+			var update_prob := func(price_now: float) -> void:
 				var months_now: int = int(mail["months"]) if kind_counter == "time" else int(mail["my_months"])
 				game.quote_progress = bool(mail.get("my_progress", true))
-				prob_label.text = "%%%d" % int(roundf(float(game.accept_probability(offer, price, int(mail["my_advance"]), months_now, true)["accept"]) * 100.0))
+				prob_label.text = "%%%d" % int(roundf(float(game.accept_probability(offer, price_now, int(mail["my_advance"]), months_now, true)["accept"]) * 100.0))
 			var start_price: float = wanted_price if kind_counter == "price" else float(mail["my_price"])
 			update_prob.call(start_price)
 			var price_edit := LineEdit.new()
@@ -2627,12 +2672,12 @@ func _mail_detail(mail: Dictionary) -> void:
 			price_edit.text_changed.connect(func(text: String) -> void:
 				if text.is_valid_float():
 					update_prob.call(float(text) / float(Data.MONEY_UNIT_USD)))
-			box.add_child(_label("Yeni teklif tutarı ($)", 12, MUTED))
-			box.add_child(price_edit)
-			box.add_child(_button("TEKLİFİ GÜNCELLE", func() -> void:
+			reply_box.add_child(_label("Yeni teklif tutarı ($)", 12, MUTED))
+			reply_box.add_child(price_edit)
+			reply_box.add_child(_button("TEKLİFİ GÜNCELLE", func() -> void:
 				var value: float = float(price_edit.text) / float(Data.MONEY_UNIT_USD) if price_edit.text.is_valid_float() else 0.0
 				_revise_mail(mail["id"], value), true, false, true))
-			box.add_child(_button("Vazgeç", func() -> void:
+			reply_box.add_child(_button("Vazgeç", func() -> void:
 				_answer_counter(mail["id"], false)))
 	if mail_show_offer:
 		_mail_offer_snapshot(mail)
@@ -3969,15 +4014,26 @@ func _detail_machine(uid: int) -> void:
 	c.line(37, 208, 427)
 	var output: float = game.machine_output(machine, mults) if delivered else 0.0
 	var energy: float = game.machine_energy(machine) * game.shift_equiv(machine)
+	var steps_now: Dictionary = game.machine_steps(machine, mults)
+	var theoretical: float = float(steps_now["theoretical"])
+	var scrap_now: float = game.machine_scrap(machine)
+	var missing_steps: float = game.condition_steps_of(machine)
+	var boost_now: float = game.machine_boost(machine)
 	var rows := [
-		[225, "tasarim/detay_kapasite", "Kapasite", "Teorik × vardiya × verim", "%d Vardiya" % int(machine["shifts"]), "%s/ay" % _xfmt(output), DesignCanvas.GREEN],
-		[271, "tasarim/detay_bakim", "Bakım Gideri", "Fiyat × bakım oranı", "Aylık, sabit", "−" + Data.usd(game.machine_maintenance(machine)), DesignCanvas.RED],
-		[318, "tasarim/detay_enerji", "Enerji Gideri", "Motor gücü × vardiya", "Çalışmaya bağlı", "−" + Data.usd(energy), DesignCanvas.RED]]
+		[225, "tasarim/detay_kapasite", "Kapasite",
+			"%s teorik × vardiya %%%d × hız %%%d  ×(1−hurda %%%.1f) × sorun %%%d" % [_xfmt(theoretical), int(roundf(float(steps_now["shift"]) / maxf(0.001, theoretical) * 100.0)), int(roundf(float(machine["perf"]) * (1.0 + boost_now) * 100.0)), scrap_now * 100.0, int(roundf(float(mults["phys"]) * float(mults["non"]) * 100.0))],
+			"%d Vardiya" % int(machine["shifts"]), "%s/ay" % _xfmt(output), DesignCanvas.GREEN],
+		[271, "tasarim/detay_bakim", "Bakım Gideri",
+			"Fiyat %s × %%%.1f × eksik %s adım × aylık şans (0,8–1,2)" % [Data.usd(float(machine["price"])), float(Data.MAINT_STEP_PCT[int(machine["level"])]) * 100.0, str(snappedf(missing_steps, 0.1)).replace(".", ",")],
+			"Aylık, sabit", "−" + Data.usd(game.machine_maintenance(machine)), DesignCanvas.RED],
+		[318, "tasarim/detay_enerji", "Enerji Gideri",
+			"%s kW × %s × %s vardiya × yıpranma" % [str(machine.get("power", "—")).replace(".", ","), Data.usd(Data.ENERGY_PER_KW), str(snappedf(game.shift_equiv(machine), 0.1)).replace(".", ",")],
+			"Çalışmaya bağlı", "−" + Data.usd(energy), DesignCanvas.RED]]
 	for row in rows:
 		var y: float = float(row[0])
 		c.icon(row[1], 37, y, 28, 28, DesignCanvas.TEXT)
 		c.text(75, y + 4.0, 95, row[2], 9.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
-		c.text(171, y + 4.0, 146, row[3], 8.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
+		c.paragraph(138, y - 2.0, 180, row[3], 8.0, DesignCanvas.MUTED, 44.0)
 		c.text(318, y + 4.0, 90, row[4], 9.0, DesignCanvas.AMBER, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
 		c.text(400, y + 4.0, 73, row[5], 9.0, row[6], HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 18.0)
 	c.line(37, 259, 429)
@@ -3985,9 +4041,9 @@ func _detail_machine(uid: int) -> void:
 	c.line(37, 353, 429)
 	c.icon("tasarim/detay_kondisyon", 41, 364, 24, 21, DesignCanvas.TEXT)
 	c.text(75, 364, 95, "Kondisyon", 9.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
-	c.text(171, 364, 146, "Yılda −10 puan", 8.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
+	c.paragraph(138, 360, 180, "Her ay −%s puan (yaşlanma); eksik puan bakımı ve hurdayı artırır" % str(snappedf(Data.AGING_PER_MONTH, 0.01)).replace(".", ","), 8.0, DesignCanvas.MUTED, 36.0)
 	c.text(318, 364, 90, "Aylık değişim", 9.0, DesignCanvas.AMBER, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
-	c.text(400, 364, 73, "−0,8 puan", 9.0, DesignCanvas.RED, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 18.0)
+	c.text(400, 364, 73, "−%s puan" % str(snappedf(Data.AGING_PER_MONTH, 0.01)).replace(".", ","), 9.0, DesignCanvas.RED, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 18.0)
 	c.line(37, 399, 427)
 	c.text(200, 414, 122, "Güncel Satış Fiyatı", 11.0, DesignCanvas.TEXT, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 21.0)
 	c.text(323, 411, 81, Data.usd(game.sale_income(machine)).replace("$", "$ "), 16.0, DesignCanvas.GREEN, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 27.0)
@@ -3998,7 +4054,7 @@ func _detail_machine(uid: int) -> void:
 			_render()
 		else:
 			_ask_sell(uid), 12.0, sell_reason == "", 17.0)
-	c.text(232, 436, 91, "Değer × %%%d satış oranı" % int(Data.SALE_RATE * 100.0), 8.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 18.0)
+	c.text(180, 436, 143, "Liste fiyatı × kondisyon çarpanı × %%%d" % int(Data.SALE_RATE * 100.0), 8.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 18.0)
 	if delivered:
 		var extra := _card(content, "", BORDER)
 		_boost_controls(extra, machine)

@@ -1761,7 +1761,7 @@ func accept_probability(offer: Dictionary, price: float, advance_pct: int, month
 	return {"accept": float(accept) / float(total), "counter": float(counter) / float(total)}
 
 func _mail(offer: Dictionary, status: String, lines: Array, extra := {}) -> Dictionary:
-	var mail := {"id": next_mail, "month": month, "offer_id": offer["id"], "title": offer["title"], "customer": offer["customer"],
+	var mail := {"id": next_mail, "month": month, "day": day, "offer_id": offer["id"], "title": offer["title"], "customer": offer["customer"],
 		"contact": Data.contact_of(offer), "contact_photo": String(Data.contact_info(offer)["id"]), "contact_role": String(Data.contact_info(offer)["role"]), "status": status, "lines": lines, "offer": offer.duplicate(true), "read": false, "kind": "quote", "round": 1}
 	mail.merge(extra, true)
 	next_mail += 1
