@@ -1935,7 +1935,7 @@ func _offer_card(offer: Dictionary, reason: String) -> void:
 	content.add_child(c)
 	var photo := Art.pick_image("res://art/jobs", int(offer["id"]))
 	c.picture(photo, 17, 15, 73, 60, Color.WHITE, true, 8.0)
-	c.text(98, 15, 250, String(offer["title"]), 16.0, DesignCanvas.TEXT, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 27.0)
+	c.text(90, 15, 250, String(offer["title"]), 16.0, DesignCanvas.TEXT, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 27.0)
 	c.text(340, 19, 100, "İş No: %d" % _job_no(offer), 11.0, DesignCanvas.AMBER, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 21.0)
 	c.text(250, 43, 190, String(stats["size_text"]), 16.0, DesignCanvas.GREEN, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 27.0)
 	if bool(offer.get("continuous", false)):
@@ -2183,7 +2183,7 @@ func _detail_quote() -> void:
 	c.setup(Vector2(9, 234), 437.0, 508.0, 1100.0, 14.0)
 	content.add_child(c)
 	c.picture(Art.pick_image("res://art/jobs", int(offer["id"])), 17, 243, 419, 158, Color.WHITE, true, 12.0)
-	c.text(17, 411, 419, String(offer["title"]), 16.0, DesignCanvas.TEXT, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 22.0)
+	c.text(9.8, 411, 430, String(offer["title"]), 16.0, DesignCanvas.TEXT, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 22.0)
 	_contact_block(c, offer, 17, 411.0 + shift)
 	c.text(340, 412.0 + shift, 96, "İş No: %d" % _job_no(offer), 11.0, DesignCanvas.AMBER, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 21.0)
 	c.text(250, 437.0 + shift, 186, String(stats["size_text"]), 16.0, DesignCanvas.GREEN, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 27.0)
@@ -3952,7 +3952,7 @@ func _detail_machine(uid: int) -> void:
 	var mults: Dictionary = game.problem_mults(game.loss_fractions())
 	c.picture(Art.machine_photo(machine["kind"], int(machine["level"]), float(machine["condition"])), 37, 9, 244, 183, Color.WHITE, true, 9.0)
 	c.text(318, 9, 150, "%s Tezgahı" % machine["kind"], 14.0, DesignCanvas.TEXT)
-	c.text(318, 27, 150, "T-%02d\n%s" % [int(machine.get("slot", 0)) + 1, machine["model"]], 9.0, DesignCanvas.AMBER, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 36.0)
+	c.rich(318, 31, 160, "[color=#e7b75c]T-%02d[/color] | %s" % [int(machine.get("slot", 0)) + 1, machine["model"]], 9.0, DesignCanvas.MUTED, 20.0)
 	c.picture(Art.find("res://art/ui/" + Art.slug(machine["kind"]) + KIND_PICTURE_SUFFIX), 288, 14, 29, 28)
 	var power_text := ("%.1f kW" % float(machine["power"])).replace(".", ",") if machine.has("power") else "—"
 	var area_text := ("%d m2 x %s m" % [int(machine["area"]), str(machine["height"]).replace(".", ",")]) if machine.has("area") else "—"
@@ -3963,7 +3963,7 @@ func _detail_machine(uid: int) -> void:
 		["tasarim/detay_tolerans", 146, "Tolerans", Data.tolerance_text(float(machine.get("precision", 0.1))) if machine.has("precision") else "—"],
 		["tasarim/detay_alan", 174, "Gerekli Alan", area_text]]
 	for spec in specs:
-		c.icon(spec[0], 301, float(spec[1]), 15, 14, DesignCanvas.MUTED)
+		c.icon(spec[0], 301, float(spec[1]), 15, 14, DesignCanvas.TEXT)
 		c.text(318, float(spec[1]) - 4.0, 100, spec[2], 9.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
 		c.text(373, float(spec[1]) - 4.0, 100, spec[3], 9.0, DesignCanvas.TEXT, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 18.0)
 	c.line(37, 208, 427)
@@ -3975,7 +3975,7 @@ func _detail_machine(uid: int) -> void:
 		[318, "tasarim/detay_enerji", "Enerji Gideri", "Motor gücü × vardiya", "Çalışmaya bağlı", "−" + Data.usd(energy), DesignCanvas.RED]]
 	for row in rows:
 		var y: float = float(row[0])
-		c.icon(row[1], 37, y, 28, 28, DesignCanvas.MUTED)
+		c.icon(row[1], 37, y, 28, 28, DesignCanvas.TEXT)
 		c.text(75, y + 4.0, 95, row[2], 9.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
 		c.text(171, y + 4.0, 146, row[3], 8.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
 		c.text(318, y + 4.0, 90, row[4], 9.0, DesignCanvas.AMBER, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
@@ -3983,7 +3983,7 @@ func _detail_machine(uid: int) -> void:
 	c.line(37, 259, 429)
 	c.line(37, 311, 429)
 	c.line(37, 353, 429)
-	c.icon("tasarim/detay_kondisyon", 41, 364, 24, 21, DesignCanvas.MUTED)
+	c.icon("tasarim/detay_kondisyon", 41, 364, 24, 21, DesignCanvas.TEXT)
 	c.text(75, 364, 95, "Kondisyon", 9.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
 	c.text(171, 364, 146, "Yılda −10 puan", 8.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
 	c.text(318, 364, 90, "Aylık değişim", 9.0, DesignCanvas.AMBER, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 18.0)
@@ -3997,7 +3997,7 @@ func _detail_machine(uid: int) -> void:
 			_say(sell_reason)
 			_render()
 		else:
-			_ask_sell(uid), 12.0, sell_reason == "")
+			_ask_sell(uid), 12.0, sell_reason == "", 17.0)
 	c.text(232, 436, 91, "Değer × %%%d satış oranı" % int(Data.SALE_RATE * 100.0), 8.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_RIGHT, "Regular", 18.0)
 	if delivered:
 		var extra := _card(content, "", BORDER)

@@ -16,6 +16,7 @@ const AMBER := Color("#e7b75c")
 const RED := Color("#e86f6f")
 const BLUE := Color("#62a8e5")
 const CYAN := Color("#45c7d8")
+const TEXT_INSET := 7.2
 
 var scale_k := 1.0        # screen pixels per design point
 var origin := Vector2.ZERO   # design coordinates of the card's top-left corner
@@ -38,7 +39,7 @@ func set_height(height_pt: float) -> void:
 	custom_minimum_size = Vector2(card_size.x * scale_k, height_pt * scale_k)
 
 func font_px(pt: float) -> int:
-	return int(roundf(maxf(pt * scale_k, 11.0 + (pt - 9.0) * 0.5)))
+	return int(roundf(maxf(pt * scale_k, 12.0 + (pt - 9.0) * 0.5)))
 
 func style(fill: Color, radius_pt: float, border := BORDER, width := 1) -> StyleBoxFlat:
 	var box := StyleBoxFlat.new()
@@ -69,7 +70,20 @@ func text(x: float, y: float, w: float, content: String, pt: float, color := TEX
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_constant_override("line_spacing", -3)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	place(label, x, y, w, h)
+	place(label, x + TEXT_INSET, y, maxf(4.0, w - 2.0 * TEXT_INSET), h)   # PowerPoint text boxes keep a 7.2 pt side inset
+	return label
+
+# Same box rules as text(), with colour tags ([color=#e7b75c]...[/color]).
+func rich(x: float, y: float, w: float, content: String, pt: float, color := TEXT, h := 22.0) -> RichTextLabel:
+	var label := RichTextLabel.new()
+	label.bbcode_enabled = true
+	label.scroll_active = false
+	label.text = content
+	label.add_theme_font_size_override("normal_font_size", font_px(pt))
+	label.add_theme_color_override("default_color", color)
+	label.add_theme_font_override("normal_font", Art.font("Regular"))
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	place(label, x + TEXT_INSET, y, maxf(4.0, w - 2.0 * TEXT_INSET), h)
 	return label
 
 func box(x: float, y: float, w: float, h: float, fill: Color, radius_pt: float, border := BORDER, width := 1) -> Panel:
@@ -142,7 +156,7 @@ func shape_texture(size_px: int, fill: Color, border: Color, radius_px: float) -
 	_textures[key] = texture
 	return texture
 
-func button(x: float, y: float, w: float, h: float, caption: String, on_press: Callable, pt := 12.0, primary := true) -> Button:
+func button(x: float, y: float, w: float, h: float, caption: String, on_press: Callable, pt := 12.0, primary := true, radius_pt := 7.0) -> Button:
 	var b := Button.new()
 	b.text = caption
 	b.add_theme_font_size_override("font_size", font_px(pt))
@@ -155,7 +169,7 @@ func button(x: float, y: float, w: float, h: float, caption: String, on_press: C
 		if state == "focus":
 			b.add_theme_stylebox_override(state, StyleBoxEmpty.new())
 		else:
-			b.add_theme_stylebox_override(state, style(fill, 7.0, BORDER))
+			b.add_theme_stylebox_override(state, style(fill, radius_pt, BORDER))
 	b.pressed.connect(on_press)
 	place(b, x, y, w, h)
 	return b
