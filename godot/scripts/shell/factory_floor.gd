@@ -500,6 +500,23 @@ func _equipment_symbol(id: String, rect: Rect2) -> void:
 			_frame(rect.grow(-rect.size.x * 0.18), color)
 			_circle(c, rect.size.x * 0.1, color)
 
+var kind_pictures := {}
+
+# The flat illustration of a machine kind (art/ui/<kind>_icon_new); null while it is not in the project.
+func _kind_picture(kind: String) -> Texture2D:
+	if not kind_pictures.has(kind):
+		kind_pictures[kind] = Art.find("res://art/ui/" + Art.slug(kind) + "_icon_new")
+	return kind_pictures[kind]
+
+# Picture fitted into the middle of the slot, right of the counters and above the name.
+func _machine_picture(slot: Rect2, picture: Texture2D, transit: bool) -> void:
+	var area := Rect2(slot.position + Vector2(slot.size.x * 0.27, slot.size.y * 0.12), Vector2(slot.size.x * 0.58, slot.size.y * 0.62))
+	var texture_size := picture.get_size()
+	var scale_to := minf(area.size.x / texture_size.x, area.size.y / texture_size.y)
+	var drawn := texture_size * scale_to
+	var at := area.position + (area.size - drawn) * 0.5
+	draw_texture_rect(picture, Rect2(at, drawn), false, Color(1, 1, 1, 0.45 if transit else 1.0))
+
 # Diagonal hatch inside a rectangle (the plan's fill for machines and equipment).
 func _hatch(rect: Rect2, color: Color, spacing: float, px := 1.0) -> void:
 	var t := -rect.size.y
@@ -646,8 +663,13 @@ func _draw() -> void:
 		if transit:
 			color = Color(color.r, color.g, color.b, 0.4)
 		_hatch(slot, HATCH, slot.size.x * 0.06, 1.0)
-		var body := slot.grow_individual(-slot.size.x * SLOT_INSET, -slot.size.y * SLOT_INSET, -slot.size.x * SLOT_INSET, -slot.size.y * SLOT_INSET)
-		_symbol(machine["kind"], int(machine["level"]), body, color, working)
+		_frame(slot, AMBER, 3.0)
+		var picture := _kind_picture(String(machine["kind"]))
+		if picture != null:
+			_machine_picture(slot, picture, transit)
+		else:
+			var body := slot.grow_individual(-slot.size.x * SLOT_INSET, -slot.size.y * SLOT_INSET, -slot.size.x * SLOT_INSET, -slot.size.y * SLOT_INSET)
+			_symbol(machine["kind"], int(machine["level"]), body, color, working)
 		_slot_overlay(slot, machine, transit, working)
 	if selected >= 0 and selected < slots.size():
 		_frame((slots[selected] as Rect2).grow(5.0), SELECT, 3.0)
