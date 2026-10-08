@@ -3091,13 +3091,12 @@ func _machine_card(listing: Dictionary) -> void:
 	var buy := c.button(305, 377, 123, 37, "Satın al", func() -> void:
 		if reason == "":
 			_ask_buy(int(listing["uid"]))
-		elif not reason.begins_with("Alımdan sonra kasa"):
+		else:
 			_say(reason)
 			_render_keep_scroll(), 12.0, reason == "", 10.0)
 	if reason != "":
 		buy.modulate = Color(1, 1, 1, 0.55)
-		if not reason.begins_with("Alımdan sonra kasa"):   # that rule still holds, but the card no longer spells it out
-			c.text(9, 380, 290, reason, 9.0, DesignCanvas.RED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 30.0, true)
+		c.text(9, 380, 290, reason, 9.0, DesignCanvas.RED, HORIZONTAL_ALIGNMENT_LEFT, "Regular", 30.0, true)
 	c.gui_input.connect(_on_card_input.bind(int(listing["uid"])))
 
 # A tap selects; a drag (scrolling) does not.

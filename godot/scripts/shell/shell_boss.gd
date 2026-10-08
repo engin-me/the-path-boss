@@ -1275,8 +1275,8 @@ func spend_block_reason(price: float) -> String:
 		return "Satın alma yalnızca ay başında (rapordan önce) yapılır."
 	if factory_id == "":
 		return "Önce bir yer kirala."
-	if cash - price < ordinary_expense() + finance_due():
-		return "Alımdan sonra kasa bu ayın giderini (%.0f) karşılamıyor." % (ordinary_expense() + finance_due())
+	if price > cash:
+		return "Yetersiz nakit."   # the old "cash must still cover this month's expenses" guard is gone (user decision 2026-10-08)
 	return ""
 
 func package_block_reason() -> String:
