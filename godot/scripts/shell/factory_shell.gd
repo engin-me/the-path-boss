@@ -2203,8 +2203,24 @@ func _detail_quote() -> void:
 	c.text(357, y0 + 36.0, 80, Data.tolerance_text(_offer_tolerance(offer)).trim_suffix(" mm"), 12.0, DesignCanvas.MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
 	c.text(17, y0 + 72.0, 120, "İstenen Teslim", 12.0, DesignCanvas.MUTED)
 	c.text(132, y0 + 72.0, 65, "%d Ay" % wanted, 12.0, DesignCanvas.TEXT, HORIZONTAL_ALIGNMENT_RIGHT)
-	c.line(23, 602.0 + shift, 407)
-	var y := _design_cost_block(c, offer, estimate, 616.0 + shift, true)
+	# the machine kinds this job needs, one icon with its name under it
+	var needed: Array = []
+	for req in offer["reqs"]:
+		if not needed.has(req["kind"]):
+			needed.append(req["kind"])
+	var tezgah_y := y0 + 72.0
+	c.text(17, tezgah_y + 30.0, 200, "Gerekli Tezgahlar;", 12.0, DesignCanvas.MUTED)
+	var slots_x := [66.0, 165.0, 271.0, 375.0]
+	for i in needed.size():
+		var have_kind := true
+		for req in offer["reqs"]:
+			if req["kind"] == needed[i] and not game.owns(req):
+				have_kind = false
+		var tint: Color = Color.WHITE if have_kind else DesignCanvas.RED
+		c.icon(String(LIST_ICON[needed[i]]), float(slots_x[i]) - 17.0, tezgah_y + 62.0, 34, 34, tint)
+		c.text(float(slots_x[i]) - 55.0, tezgah_y + 98.0, 110, "%s Tezgahı" % needed[i], 9.0, DesignCanvas.MUTED if have_kind else DesignCanvas.RED, HORIZONTAL_ALIGNMENT_CENTER, "Regular", 18.0)
+	c.line(23, tezgah_y + 124.0, 407)
+	var y := _design_cost_block(c, offer, estimate, tezgah_y + 134.0, true)
 	var line_y := y + 38.0
 	c.line(23, line_y, 407)
 	# shifts (information only; the arrow opens the factory's shift page)
